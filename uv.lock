@@ -107,7 +107,7 @@ wheels = [
 
 [[package]]
 name = "enerhabitat"
-version = "0.0.1"
+version = "0.1.7"
 source = { editable = "." }
 dependencies = [
     { name = "numba" },

@@ -88,8 +88,6 @@ import enerhabitat as eh
 Create a location object from an EPW file.
 
 ```python
-import enerhabitat as eh
-
 epw_file = "./epw/example.epw"
 loc = eh.Location(epw_file)
 ```
@@ -126,8 +124,6 @@ print(loc.flag()["date"])
 Models a constructive system and computes interior temperatures. Crate a `System` from a `Location` object
 
 ```python
-import enerhabitat as eh
-
 loc = eh.Location("./epw/example.epw")
 wall =  eh.System(location = loc)
 ```
@@ -196,8 +192,6 @@ Note: this is global. Changing it affects future computations for any `Location`
 
 Example:
 ```python
-import enerhabitat as eh
-
 # Change materials file
 eh.config.file = "./materials.ini"
 
