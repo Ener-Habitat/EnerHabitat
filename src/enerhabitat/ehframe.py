@@ -19,6 +19,7 @@ class Location:
         longitude (float): Longitude of the location.
         altitude (float): Altitude of the location in meters.
         timezone (pytz.timezone): Timezone of the location.
+             
 
     Methods:
         meanDay(day, month, year): Calculates the ambient temperature per second for the average day
@@ -295,7 +296,10 @@ class System():
         azimuth (float): Azimuth angle of the surface in degrees.
         absortance (float): Surface absortance of the system's external material.
         layers (list): List of tuples from outside to inside with material and width.
-    
+        energy_transfer (float): Total energy transfered to the constuctive system computed by solve()
+        cooling_energy (float): Total cooling energy needed to mantain a constant Ti computed by solveAC()
+        heating_energy (float): Total heating energy needed to mantain a constant Ti computed by solveAC()
+        
     Methods:
         Tsa(): Calculates the sun-air temperature per second for the average day experienced by a surface.
         solve(energy): Solves the constructive system's inside temperature.
