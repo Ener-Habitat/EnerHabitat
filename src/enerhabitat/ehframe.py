@@ -596,7 +596,7 @@ class System():
 
         SC_dataframe = SC_dataframe.iloc[::dt]
         Tsa_vals = SC_dataframe['Tsa'].to_numpy()
-        Ti_vals = SC_dataframe['Ti'].to_numpy()
+        Ti_vals = SC_dataframe['Ti'].to_numpy(copy=True)
         Ti_new = np.empty_like(Ti_vals)
         n_steps = Tsa_vals.shape[0]
 

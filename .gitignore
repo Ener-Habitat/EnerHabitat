@@ -9,5 +9,8 @@ wheels/
 # Virtual environments
 .venv
 
+#Claude
+.claude
+
 # Test directory
 test/
