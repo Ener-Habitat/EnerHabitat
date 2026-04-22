@@ -1,6 +1,6 @@
 [project]
 name = "enerhabitat"
-version = "0.1.7"
+version = "0.1.8"
 authors = [
     {name="Guillermo Barrios del Valle", email="gbv@ier.unam.mx"},
     {name="Fernando Rodriguez Calderon", email="ferrodriguez2509@gmail.com"}
