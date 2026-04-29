@@ -80,10 +80,10 @@ where:
 - `I_s` — solar irradiance incident on the surface
 - `a`   — external solar absorptance
 - `h_o` — outdoor convective heat transfer coefficient
-- `RF`  — long-wave radiative loss factor (K). EnerHabitat uses
-  **`RF = -3.9` K** for horizontal surfaces (`tilt = 0`, e.g. a roof, where
-  the surface sees the cold sky) and **`RF = 0`** for vertical walls
-  (`tilt = 90`); intermediate tilts are not interpolated.
+- `RF`  — long-wave radiative loss factor (°C). EnerHabitat uses
+  **`RF = -3.9` °C** for horizontal surfaces (`tilt = 0`, e.g. a roof, where
+  the surface sees the cold sky) and **`RF = 0` °C** for vertical walls
+  (`tilt = 90`).
 
 The equation is discretised with **finite control volumes** and solved with the
 **TDMA** (Tri-Diagonal Matrix Algorithm). The simulation runs over an
