@@ -461,6 +461,7 @@ Developed at the **Instituto de Energías Renovables, UNAM**.
 - Fernando Rodríguez Calderón — <ferrodriguez2509@gmail.com>
 
 Source code: <https://github.com/Ener-Habitat/EnerHabitat>
+
 Issues: <https://github.com/Ener-Habitat/EnerHabitat/issues>
 
 ## License
