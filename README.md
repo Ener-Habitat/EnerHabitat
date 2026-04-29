@@ -24,7 +24,7 @@ demands for an *average day* of a chosen month.
 - [API reference](#api-reference)
   - [Location](#location)
   - [System](#system)
-  - [Config (global)](#config-global)
+- [Config (global)](#config-global)
 - [Materials](#materials)
 - [Dependencies](#dependencies)
 - [Authors](#authors)
@@ -71,7 +71,7 @@ The exterior boundary condition uses the **sun-air temperature**, which combines
 convection, short-wave solar gain and long-wave radiative losses:
 
 ```
-    T_sa = T_o + (I_s · a) / h_o + RF
+    T_sa = T_o + (I_s   a) / h_o + RF
 ```
 
 where:
@@ -91,10 +91,12 @@ Two solution modes are available:
 
 - **Free-running** — `solve()`: no air conditioning is applied; the indoor
   temperature follows the dynamics of the constructive system.
-- **Air-conditioned** — `solveAC()`: the indoor setpoint is fixed at the upper
-  comfort limit derived from the **Humphreys & Nicol** adaptive comfort model
-  combined with **Morillón's** comfort-zone amplitude proposal. The method
-  reports the cooling and heating energy required to maintain that setpoint.
+- **Air-conditioned** — `solveAC()`: the indoor temperature is held at a
+  comfort setpoint derived from the **Humphreys & Nicol** adaptive comfort
+  model combined with **Morillón's** comfort-zone amplitude proposal.
+  EnerHabitat then applies the cooling or heating needed at every time step to
+  keep `Ti` at that setpoint, and reports the resulting `cooling_energy` and
+  `heating_energy` demands.
 
 ## Installation
 
@@ -102,7 +104,8 @@ Two solution modes are available:
 pip install enerhabitat
 ```
 
-With [uv](https://docs.astral.sh/uv/):
+With [uv](https://docs.astral.sh/uv/) (we love it and warmly encourage its use
+— it is fast, reproducible, and our recommended way to install EnerHabitat):
 
 ```bash
 uv add enerhabitat
@@ -171,7 +174,13 @@ To simulate a wall (or roof) you need to:
 3. **Define its color** — set `absortance`.
 4. **Define its layers** — set `layers` from outside to inside.
 5. **Choose the period** — call `location.meanDay(month, year)`.
-6. **Compute `Tsa()`** and then **`solve()`** or **`solveAC()`**.
+6. **Compute `Tsa()`**, then choose one solver:
+   - **`solve()`** — *without* air conditioning (free-running): the indoor
+     temperature `Ti` evolves freely with the dynamics of the constructive
+     system.
+   - **`solveAC()`** — *with* air conditioning: the indoor temperature is held
+     at a comfort setpoint and the cooling/heating energy required is
+     reported.
 
 Both `solve()` and `solveAC()` return pandas DataFrames indexed by time of day.
 
@@ -219,7 +228,7 @@ wall.Tsa()
 data = wall.solveAC()
 data = pd.concat([data, wall.Tsa().asfreq("10min")], axis=1)
 
-# Cooling and heating energy demands
+# Cooling and heating energy demands, in J/(m²·day) over one average day
 print(wall.cooling_energy, wall.heating_energy)
 ```
 
@@ -230,8 +239,6 @@ import enerhabitat as eh
 ```
 
 ### Location
-
-Creates a location from an EPW file.
 
 ```python
 loc = eh.Location("./epw/example.epw")
@@ -267,8 +274,6 @@ print(loc.flag()["date"])
 
 ### System
 
-Models a constructive system and computes indoor temperatures.
-
 ```python
 loc = eh.Location("./epw/example.epw")
 wall = eh.System(location=loc)
@@ -303,11 +308,18 @@ wall.add_layer("Mortero", 0.20)   # appended at the inside
 wall.remove_layer(2)              # removes layer at index 2
 ```
 
-Read-only result attributes:
+Read-only result attributes (all expressed in **J/(m²·day)** — energy per
+unit surface area, accumulated over one converged average day):
 
-- `energy_transfer` — total energy transfer from `solve()`
+- `energy_transfer` — total energy transferred to the indoor side from
+  `solve()`
 - `heating_energy` — heating demand from `solveAC()`
 - `cooling_energy` — cooling demand from `solveAC()`
+
+> Units: `hi · Δt · ΔT` with `hi` in W/(m²·K), `Δt` in seconds and `ΔT` in K
+> yields **J/m²**, and the loop accumulates these contributions over the 24 h
+> of the average day, so the reported value is **J/(m²·day)**.
+> Divide by `3600` to get Wh/(m²·day) or by `3.6e6` to get kWh/(m²·day).
 
 **Methods**
 
@@ -333,10 +345,10 @@ h_energy = wall.heating_energy
 > temperature to the result with
 > `data = pd.concat([data, wall.Tsa().asfreq("10min")], axis=1)`.
 
-### Config (global)
+## Config (global)
 
-`config` stores parameters shared by every `Location` and `System`.
-Changing it affects **all** subsequent computations.
+`config` is a global singleton that stores parameters shared by every
+`Location` and `System`. Changing it affects **all** subsequent computations.
 
 **Attributes**
 
