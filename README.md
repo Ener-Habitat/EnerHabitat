@@ -378,14 +378,16 @@ eh.config.file = "./materials.ini"
 eh.config.ho      # 13.0
 eh.config.hi      # 8.6
 
-# Override (NOM defaults are not enforced)
+# Other configuration parameters
 eh.config.La = 2.0
 eh.config.Nx = 300
-eh.config.ho = 12
-eh.config.hi = 8.3
 eh.config.dt = 60
 
-# Restore the NOM-based defaults at any time
+# Override the NOM-prescribed coefficients (NOM defaults are not enforced)
+eh.config.ho = 12
+eh.config.hi = 8.3
+
+# Restore all defaults at any time (the NOM values for ho/hi included)
 eh.config.reset()
 ```
 
