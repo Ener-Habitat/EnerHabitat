@@ -350,23 +350,38 @@ h_energy = wall.heating_energy
 `config` is a global singleton that stores parameters shared by every
 `Location` and `System`. Changing it affects **all** subsequent computations.
 
-**Attributes**
+**Attributes** (defaults shown; all are writable)
 
-- `file` — path to the `.ini` file with material properties
-- `La` — length of the fictional indoor space (m)
-- `Nx` — number of control volumes used to discretise the system
-- `ho` — outdoor convective heat transfer coefficient (W/m²·K)
-- `hi` — indoor convective heat transfer coefficient (W/m²·K)
-- `dt` — time step (seconds)
+| Attribute | Default          | Description |
+| --------- | ---------------- | ----------- |
+| `file`    | `"materials.ini"`| Path to the `.ini` file with material properties |
+| `La`      | `2.5` m          | Length of the fictional indoor space |
+| `Nx`      | `200`            | Number of control volumes used to discretise the system |
+| `ho`      | `13` W/(m²·K)    | Outdoor convective heat transfer coefficient |
+| `hi`      | `8.6` W/(m²·K)   | Indoor convective heat transfer coefficient |
+| `dt`      | `600` s          | Time step |
+
+The default values for `ho` and `hi` are those prescribed by the Mexican
+energy efficiency standards **NOM-020-ENER** and **NOM-008-ENER** for the
+thermal envelope of buildings — both norms specify the same coefficients.
+They can be overridden at any time:
 
 ```python
 eh.config.file = "./materials.ini"
 
+# Inspect current values
+eh.config.ho      # 13.0
+eh.config.hi      # 8.6
+
+# Override (NOM defaults are not enforced)
 eh.config.La = 2.0
 eh.config.Nx = 300
 eh.config.ho = 12
 eh.config.hi = 8.3
 eh.config.dt = 60
+
+# Restore the NOM-based defaults at any time
+eh.config.reset()
 ```
 
 `config.materials` is a read-only `dict` keyed by material name:
