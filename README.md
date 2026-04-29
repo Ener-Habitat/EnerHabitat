@@ -38,7 +38,10 @@ described by a material name and three thermal properties:
 
 - thermal conductivity `k` (W/m·K)
 - density `rho` (kg/m³)
-- specific heat `c_p` (J/kg·K)
+- specific heat `c` (J/kg·K) — written `c_p` in the heat equation below
+
+These three names (`k`, `rho`, `c`) are the **exact keys** expected in
+`materials.ini`; they are case-sensitive and Greek letters are not accepted.
 
 Given an EPW file and a constructive system, EnerHabitat computes:
 
