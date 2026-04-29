@@ -109,10 +109,13 @@ EnerHabitat requires **Python ≥ 3.10**.
 
 ## Recommended folder structure
 
+`materials.ini` is **required** — EnerHabitat ships with no default materials,
+so you must provide this file (see [Materials](#materials) for its format).
+
 ```
 project/
 ├── main.py
-├── materials.ini      # Material properties
+├── materials.ini      # Material properties (REQUIRED — user-provided)
 └── epw/
     ├── ...
     └── example.epw
@@ -129,11 +132,15 @@ project/
 
 ## Quickstart
 
+EnerHabitat does **not** ship with pre-loaded materials. Before running anything,
+create a `materials.ini` file (see [Materials](#materials)) in your working
+directory or point `eh.config.file` to its location.
+
 ```python
 import enerhabitat as eh
 
-# 1) Optional: point to a custom materials file
-# eh.config.file = "./materials.ini"
+# 1) Materials file (required — no defaults are bundled)
+eh.config.file = "./materials.ini"
 
 # 2) Location from an EPW file
 loc = eh.Location("./epw/example.epw")
@@ -366,6 +373,11 @@ adobe.c     # J/kg·K
 
 ## Materials
 
+EnerHabitat **does not bundle any default materials**. You must supply a
+`materials.ini` file — by default the package looks for `materials.ini` in the
+current working directory; otherwise set `eh.config.file` to the path you want
+to use.
+
 Material properties are declared in an `.ini` file, with the material name as
 the section header and `k`, `rho` and `c` as keys:
 
@@ -381,11 +393,15 @@ rho = 1500
 c   = 1480
 ```
 
-Point `config.file` to use a custom file:
+Point `config.file` to a different file when you need to switch material sets:
 
 ```python
 eh.config.file = "./config/new_materials.ini"
 ```
+
+If `config.file` points at a missing file, EnerHabitat will report
+`Error: <path> not found` and `materials` will be empty — `System.solve()` will
+fail because the layer materials cannot be resolved.
 
 ## Dependencies
 
