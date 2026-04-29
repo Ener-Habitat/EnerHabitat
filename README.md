@@ -63,7 +63,7 @@ constructive system:
 
 ```
               ∂T          ∂²T
-    ρ · c_p · ──  =  k · ────
+    ρ   c_p   ──  =  k   ────
               ∂t          ∂x²
 ```
 
