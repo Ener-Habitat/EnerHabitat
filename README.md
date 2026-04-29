@@ -207,8 +207,9 @@ wall.Tsa()
 # Free-running solution
 data = wall.solve()
 
-# Optionally attach Tsa to the result (useful when color and location
-# do not change between runs)
+# Attach Tsa to the result. Note that Tsa is a function of color, tilt,
+# orientation, month and location, so it must be recomputed whenever any of
+# those inputs change.
 data = pd.concat([data, wall.Tsa().asfreq("10min")], axis=1)
 ```
 
@@ -344,8 +345,9 @@ c_energy = wall.cooling_energy
 h_energy = wall.heating_energy
 ```
 
-> Tip: when color and location do not change between runs, attach the sun-air
-> temperature to the result with
+> Note: `Tsa` depends on `absortance` (color), `tilt`, `azimuth` (orientation),
+> `meanDay` (month) and `Location`. It must be recomputed whenever any of
+> these inputs change. Attach it to a result DataFrame with
 > `data = pd.concat([data, wall.Tsa().asfreq("10min")], axis=1)`.
 
 ## Config (global)
