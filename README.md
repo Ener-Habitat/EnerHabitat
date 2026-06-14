@@ -355,7 +355,7 @@ h_energy = wall.heating_energy
 `config` is a global singleton that stores parameters shared by every
 `Location` and `System`. Changing it affects **all** subsequent computations.
 
-**Attributes** (defaults shown; all are writable)
+**Attributes** (defaults shown; all are writable **except `dt`**, which is fixed)
 
 | Attribute | Default          | Description |
 | --------- | ---------------- | ----------- |
@@ -364,7 +364,13 @@ h_energy = wall.heating_energy
 | `Nx`      | `200`            | Number of control volumes used to discretise the system |
 | `ho`      | `13` W/(m²·K)    | Outdoor convective heat transfer coefficient |
 | `hi`      | `8.6` W/(m²·K)   | Indoor convective heat transfer coefficient |
-| `dt`      | `600` s          | Time step |
+| `dt`      | `10` s *(fixed)* | Time step — **not configurable** (assignments are ignored) |
+
+`dt` is held fixed at **10 s** and cannot be changed. The indoor-air node is
+advanced with an explicit (forward-Euler) step whose stability requires the
+air Fourier number `Fo = hi·dt / (ρ_air·c_air·La)` to stay below 1 (≈ 0.03 at
+`dt = 10 s`). Allowing a larger `dt` would make the indoor temperature — and
+hence the reported `energy_transfer` — non-physical, so the parameter is locked.
 
 The default values for `ho` and `hi` are those prescribed by the Mexican
 energy efficiency standards **NOM-020-ENER** and **NOM-008-ENER** for the
@@ -381,7 +387,9 @@ eh.config.hi      # 8.6
 # Other configuration parameters
 eh.config.La = 2.0
 eh.config.Nx = 300
-eh.config.dt = 60
+
+# dt is fixed at 10 s and cannot be changed (assignments are ignored)
+eh.config.dt          # 10
 
 # Override the NOM-prescribed coefficients (NOM defaults are not enforced)
 eh.config.ho = 12

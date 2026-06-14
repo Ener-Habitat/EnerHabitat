@@ -44,7 +44,7 @@ class Config:
         Nx (int): Number of discretization elements.
         ho (float): Outdoor convective coefficient (W/m²K).
         hi (float): Indoor convective coefficient (W/m²K).
-        dt (float): Time step (seconds).
+        dt (float): Time step (seconds). Fixed at 10 s, not configurable.
         AIR_DENSITY (float): Density of air (kg/m³).
         AIR_HEAT_CAPACITY (float): Heat capacity of air (J/kgK).
         
@@ -64,7 +64,7 @@ class Config:
         self.__Nx = 200
         self.__ho = 13
         self.__hi = 8.6
-        self.__dt = 600
+        self.__dt = 10
         self.__AIR_DENSITY = 1.1797660470258469
         self.__AIR_HEAT_CAPACITY = 1005.458757
 
@@ -130,7 +130,7 @@ class Config:
             
             # Leer el .ini y obtener los nuevos materiales
             new_materials_dict = {}
-            materials_data = configparser.ConfigParser() 
+            materials_data = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
             materials_data.read(self.file)
 
             for material_i in materials_data.sections():
@@ -188,8 +188,11 @@ class Config:
         return self.__dt
     @dt.setter
     def dt(self, value):
-        self.__dt = value
-        self.version += 1
+        # dt es fijo en 10 s y NO es configurable: el nodo de aire interior se
+        # integra con un paso explícito cuya estabilidad exige
+        # Fo = hi*dt/(rho_air*c_air*La) < 1. A 10 s, Fo ≈ 0.03. Se ignora la
+        # asignación para evitar resultados no físicos.
+        pass
         
     @property
     def AIR_DENSITY(self):

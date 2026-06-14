@@ -597,11 +597,9 @@ class System():
         SC_dataframe = SC_dataframe.iloc[::dt]
         Tsa_vals = SC_dataframe['Tsa'].to_numpy()
         Ti_vals = SC_dataframe['Ti'].to_numpy(copy=True)
-        Ti_new = np.empty_like(Ti_vals)
         n_steps = Tsa_vals.shape[0]
 
         C = 1
-        ET = 0.0
 
         self.__solve_solver_version = config.version
         
@@ -612,7 +610,7 @@ class System():
                 for idx in range(n_steps):
                     calculate_coefficients(mass_coeff, T, Tsa_vals[idx], ho, Ti_vals[idx], hi, d)
                     # Llamado de funcion para Acc
-                    T, Ti = solve_PQ_AC(a_static, b_static, c_static, d, T, Nx, Ti_vals[idx], hi, La, dt)
+                    T, Ti = solve_PQ_AC(a_static, b_static, c_static, d, T, Nx, Ti_vals[idx], P, Q, Tn_aux)
                     if (T[Nx-1] > Ti):
                         Qcool += hi*dt*(T[Nx-1]-Ti)
                     if (T[Nx-1] < Ti):
@@ -631,27 +629,38 @@ class System():
             return SC_dataframe['Ti']
 
         else:
-            while C > 5e-4: 
+            # Flotación libre: el aire interior es un nodo de capacitancia
+            # concentrada integrado EN EL TIEMPO. 'tint' es un escalar que se
+            # marcha paso a paso y persiste entre iteraciones (igual que el muro
+            # T, y que el solver original en C). En el permanente oscilatorio el
+            # ciclo cierra (Qin == Qout) y la energía transferida es cualquiera
+            # de las dos; se mide en la superficie interior [Nx-1] con hi y el
+            # aire del mismo instante (tinn, previo a la actualización),
+            # integrando en dt.
+            tint = float(Ti_vals[0])   # = Tn.mean(), inicializado una sola vez
+            Qin = Qout = 0.0
+            while C > 5e-4:
                 Told = T.copy()
-                ET_iter = 0.
+                Qin = Qout = 0.0
                 for idx in range(n_steps):
-                    tint_prev = Ti_vals[idx]
-                    calculate_coefficients(mass_coeff, T, Tsa_vals[idx], ho, tint_prev, hi, d)
-                    T, tint_new = solve_PQ(a_static, b_static, c_static, d, T, Nx, tint_prev, capacitance_factor, P, Q, Tn_aux)
-                    Ti_new[idx] = tint_new
-                    if T[Nx-1] > tint_new:
-                        ET_iter += hi * (T[Nx - 1] - tint_new) * dt
-                Ti_vals[:] = Ti_new
+                    tinn = tint
+                    calculate_coefficients(mass_coeff, T, Tsa_vals[idx], ho, tinn, hi, d)
+                    T, tint = solve_PQ(a_static, b_static, c_static, d, T, Nx, tinn, capacitance_factor, P, Q, Tn_aux)
+                    Ti_vals[idx] = tint
+                    flux = hi * (T[Nx - 1] - tinn) * dt
+                    if flux > 0:
+                        Qin += flux
+                    else:
+                        Qout -= flux
                 C = np.abs(Told - T).mean()
-                ET = ET_iter
 
             SC_dataframe['Ti'] = Ti_vals
-            
+
             self.__last_solve = 'temp'
-            self.__energy_transfer = ET
+            self.__energy_transfer = Qin   # permanente oscilatorio: Qin == Qout
             self.__cooling_energy = None
             self.__heating_energy = None
-                        
+
             return SC_dataframe['Ti']
 
     def __invalidate_cache(self):

@@ -321,31 +321,46 @@ def solve_PQ(a, b, c, d, T, nx, Tint, capacitance_factor, P, Q, Tn):
 
     return T, Tint
 
-def solve_PQ_AC(a, b, c, d, T, nx, Tint, hi, La, dt):
-    """Función para resolver PQ con A/C. Aún no implementada
+@njit(cache=True)
+def solve_PQ_AC(a, b, c, d, T, nx, Tint, P, Q, Tn):
+    """
+    Resuelve el sistema tridiagonal con TDMA para el modo con aire acondicionado,
+    donde la temperatura interior Tint se mantiene constante (setpoint) en lugar
+    de evolucionar con el modelo lumped-capacitance.
+
+    Args:
+        a (numpy.ndarray): Diagonal principal del sistema tridiagonal.
+        b (numpy.ndarray): Diagonal superior del sistema tridiagonal.
+        c (numpy.ndarray): Diagonal inferior del sistema tridiagonal.
+        d (numpy.ndarray): Vector de términos independientes (fuente térmica).
+        T (numpy.ndarray): Arreglo de temperaturas, actualizado in-place.
+        nx (int): Número de elementos de discretización.
+        Tint (float): Temperatura interior (setpoint), devuelta sin cambios.
+        P (numpy.ndarray): Arreglo auxiliar para el forward sweep.
+        Q (numpy.ndarray): Arreglo auxiliar para el forward sweep.
+        Tn (numpy.ndarray): Arreglo auxiliar para el back substitution.
 
     Returns:
-        tuple: ( T, Tint, Qin, Tintaverage, Ein ) arreglos de temperaturas y parámetros actualizados.
+        tuple: (T, Tint) con las temperaturas de muro actualizadas y la temperatura
+        interior (setpoint) sin cambios.
     """
-    
-    rhoair  = 1.1797660470258469
-    cair    = 1005.458757
-    P = np.zeros(nx)
-    Q = np.zeros(nx)
-    Tn = np.zeros(nx)
-    
+
     # Inicializar P y Q
-    P[0] = b[0] / a[0]
-    Q[0] = d[0] / a[0]
+    inv_a0 = 1.0 / a[0]
+    P[0] = b[0] * inv_a0
+    Q[0] = d[0] * inv_a0
 
     for i in range(1, nx):
-        P[i] = b[i] / (a[i] - c[i] * P[i - 1])
-        Q[i] = (d[i] + c[i] * Q[i - 1]) / (a[i] - c[i] * P[i - 1])
+        denom = a[i] - c[i] * P[i - 1]
+        inv_denom = 1.0 / denom
+        P[i] = b[i] * inv_denom
+        Q[i] = (d[i] + c[i] * Q[i - 1]) * inv_denom
 
     Tn[nx - 1] = Q[nx - 1]
     for i in range(nx - 2, -1, -1):
         Tn[i] = P[i] * Tn[i + 1] + Q[i]
 
-    T[:] = Tn
-    
+    for i in range(nx):
+        T[i] = Tn[i]
+
     return T, Tint
