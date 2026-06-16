@@ -23,7 +23,8 @@ en [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md).
 | — | **Inspector a escala** de la asignación de materiales | ✅ |
 | — | Motor serial/**paralelo** (`config2d.parallel`, default serial) · multi-hueco | ✅ |
 | — | Extras: `dt` en API · barrido por procesos · `tipo 4` · unidades índices | ⏳ |
-| — | Docs: revisar `README.md` (API 2D) · cambio de versión | ⏳ |
+| — | `README.md` integra la API 2D (System2D, HollowBlock, Slab, config2d, AC) | ✅ |
+| — | Docs: cambio de versión del paquete | ⏳ |
 
 > **Lo hecho** vive en las Fases 0–8b (en [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md), cada una con
 > su prueba). **Lo pendiente** y sus esquemas/propuestas de integración están agrupados en la
@@ -36,8 +37,9 @@ Lo que falta. El diseño base, los esquemas y la referencia de `System2D` están
 
 ### ⏳ Extras opcionales
 
-Refinamientos; ninguno bloquea. (El **motor paralelo `prange`** y la **vigueta en L** a altura
-L3+L4+L5+L6 ya están hechos — ver [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md).)
+Refinamientos; ninguno bloquea. (El **motor paralelo `prange`**, la **vigueta en L** a altura
+L3+L4+L5+L6, el **AC 2D** (`solveAC`) y la integración del **`README.md`** ya están hechos —
+ver [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md).)
 
 **1. `dt` efectivo en la API** — exponer un paso de tiempo 2D propio en `config2d`/`System2D`
 (la Fase 7 midió `dt=10` → ~1.6× con error despreciable) para canjear velocidad↔precisión.
@@ -51,9 +53,5 @@ del paquete usa celda completa).
 
 **4. Unidades de los índices** — revisión menor pendiente.
 
-**5. Revisar el `README.md`** — integrar la API 2D (`System2D`, `HollowBlock`, `Slab`),
-`config2d` (incl. `parallel`), el inspector a escala (`preview`/`section_report`) y el motor
-serial/paralelo, con ejemplos de muro y techo.
-
-**6. Cambio de versión** — bump de la versión del paquete que refleje la API 2D (8a/8b) y
+**5. Cambio de versión** — bump de la versión del paquete que refleje la API 2D (8a/8b/9) y
 actualizar el changelog si aplica.
