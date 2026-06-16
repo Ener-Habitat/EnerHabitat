@@ -17,13 +17,15 @@ moderna y analizando la viabilidad de paralelizar.
 | 6 | Bovedilla con cámara de aire (`tipo 1`) | ✅ |
 | 7 | Desempeño y paralelización | ✅ |
 | 8a | API producción: **bloque hueco de concreto (muros)** | ✅ |
-| 8b | API producción: **vigueta y bovedilla (techos)** | ✅ |
+| 8b | API producción: **vigueta y bovedilla (techos)**, N cavidades, vigueta en L | ✅ |
 | — | **Inspector a escala** de la asignación de materiales | ✅ |
-| — | Extras: serial/paralelo y `dt` en API, multi-hueco, tipo 4 | ⏳ |
+| — | Motor serial/**paralelo** (`config2d.parallel`, default serial) · multi-hueco | ✅ |
+| — | Extras: `dt` en API · barrido por procesos · `tipo 4` · unidades índices | ⏳ |
+| — | Docs: revisar `README.md` (API 2D) · cambio de versión | ⏳ |
 
-> **Lo hecho** vive en las Fases 0–8a (abajo, cada una con su prueba). **Lo pendiente**
-> y sus esquemas/propuestas de integración están agrupados en la sección
-> [Trabajo pendiente](#trabajo-pendiente-diseño-y-propuestas) al final.
+> **Lo hecho** vive en las Fases 0–8b (en [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md), cada una con
+> su prueba). **Lo pendiente** y sus esquemas/propuestas de integración están agrupados en la
+> sección [Trabajo pendiente](#trabajo-pendiente-diseño-y-propuestas) al final.
 
 ## Decisiones tomadas
 
