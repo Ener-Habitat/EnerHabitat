@@ -192,3 +192,39 @@ Implementado en `eh2d.py` y `System2D`: `section()`, `preview(field/panels/backe
 leyenda; ASCII a escala de respaldo), `section_report()` (tabla de NT + materiales con `k,ρc`
 y rango en `y`). matplotlib como extra opcional `enerhabitat[viz]`. Prueba
 `tests/test_eh2d_inspect.py` (5/5).
+
+## Fase 8b — Vigueta y bovedilla (techos): entregado
+
+Losa de techo (`tilt=0`) con **tres sólidos** (colado / vigueta en **L** / bovedilla) + **N
+cavidades** iguales (aire o relleno), modelo derivado de la Fig. 2b del paper (revisado con el
+usuario). NO validado bit-a-bit contra el C: criterio de aceptación = metodología + periodicidad
++ energía (como 8a).
+- **Kernels** (`ehtools2d`): `_slab_hh` (Nusselt de muro `beta=90` y de techo Rayleigh `beta=0`,
+  portado del C: `Ra=gr·β·(Tdn−Tup)·e22³/ν/α`, `hh=kair/e22·(1+1.44·dot11+dot22)`, estable →
+  conducción), `_step_slab` (njit; N cavidades, ensamble guiado por `NT`+`cav_of`, radiación
+  Stefan-Boltzmann + Nusselt por hueco), `solve_day_slab_prod` (día con **N nodos `Th`**, un solo
+  `dt`, superficies `/(nx-1)`, `Qin/Qout`), wrapper `solve_step_slab`.
+- **Geometría** (`eh2d`): `compute_mesh_slab` (`X=2·(d1+d2)+(n+1)·d3+n·d4`; bandas verticales
+  colado/cover_top/cavity/cover_bottom; bounds x de cada cavidad), `draw_slab_multi` (N huecos
+  + paredes 9-12 + `cav_of`, o relleno), `set_krhoc_slab` (vigueta en L: alma `web` de `jcap`
+  (base de la tapa L2) a la base + pie `foot` solo en `cover_bottom`; colado banda superior;
+  bovedilla resto; fill si RELLENA),
+  dataclass `SlabSection` (expone `NT/kfield/rhocfield/mesh` para el inspector).
+- **API** (`eh2d`): clase **`Slab`** (`required_tilt=0`) en `_ELEMENT_TYPES`; `_build_section`/
+  `solve()` rutean (RELLENA→`solve_day_2d`, AIRE→`solve_day_slab_prod`, `beta=tilt`); export en
+  `__init__`. Material `Bovedilla` añadido al fixture `tests/materials_2d.ini`.
+- **Motor serial/paralelo (`config2d.parallel`, default serial):** se añadieron variantes
+  `prange` de todos los motores (`solve_day_2d_par`, `solve_day_hueca_prod_par`,
+  `solve_day_slab_prod_par`+`_step_slab_par`). `System2D.solve()` elige por la perilla. Default
+  **serial** porque el barrido por líneas es de grano fino: el paralelo rinde ~1.3× solo en
+  mallas finas y es más lento en chicas (overhead de hilos / busy-wait; test serial 95 s →
+  paralelo-default 26 min). Verificado paralelo == serial al bit (prueba opt-in
+  `EH_TEST_PARALLEL=1`). Para volumen, paralelizar a nivel de procesos (cada solve serial).
+- **Prueba** `tests/test_eh2d_slab.py` (7/7 + 1 opt-in): metodología (Series alineada),
+  periodicidad (~5 días), balance `Qin≈Qout` (0.00 %), **decremento AIRE 0.26 > RELLENA-EPS
+  0.225**, guarda de orientación (`tilt≠0` falla), inspector (3 cavidades + vigueta en L + 3
+  materiales), altura de la L (`test_l_shape_cap_height`), y paralelo==serial (opt-in).
+- **Vigueta en L — altura (corregido con el usuario):** la L tiene altura **L3+L4+L5+L6** (sube
+  por L3 pero NO por la tapa L2). Implementado con `colado_cap` (=L2, tapa de colado a todo el
+  ancho sobre el alma); el alma ocupa los bordes de `jcap` (base de la tapa) a la base del
+  elemento. Verificado en `test_l_shape_cap_height`. `colado_cap=0` → alma a toda la altura.

@@ -30,7 +30,9 @@ from enum import Enum
 import numpy as np
 
 from .config import config, config2d
-from .ehtools2d import solve_day_2d, solve_day_hueca_prod, _view_factors
+from .ehtools2d import (solve_day_2d, solve_day_2d_par, solve_day_hueca_prod,
+                        solve_day_hueca_prod_par, solve_day_slab_prod,
+                        solve_day_slab_prod_par, _view_factors)
 
 
 class Bovedilla(Enum):
@@ -223,6 +225,191 @@ def set_krhoc_hueca(nx, ny, dx, dy, L, k, rhoc):
                 rf[i, j] = rhoc[n]
                 j += 1
     return kf, rf
+
+
+# =================================================================
+#  Geometría de techo: vigueta y bovedilla, N cavidades, 3 sólidos (Fase 8b)
+# =================================================================
+#  Tres materiales sólidos (colado, vigueta en L, bovedilla) + N cavidades de
+#  aire iguales. La vigueta es una **L**: alma `web` (ancho d1, sube por todo el
+#  elemento) + pie `foot` (suma d2, solo en la banda inferior `cover_bottom`),
+#  formando la repisa donde se apoya la bovedilla. El colado (capa de compresión)
+#  ocupa la banda superior a todo el ancho. L1/acabados NO son parte del elemento.
+
+
+def compute_mesh_slab(nx, ny, L, layer, web, foot, shoulder, n_cav, cavity_width,
+                      colado, cover_top, cavity, cover_bottom, colado_cap=0.0):
+    """
+    Malla para la losa de techo de N cavidades. Devuelve ``(mesh, info)`` donde
+    ``info`` trae los límites enteros internos del elemento y los bounds en x de
+    cada cavidad. Mismo truncamiento entero que :func:`compute_mesh`.
+    """
+    e_thick = colado + cover_top + cavity + cover_bottom
+    YY = [0.0] + [float(L[i]) if i < len(L) else 0.0 for i in range(7)]
+    YY[layer] = e_thick
+
+    X = 2.0 * (web + foot) + (n_cav + 1) * shoulder + n_cav * cavity_width
+    dx = X / nx
+    Y = sum(YY)
+    dy = Y / ny
+
+    y1 = sum(YY[:layer]) / dy + 0.5
+    base = int(y1)
+
+    e21 = colado + cover_top          # "tapa" sobre la cavidad (colado + bovedilla)
+    cj1 = int(e21 / dy + base)        # fila de la pared superior = cj1-1; aire desde cj1
+    cj2 = int((e21 + cavity) / dy + base)
+    jet = base                        # tope del elemento
+    jcap = int(colado_cap / dy + base)  # base de la tapa de colado (L2): el alma no sube de aquí
+    jcol = int(colado / dy + base)    # frontera colado/bovedilla
+    jeb = int((e21 + cavity + cover_bottom) / dy + base)  # base del elemento
+
+    niw = int(web / dx + 0.5)
+    nif = int((web + foot) / dx + 0.5)
+
+    cav_i1 = np.empty(n_cav, dtype=np.int64)
+    cav_i2 = np.empty(n_cav, dtype=np.int64)
+    x0 = (web + foot) + shoulder
+    for c in range(n_cav):
+        xs = x0 + c * (cavity_width + shoulder)
+        cav_i1[c] = int(xs / dx + 0.5)
+        cav_i2[c] = int((xs + cavity_width) / dx + 0.5)
+
+    mesh = Mesh2D(nx=nx, ny=ny, X=X, Y=Y, dx=dx, dy=dy,
+                  i1=int(cav_i1[0]), j1=cj1, i2=int(cav_i2[-1]), j2=cj2)
+    info = {"jet": jet, "jcap": jcap, "jcol": jcol, "cj1": cj1, "cj2": cj2,
+            "jeb": jeb, "niw": niw, "nif": nif, "cav_i1": cav_i1, "cav_i2": cav_i2}
+    return mesh, info
+
+
+def draw_slab_multi(nx, ny, cav_i1, cav_i2, cj1, cj2, hollow):
+    """
+    Malla ``NT`` de la losa de techo con N cavidades. ``hollow=True`` → cada
+    cavidad es aire (0) rodeada de paredes 9/10/11/12; ``hollow=False`` (RELLENA)
+    → la cavidad queda como nodo interior (13, material de relleno). Devuelve
+    ``(NT, cav_of)`` con ``cav_of[i,j]`` = índice de cavidad de los nodos aire/pared
+    (−1 en el resto).
+    """
+    NT = np.zeros((nx, ny), dtype=np.int64)
+    NT[0, 0] = 1; NT[nx - 1, 0] = 2; NT[0, ny - 1] = 3; NT[nx - 1, ny - 1] = 4
+    NT[0, 1:ny - 1] = 6; NT[nx - 1, 1:ny - 1] = 7
+    NT[1:nx - 1, 0] = 5; NT[1:nx - 1, ny - 1] = 8
+    NT[1:nx - 1, 1:ny - 1] = 13
+    cav_of = np.full((nx, ny), -1, dtype=np.int64)
+    if hollow:
+        for c in range(len(cav_i1)):
+            i1, i2 = int(cav_i1[c]), int(cav_i2[c])
+            NT[i1:i2, cj1 - 1] = 9
+            NT[i1:i2, cj2] = 10
+            NT[i1 - 1, cj1:cj2] = 11
+            NT[i2, cj1:cj2] = 12
+            NT[i1:i2, cj1:cj2] = 0
+            cav_of[i1:i2, cj1 - 1] = c
+            cav_of[i1:i2, cj2] = c
+            cav_of[i1 - 1, cj1:cj2] = c
+            cav_of[i2, cj1:cj2] = c
+            cav_of[i1:i2, cj1:cj2] = c
+    # RELLENA: la zona de cavidad queda 13 (se rellena el material en set_krhoc).
+    return NT, cav_of
+
+
+def set_krhoc_slab(nx, ny, dx, dy, L, k, rhoc, layer, info,
+                   k_colado, rc_colado, k_rib, rc_rib, k_block, rc_block,
+                   k_fill, rc_fill, cav_i1, cav_i2, hollow):
+    """
+    Asigna ``k``/``rhoc`` por nodo para la losa de techo con **tres** sólidos:
+    capas homogéneas (por umbrales en y), y dentro del elemento — colado (banda
+    superior), bovedilla (resto) y vigueta en **L** (alma + pie). Si ``hollow`` es
+    falso, rellena la cavidad con ``k_fill/rc_fill``.
+    """
+    kk = [float(k[i]) if i < len(k) else 0.0 for i in range(7)]
+    rr = [float(rhoc[i]) if i < len(rhoc) else 0.0 for i in range(7)]
+    LL = [float(L[i]) if i < len(L) else 0.0 for i in range(7)]
+    kf = np.zeros((nx, ny)); rf = np.zeros((nx, ny))
+    thr = np.cumsum(LL) / dy
+    for i in range(nx):
+        j = 0
+        for n in range(7):
+            while j < thr[n] and j < ny:
+                kf[i, j] = kk[n]; rf[i, j] = rr[n]; j += 1
+
+    jet, jcap, jcol = info["jet"], info["jcap"], info["jcol"]
+    cj1, cj2, jeb = info["cj1"], info["cj2"], info["jeb"]
+    niw, nif = info["niw"], info["nif"]
+    for i in range(nx):
+        is_alma = (i < niw) or (i >= nx - niw)
+        is_foot = (i < nif) or (i >= nx - nif)
+        for j in range(jet, jeb):
+            if j < jcol:
+                km, rm = k_colado, rc_colado      # banda de colado
+            else:
+                km, rm = k_block, rc_block         # bovedilla
+            if is_alma and j >= jcap:
+                km, rm = k_rib, rc_rib             # alma de la L: de jcap (bajo la tapa L2) a la base
+            elif is_foot and j >= cj2:
+                km, rm = k_rib, rc_rib             # pie de la L (solo cover_bottom)
+            kf[i, j] = km; rf[i, j] = rm
+
+    if not hollow:
+        for c in range(len(cav_i1)):
+            i1, i2 = int(cav_i1[c]), int(cav_i2[c])
+            kf[i1:i2, cj1:cj2] = k_fill
+            rf[i1:i2, cj1:cj2] = rc_fill
+    return kf, rf
+
+
+@dataclass
+class SlabSection:
+    """Sección de techo de vigueta y bovedilla (N cavidades, 3 sólidos). Expone
+    ``NT/kfield/rhocfield/mesh`` como :class:`Section2D` (para el inspector) más los
+    arreglos de cavidad que necesita el motor ``solve_day_slab_prod``."""
+    nx: int
+    ny: int
+    L: list
+    k: list
+    rhoc: list
+    layer: int
+    geom: dict            # web,foot,shoulder,n_cav,cavity_width,colado,cover_top,cavity,cover_bottom
+    k_colado: float
+    rc_colado: float
+    k_rib: float
+    rc_rib: float
+    k_block: float
+    rc_block: float
+    k_fill: float = 0.0
+    rc_fill: float = 0.0
+    emissivity: float = 0.9
+    beta: float = 0.0
+    hollow: bool = True
+
+    mesh: Mesh2D = field(init=False, default=None)
+    NT: np.ndarray = field(init=False, default=None)
+    kfield: np.ndarray = field(init=False, default=None)
+    rhocfield: np.ndarray = field(init=False, default=None)
+    cav_of: np.ndarray = field(init=False, default=None)
+    cav_i1: np.ndarray = field(init=False, default=None)
+    cav_i2: np.ndarray = field(init=False, default=None)
+    info: dict = field(init=False, default=None)
+
+    def build(self):
+        g = self.geom
+        mesh, info = compute_mesh_slab(
+            self.nx, self.ny, self.L, self.layer,
+            g["web"], g["foot"], g["shoulder"], g["n_cav"], g["cavity_width"],
+            g["colado"], g["cover_top"], g["cavity"], g["cover_bottom"],
+            g.get("colado_cap", 0.0))
+        NT, cav_of = draw_slab_multi(self.nx, self.ny, info["cav_i1"],
+                                     info["cav_i2"], info["cj1"], info["cj2"],
+                                     self.hollow)
+        kf, rf = set_krhoc_slab(
+            self.nx, self.ny, mesh.dx, mesh.dy, self.L, self.k, self.rhoc,
+            self.layer, info, self.k_colado, self.rc_colado, self.k_rib,
+            self.rc_rib, self.k_block, self.rc_block, self.k_fill, self.rc_fill,
+            info["cav_i1"], info["cav_i2"], self.hollow)
+        self.mesh, self.NT, self.kfield, self.rhocfield = mesh, NT, kf, rf
+        self.cav_of, self.cav_i1, self.cav_i2 = cav_of, info["cav_i1"], info["cav_i2"]
+        self.info = info
+        return self
 
 
 @dataclass
@@ -420,8 +607,79 @@ class HollowBlock:
                 tuple(sorted(self.geometry.items())))
 
 
-# Tipos reconocidos como "elemento 2D" dentro de layers (Slab se suma en 8b).
-_ELEMENT_TYPES = (HollowBlock,)
+class Slab:
+    """
+    Vigueta y bovedilla para **techos** (`tilt=0`). Tres materiales sólidos —
+    ``rib_material`` (vigueta, en **L**), ``block_material`` (bovedilla, que rodea
+    las cavidades) y ``colado_material`` (capa de compresión)— más N cavidades de
+    aire iguales (``Bovedilla.AIRE``) o de relleno (``Bovedilla.RELLENA``). La
+    cavidad es horizontal → Nusselt de techo (Rayleigh). L1/acabados NO son parte
+    del elemento: van como capas homogéneas en ``System2D.layers``.
+
+    Args:
+        rib_material (str): material de la vigueta (alma + pie).
+        bovedilla (Bovedilla): ``AIRE`` (cámara) o ``RELLENA`` (sólida).
+        block_material (str): material del bloque de bovedilla (rodea la cavidad);
+            por defecto el mismo que ``rib_material``.
+        colado_material (str): material del colado; por defecto ``rib_material``.
+        fill_material (str|None): material de relleno de la cavidad si ``RELLENA``.
+        emissivity (float): emisividad de las paredes del hueco (radiación) si AIRE.
+        geometry (dict): claves amistosas ``web``(=d1), ``foot``(=d2),
+            ``shoulder``(=d3), ``n_cavities``, ``cavity_width``(=d4), ``colado``
+            (=L2+L3, espesor total del colado), ``colado_cap`` (=L2, la tapa de
+            colado a todo el ancho por encima del alma; el alma de la L sube solo
+            hasta su base, dejando altura L3+cover_top+cavity+cover_bottom; default
+            0 → alma a toda la altura), ``cover_top`` (bovedilla sobre la cavidad,
+            =L4), ``cavity`` (=L5, alto del hueco), ``cover_bottom`` (=L6). Alias
+            crudos ``d1..d4``.
+    """
+
+    required_tilt = 0
+
+    def __init__(self, rib_material, bovedilla=Bovedilla.AIRE, block_material=None,
+                 colado_material=None, fill_material=None, emissivity=0.9,
+                 geometry=None):
+        self.rib_material = rib_material
+        self.block_material = block_material or rib_material
+        self.colado_material = colado_material or rib_material
+        self.bovedilla = bovedilla
+        self.fill_material = fill_material
+        self.emissivity = emissivity
+        self.geometry = dict(geometry or {})
+        if bovedilla is Bovedilla.RELLENA and not fill_material:
+            raise ValueError("Slab RELLENA requiere fill_material.")
+
+    @property
+    def material_main(self):
+        return self.colado_material
+
+    def _geom(self):
+        g = self.geometry
+        web = _geom_pick(g, "web", "d1")
+        foot = _geom_pick(g, "foot", "d2")
+        shoulder = _geom_pick(g, "shoulder", "d3")
+        cavity_width = _geom_pick(g, "cavity_width", "d4")
+        n_cav = int(g.get("n_cavities", g.get("n_cav", 1)))
+        cover_top = g.get("cover_top", 0.0)
+        return {"web": web, "foot": foot, "shoulder": shoulder, "n_cav": n_cav,
+                "cavity_width": cavity_width, "colado": g["colado"],
+                "colado_cap": g.get("colado_cap", 0.0),
+                "cover_top": cover_top, "cavity": _geom_pick(g, "cavity", "e22"),
+                "cover_bottom": _geom_pick(g, "cover_bottom", "e23")}
+
+    @property
+    def thickness(self):
+        g = self._geom()
+        return g["colado"] + g["cover_top"] + g["cavity"] + g["cover_bottom"]
+
+    def signature(self):
+        return ("Slab", self.rib_material, self.block_material, self.colado_material,
+                self.bovedilla.value, self.fill_material, self.emissivity,
+                tuple(sorted(self.geometry.items())))
+
+
+# Tipos reconocidos como "elemento 2D" dentro de layers.
+_ELEMENT_TYPES = (HollowBlock, Slab)
 
 
 class System2D:
@@ -510,6 +768,26 @@ class System2D:
                 L[p] = float(Lv)
             k[p] = m.k
             rhoc[p] = m.rho * m.c
+
+        if isinstance(elem, Slab):
+            def kr(name):
+                mm = mats[name]
+                return mm.k, mm.rho * mm.c
+            k_rib, rc_rib = kr(elem.rib_material)
+            k_block, rc_block = kr(elem.block_material)
+            k_col, rc_col = kr(elem.colado_material)
+            k_fill = rc_fill = 0.0
+            hollow = elem.bovedilla is Bovedilla.AIRE
+            if not hollow:
+                k_fill, rc_fill = kr(elem.fill_material)
+            sec = SlabSection(
+                nx=config2d.nx, ny=config2d.ny, L=L, k=k, rhoc=rhoc, layer=idx + 1,
+                geom=elem._geom(), k_colado=k_col, rc_colado=rc_col, k_rib=k_rib,
+                rc_rib=rc_rib, k_block=k_block, rc_block=rc_block, k_fill=k_fill,
+                rc_fill=rc_fill, emissivity=elem.emissivity, beta=float(self.tilt),
+                hollow=hollow).build()
+            return sec, elem
+
         a, e = elem._ae()
         kr = rcr = 0.0
         if elem.bovedilla is Bovedilla.RELLENA:
@@ -518,7 +796,7 @@ class System2D:
         sec = Section2D(nx=config2d.nx, ny=config2d.ny, L=L, k=k, rhoc=rhoc,
                         kr=kr, rhocr=rcr, a=a, e=e, layer=idx + 1,
                         bovedilla=elem.bovedilla).build()
-        return sec, elem, a, e
+        return sec, elem
 
     # --- solución ---
     def _signature(self):
@@ -544,23 +822,39 @@ class System2D:
         import numpy as _np
         Tsa_arr = df["Tsa"].to_numpy(dtype=_np.float64)
         T0 = float(df["Tn"].mean())
-        sec, elem, a, e = self._build_section()
+        sec, elem = self._build_section()
         m = sec.mesh
         ho, hi, dt = config.ho, config.hi, float(config.dt)
         La = config.La
         rhoair, cair = config.AIR_DENSITY, config.AIR_HEAT_CAPACITY
-        a21, e22 = a["a21"], e["e22"]
 
-        if elem.bovedilla is Bovedilla.AIRE:
+        par = config2d.parallel   # motor paralelo por default (numba prange sobre filas)
+
+        if isinstance(elem, Slab) and elem.bovedilla is Bovedilla.AIRE:
+            g = elem._geom()
+            vf = _view_factors(g["cavity_width"], g["cavity"])
+            slab_engine = solve_day_slab_prod_par if par else solve_day_slab_prod
+            out = slab_engine(
+                sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
+                m.dx, m.dy, La, m.X, rhoair, cair, T0,
+                sec.cav_of, sec.cav_i1, sec.cav_i2, sec.info["cj1"], sec.info["cj2"],
+                g["cavity_width"], g["cavity"], elem.emissivity, float(self.tilt), *vf,
+                config2d.tol_inner, config2d.tol_day, config2d.max_days)
+            Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout = out
+        elif elem.bovedilla is Bovedilla.AIRE:   # HollowBlock (muro)
+            a, e = elem._ae()
+            a21, e22 = a["a21"], e["e22"]
             vf = _view_factors(a21, e22)
-            out = solve_day_hueca_prod(
+            hueca_engine = solve_day_hueca_prod_par if par else solve_day_hueca_prod
+            out = hueca_engine(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
                 m.i1, m.j1, m.i2, m.j2, a21, e22, elem.emissivity, *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days)
             Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout = out
-        else:  # RELLENA
-            out = solve_day_2d(
+        else:  # RELLENA (HollowBlock o Slab): conducción pura
+            rellena_engine = solve_day_2d_par if par else solve_day_2d
+            out = rellena_engine(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days)
@@ -612,7 +906,7 @@ class System2D:
     def section(self):
         """Devuelve el ``Section2D`` construido (arrays ``NT,kfield,rhocfield`` + ``mesh``)."""
         self._validate()
-        sec, _, _, _ = self._build_section()
+        sec, _ = self._build_section()
         return sec
 
     def _layer_bounds_mm(self):
@@ -639,7 +933,7 @@ class System2D:
             ``(fig, axes)`` de matplotlib, o ``None`` si se usó ASCII.
         """
         self._validate()
-        sec, _, _, _ = self._build_section()
+        sec, _ = self._build_section()
         mats = config.materials
         if panels is None:
             panels = [field] if field else ["nodetype", "k", "rhoc"]
@@ -655,7 +949,7 @@ class System2D:
     def section_report(self):
         """Tabla de verificación (texto): malla, tipos de nodo y materiales asignados."""
         self._validate()
-        sec, _, _, _ = self._build_section()
+        sec, _ = self._build_section()
         NT, k, rc, m = sec.NT, sec.kfield, sec.rhocfield, sec.mesh
         nx, ny = NT.shape
         print(f"Sección 2D  {nx}×{ny}   X={m.X*1000:.1f} mm  Y={m.Y*1000:.1f} mm   "

@@ -235,6 +235,14 @@ class Config2D:
         self.tol_inner = 1e-10
         self.tol_day = 5e-4
         self.max_days = 60
+        # Motor: serial por default. El paralelo (numba prange sobre filas) es una
+        # OPCIÓN (parallel=True): reparte las filas entre los núcleos auto-detectados,
+        # pero el barrido por líneas es de grano fino (miles de regiones prange con
+        # barrera) → solo rinde ~1.3× en mallas finas (≥~150²) y es MÁS lento en
+        # mallas chicas por el overhead de hilos (ver Fase 7). Para volumen real
+        # (barrer muchas configuraciones) conviene paralelizar a nivel de procesos,
+        # cada solve serial. Verificado: parallel reproduce serial al bit.
+        self.parallel = False
         self.version = 0
 
     def info(self):
@@ -244,10 +252,12 @@ class Config2D:
         print(f"tol_inner:   \t{self.tol_inner}")
         print(f"tol_day:     \t{self.tol_day}")
         print(f"max_days:    \t{self.max_days}")
+        print(f"parallel:    \t{self.parallel}")
 
     def to_dict(self):
         return {"nx": self.nx, "ny": self.ny, "tol_inner": self.tol_inner,
-                "tol_day": self.tol_day, "max_days": self.max_days}
+                "tol_day": self.tol_day, "max_days": self.max_days,
+                "parallel": self.parallel}
 
 
 # Global 2D configuration instance

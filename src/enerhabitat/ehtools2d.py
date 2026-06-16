@@ -820,3 +820,680 @@ def solve_day_2d_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
         C = C / nx / ny
         days += 1
     return Ti_series, Tso_series, Tsi_series, T, days, Qin, Qout
+
+
+# =================================================================
+#  Vigueta y bovedilla — TECHO, N cavidades, 3 sólidos (Fase 8b)
+# =================================================================
+#
+# Generaliza la física de cavidad (Fase 6) a una losa de techo con:
+#   - N cavidades de aire iguales (cada una un nodo lumped Thueco[c]);
+#   - tres materiales sólidos (colado, vigueta en L, bovedilla) codificados
+#     enteramente en los campos k/rhoc por nodo → el ensamble de conducción no
+#     cambia, solo lee k/rhoc;
+#   - Nusselt de **techo** (Rayleigh, beta=0) además del de muro (beta=90).
+# El tipo de cada nodo se lee de NT (1-8,13 estándar; 0 aire, 9-12 paredes) y la
+# cavidad a la que pertenece cada nodo de aire/pared, de `cav_of`. Convenciones de
+# producción (un solo dt en Thueco/Tint, superficies /(nx-1)).
+#
+# Propiedades del aire para el Nusselt de techo (idénticas al C):
+#   gr=9.81, Beta=1/300, nu=1.11e-5, kair=0.0262, alphaair=kair/(rhoair·cair).
+
+_GR = 9.81
+_BETA_EXP = 1.0 / 300.0
+_NU_AIR = 1.11e-5
+_K_AIR = 0.0262
+
+
+@njit(cache=True)
+def _slab_hh(tup, tdn, e22, beta, kair, gr, beta_exp, nu, alphaair):
+    """Coef. convectivo de la cavidad ``hh``. ``beta=90`` muro, ``beta=0`` techo
+    (Rayleigh). ``tup`` = pared superior (exterior), ``tdn`` = inferior (interior)."""
+    if beta == 90.0:
+        return 0.4005 * (abs(tup - tdn) ** 0.3033) / (e22 ** 0.0901)
+    # techo (beta=0): Rayleigh-Bénard; estable (tdn<=tup) → solo conducción.
+    if tdn <= tup:
+        return kair / e22
+    Ra = gr * beta_exp * (tdn - tup) * (e22 ** 3) / nu / alphaair
+    dot11 = 1.0 - 1708.0 / Ra
+    dot22 = (Ra / 5830.0) ** (1.0 / 3.0) - 1.0
+    if dot11 < 0.0:
+        dot11 = 0.0
+    if dot22 < 0.0:
+        dot22 = 0.0
+    return kair / e22 * (1.0 + 1.44 * dot11 + dot22)
+
+
+@njit(cache=True)
+def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
+               NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
+               kair, gr, beta_exp, nu, alphaair,
+               Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+               a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol):
+    """Lazo interno (Gauss-Seidel por líneas) de un paso para la losa de techo con
+    N cavidades. ``Th`` (n_cav) constante durante el lazo; devuelve ``iters`` y
+    llena ``hh`` (n_cav). Actualiza ``T`` in situ."""
+    nx, ny = k.shape
+    sx = dx * E * _SIGMA
+    sy = dy * E * _SIGMA
+    iters = 0
+    while True:
+        iters += 1
+        # --- por cavidad: temperaturas medias de paredes, hh y radiación neta ---
+        for cidx in range(n_cav):
+            ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]
+            tup = 0.0; tdn = 0.0; tlf = 0.0; trt = 0.0
+            for i in range(ci1, ci2):
+                tup += T[i, cj1 - 1]
+                tdn += T[i, cj2]
+            nud = ci2 - ci1
+            for j in range(cj1, cj2):
+                tlf += T[ci1 - 1, j]
+                trt += T[ci2, j]
+            nlr = cj2 - cj1
+            tup /= nud; tdn /= nud; tlf /= nlr; trt /= nlr
+            hh[cidx] = _slab_hh(tup, tdn, e22, beta, kair, gr, beta_exp, nu, alphaair)
+            Tu = tup + 273.15; Td = tdn + 273.15
+            Tl = tlf + 273.15; Tr = trt + 273.15
+            Tu4 = Tu * Tu * Tu * Tu; Td4 = Td * Td * Td * Td
+            Tl4 = Tl * Tl * Tl * Tl; Tr4 = Tr * Tr * Tr * Tr
+            Qud = sx * (Tu4 - Td4) * Fud; Qul = sx * (Tu4 - Tl4) * Ful
+            Qur = sx * (Tu4 - Tr4) * Fur
+            Qru = sy * (Tr4 - Tu4) * Fru; Qrd = sy * (Tr4 - Td4) * Frd
+            Qrl = sy * (Tr4 - Tl4) * Frl
+            Qdu = sx * (Td4 - Tu4) * Fdu; Qdr = sx * (Td4 - Tr4) * Fdr
+            Qdl = sx * (Td4 - Tl4) * Fdl
+            Qlu = sy * (Tl4 - Tu4) * Flu; Qlr = sy * (Tl4 - Tr4) * Flr
+            Qld = sy * (Tl4 - Td4) * Fld
+            Qtop[cidx] = Qur + Qud + Qul
+            Qbot[cidx] = Qdl + Qdu + Qdr
+            Qleft[cidx] = Qlu + Qlr + Qld
+            Qright[cidx] = Qrd + Qrl + Qru
+        # --- ensamble a,b,c,d (driven por NT + cav_of) ---
+        for j in range(ny):
+            for i in range(nx):
+                nt = NT[i, j]
+                kij = k[i, j]
+                apo = rhoc[i, j] * dx * dy / dt
+                aN = aS = aE = aW = 0.0
+                if j > 0:
+                    kk = k[i, j - 1]; aN = 2.0 * kk * kij / (kk + kij) * dx / dy
+                if j < ny - 1:
+                    kk = k[i, j + 1]; aS = 2.0 * kk * kij / (kk + kij) * dx / dy
+                if i < nx - 1:
+                    kk = k[i + 1, j]; aE = 2.0 * kk * kij / (kk + kij) * dy / dx
+                if i > 0:
+                    kk = k[i - 1, j]; aW = 2.0 * kk * kij / (kk + kij) * dy / dx
+                if nt == 0:
+                    cc = cav_of[i, j]
+                    a[i, j] = 1.0; b[i, j] = 0.0; c[i, j] = 0.0; d[i, j] = Th[cc]
+                elif nt == 9:                       # pared superior (hueco al sur)
+                    cc = cav_of[i, j]; hc = hh[cc]
+                    a[i, j] = apo + aN + hc * dx + aE + aW
+                    d[i, j] = aN * T[i, j - 1] + hc * dx * Th[cc] + apo * To[i, j] - Qtop[cc]
+                    b[i, j] = aE; c[i, j] = aW
+                elif nt == 10:                      # pared inferior (hueco al norte)
+                    cc = cav_of[i, j]; hc = hh[cc]
+                    a[i, j] = apo + hc * dx + aS + aE + aW
+                    d[i, j] = aS * T[i, j + 1] + hc * dx * Th[cc] + apo * To[i, j] - Qbot[cc]
+                    b[i, j] = aE; c[i, j] = aW
+                elif nt == 11:                      # pared izquierda (hueco al este)
+                    cc = cav_of[i, j]; hc = hh[cc]
+                    a[i, j] = apo + aN + aS + hc * dy + aW
+                    d[i, j] = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hc * dy * Th[cc] - Qleft[cc]
+                    b[i, j] = 0.0; c[i, j] = aW
+                elif nt == 12:                      # pared derecha (hueco al oeste)
+                    cc = cav_of[i, j]; hc = hh[cc]
+                    a[i, j] = apo + aN + aS + aE + hc * dy
+                    d[i, j] = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hc * dy * Th[cc] - Qright[cc]
+                    b[i, j] = aE; c[i, j] = 0.0
+                else:                               # estándar (1-8, 13)
+                    aP = apo + aN + aS + aE + aW
+                    dd = apo * To[i, j]
+                    if j > 0:
+                        dd += aN * T[i, j - 1]
+                    if j < ny - 1:
+                        dd += aS * T[i, j + 1]
+                    if j == 0:
+                        aP += ho * dx; dd += ho * dx * Tsa
+                    if j == ny - 1:
+                        aP += hi * dx; dd += hi * dx * Tint
+                    a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
+        # --- TDMA en x por fila ---
+        for j in range(ny):
+            P[0] = b[0, j] / a[0, j]
+            Q[0] = d[0, j] / a[0, j]
+            for i in range(1, nx):
+                denom = a[i, j] - c[i, j] * P[i - 1]
+                P[i] = b[i, j] / denom
+                Q[i] = (d[i, j] + c[i, j] * Q[i - 1]) / denom
+            Tnew[nx - 1, j] = Q[nx - 1]
+            for i in range(nx - 2, -1, -1):
+                Tnew[i, j] = P[i] * Tnew[i + 1, j] + Q[i]
+        # --- error y commit ---
+        error = 0.0
+        for j in range(ny):
+            for i in range(nx):
+                error += (T[i, j] - Tnew[i, j]) / T[i, j]
+                T[i, j] = Tnew[i, j]
+        error = error / nx / ny
+        if abs(error) <= tol:
+            break
+    return iters
+
+
+@njit(cache=True)
+def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
+                        rhoair, cair, T0, cav_of, cav_i1, cav_i2, cj1, cj2,
+                        cavity_width, e22, E, beta,
+                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                        tol_inner, tol_day, max_days):
+    """Día completo (convergencia día-a-día) de la losa de techo con N cavidades de
+    aire. Cada cavidad tiene su nodo lumped ``Th[c]``; convenciones de producción
+    (un solo dt, superficies /(nx-1)). Nusselt de muro/techo según ``beta``.
+
+    Returns:
+        (Ti_series, Tso_series, Tsi_series, Th_mean_series, T_field, days, Qin, Qout)
+    """
+    nx, ny = k.shape
+    nsteps = Tsa_arr.shape[0]
+    n_cav = cav_i1.shape[0]
+    T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
+    for j in range(ny):
+        for i in range(nx):
+            T[i, j] = T0
+    Tint = T0
+    Th = np.empty(n_cav)
+    for cidx in range(n_cav):
+        Th[cidx] = T0
+    a = np.empty((nx, ny)); b = np.empty((nx, ny)); c = np.empty((nx, ny))
+    d = np.empty((nx, ny)); Tnew = np.empty((nx, ny))
+    P = np.empty(nx); Q = np.empty(nx)
+    hh = np.empty(n_cav)
+    Qtop = np.empty(n_cav); Qbot = np.empty(n_cav)
+    Qleft = np.empty(n_cav); Qright = np.empty(n_cav)
+    Ti_s = np.empty(nsteps); Tso_s = np.empty(nsteps)
+    Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
+    Cair = rhoair * cair * La * X
+    Ch = rhoair * cair * cavity_width * e22
+    alphaair = _K_AIR / rhoair / cair
+    days = 0
+    C = 1.0e9
+    Qin = Qout = 0.0
+    while C > tol_day and days < max_days:
+        for j in range(ny):
+            for i in range(nx):
+                Told[i, j] = T[i, j]
+        Qin = Qout = 0.0
+        for s in range(nsteps):
+            tso = 0.0
+            for i in range(nx):
+                tso += T[i, 0]
+            Tso_s[s] = tso / (nx - 1)
+            for j in range(ny):
+                for i in range(nx):
+                    To[i, j] = T[i, j]
+            Ti_old = Tint
+            _step_slab(k, rhoc, To, T, Tsa_arr[s], Ti_old, Th, ho, hi, dt, dx, dy,
+                       NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
+                       _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair,
+                       Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                       a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol_inner)
+            # aire de cada hueco (un solo dt)
+            thsum = 0.0
+            for cidx in range(n_cav):
+                ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]; hc = hh[cidx]
+                qh = 0.0
+                for i in range(ci1, ci2):
+                    qh += hc * dx * (T[i, cj1 - 1] - Th[cidx])
+                    qh += hc * dx * (T[i, cj2] - Th[cidx])
+                for j in range(cj1, cj2):
+                    qh += hc * dy * (T[ci1 - 1, j] - Th[cidx])
+                    qh += hc * dy * (T[ci2, j] - Th[cidx])
+                Th[cidx] = Th[cidx] + dt * qh / Ch
+                thsum += Th[cidx]
+            Th_s[s] = thsum / n_cav
+            # aire interior (un solo dt)
+            flux = 0.0
+            for i in range(nx):
+                flux += hi * dx * (T[i, ny - 1] - Ti_old)
+            Tint = Ti_old + dt * flux / Cair
+            Ti_s[s] = Tint
+            tsi = 0.0
+            for i in range(nx):
+                tsi += T[i, ny - 1]
+            Tsi_s[s] = tsi / (nx - 1)
+            e = flux * dt / X
+            if e > 0.0:
+                Qin += e
+            else:
+                Qout -= e
+        C = 0.0
+        for j in range(ny):
+            for i in range(nx):
+                C += abs(Told[i, j] - T[i, j])
+        C = C / nx / ny
+        days += 1
+    return Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qin, Qout
+
+
+def solve_step_slab(NT, k, rhoc, To, Tsa, Tint, Th0, ho, hi, dt, dx, dy,
+                    cav_of, cav_i1, cav_i2, cj1, cj2, cavity_width, e22, E, beta,
+                    rhoair, cair, La, X, tol=1e-10):
+    """Un paso de la losa de techo (para prueba unitaria). Devuelve dict con
+    ``T, Tint, Thueco (array), hh (array), iters``."""
+    k = np.asarray(k, dtype=np.float64)
+    rhoc = np.asarray(rhoc, dtype=np.float64)
+    To = np.asarray(To, dtype=np.float64)
+    NT = np.ascontiguousarray(NT, dtype=np.int64)
+    cav_of = np.ascontiguousarray(cav_of, dtype=np.int64)
+    cav_i1 = np.ascontiguousarray(cav_i1, dtype=np.int64)
+    cav_i2 = np.ascontiguousarray(cav_i2, dtype=np.int64)
+    nx, ny = k.shape
+    n_cav = cav_i1.shape[0]
+    Th = np.full(n_cav, float(Th0))
+    a = np.empty((nx, ny)); b = np.empty((nx, ny)); cc = np.empty((nx, ny))
+    d = np.empty((nx, ny)); Tnew = np.empty((nx, ny))
+    P = np.empty(nx); Q = np.empty(nx)
+    hh = np.empty(n_cav)
+    Qtop = np.empty(n_cav); Qbot = np.empty(n_cav)
+    Qleft = np.empty(n_cav); Qright = np.empty(n_cav)
+    vf = _view_factors(cavity_width, e22)
+    alphaair = _K_AIR / rhoair / cair
+    T = To.copy()
+    iters = _step_slab(k, rhoc, To, T, float(Tsa), float(Tint), Th, ho, hi, dt, dx, dy,
+                       NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, float(beta),
+                       _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair, *vf,
+                       a, b, cc, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol)
+    Ch = rhoair * cair * cavity_width * e22
+    for cidx in range(n_cav):
+        ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]; hc = hh[cidx]
+        qh = 0.0
+        for i in range(ci1, ci2):
+            qh += hc * dx * (T[i, cj1 - 1] - Th[cidx])
+            qh += hc * dx * (T[i, cj2] - Th[cidx])
+        for j in range(cj1, cj2):
+            qh += hc * dy * (T[ci1 - 1, j] - Th[cidx])
+            qh += hc * dy * (T[ci2, j] - Th[cidx])
+        Th[cidx] = Th[cidx] + dt * qh / Ch
+    Tsurf = T[:, ny - 1]
+    Cair = rhoair * cair * La * X
+    flux = float(np.sum(hi * dx * (Tsurf - float(Tint))))
+    Tint_new = float(Tint) + dt * flux / Cair
+    return {"T": T, "Tint": Tint_new, "Thueco": Th, "hh": hh, "iters": iters}
+
+
+# =================================================================
+#  Variantes paralelas (numba prange) — motor por default
+# =================================================================
+#
+# El barrido por líneas es Jacobi (las filas usan un único snapshot de T por
+# iteración interna y se resuelven a Tnew antes de T<-Tnew), así que las filas son
+# independientes: paralelizar el ensamble/TDMA/error sobre j con prange ejecuta el
+# MISMO algoritmo (mismo nº de iteraciones, resultado bit-a-bit, ver Fase 7). El
+# precómputo por cavidad (paredes, hh, radiación) es chico y se deja secuencial.
+# numba auto-detecta los núcleos en runtime (threading layer interno, portable).
+
+
+@njit(parallel=True, cache=True)
+def _step_hueca_par(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
+                    i1, j1, i2, j2, e22, E,
+                    Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                    a, b, c, d, Tnew, tol):
+    """Igual que :func:`_step_hueca` pero con ensamble/TDMA/error en ``prange``."""
+    nx, ny = k.shape
+    iters = 0
+    hh = 1.0
+    while True:
+        iters += 1
+        tup = tdn = tlf = trt = 0.0
+        for i in range(i1, i2):
+            tup += T[i, j1 - 1]
+            tdn += T[i, j2]
+        nud = i2 - i1
+        for j in range(j1, j2):
+            tlf += T[i1 - 1, j]
+            trt += T[i2, j]
+        nlr = j2 - j1
+        tup /= nud; tdn /= nud; tlf /= nlr; trt /= nlr
+        hh = 0.4005 * (abs(tup - tdn) ** 0.3033) / (e22 ** 0.0901)
+        Tu = tup + 273.15; Td = tdn + 273.15; Tl = tlf + 273.15; Tr = trt + 273.15
+        Tu4 = Tu * Tu * Tu * Tu; Td4 = Td * Td * Td * Td
+        Tl4 = Tl * Tl * Tl * Tl; Tr4 = Tr * Tr * Tr * Tr
+        sx = dx * E * _SIGMA; sy = dy * E * _SIGMA
+        Qud = sx * (Tu4 - Td4) * Fud; Qul = sx * (Tu4 - Tl4) * Ful
+        Qur = sx * (Tu4 - Tr4) * Fur
+        Qru = sy * (Tr4 - Tu4) * Fru; Qrd = sy * (Tr4 - Td4) * Frd
+        Qrl = sy * (Tr4 - Tl4) * Frl
+        Qdu = sx * (Td4 - Tu4) * Fdu; Qdr = sx * (Td4 - Tr4) * Fdr
+        Qdl = sx * (Td4 - Tl4) * Fdl
+        Qlu = sy * (Tl4 - Tu4) * Flu; Qlr = sy * (Tl4 - Tr4) * Flr
+        Qld = sy * (Tl4 - Td4) * Fld
+        for j in prange(ny):
+            for i in range(nx):
+                kij = k[i, j]
+                apo = rhoc[i, j] * dx * dy / dt
+                aN = aS = aE = aW = 0.0
+                if j > 0:
+                    kk = k[i, j - 1]; aN = 2.0 * kk * kij / (kk + kij) * dx / dy
+                if j < ny - 1:
+                    kk = k[i, j + 1]; aS = 2.0 * kk * kij / (kk + kij) * dx / dy
+                if i < nx - 1:
+                    kk = k[i + 1, j]; aE = 2.0 * kk * kij / (kk + kij) * dy / dx
+                if i > 0:
+                    kk = k[i - 1, j]; aW = 2.0 * kk * kij / (kk + kij) * dy / dx
+                in_hole_cols = (i1 <= i) and (i < i2)
+                in_hole_rows = (j1 <= j) and (j < j2)
+                if in_hole_cols and in_hole_rows:
+                    a[i, j] = 1.0; b[i, j] = 0.0; c[i, j] = 0.0; d[i, j] = Th
+                elif in_hole_cols and j == j1 - 1:
+                    a[i, j] = apo + aN + hh * dx + aE + aW
+                    d[i, j] = aN * T[i, j - 1] + hh * dx * Th + apo * To[i, j] - Qur - Qud - Qul
+                    b[i, j] = aE; c[i, j] = aW
+                elif in_hole_cols and j == j2:
+                    a[i, j] = apo + hh * dx + aS + aE + aW
+                    d[i, j] = aS * T[i, j + 1] + hh * dx * Th + apo * To[i, j] - Qdl - Qdu - Qdr
+                    b[i, j] = aE; c[i, j] = aW
+                elif in_hole_rows and i == i1 - 1:
+                    a[i, j] = apo + aN + aS + hh * dy + aW
+                    d[i, j] = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hh * dy * Th - Qlu - Qlr - Qld
+                    b[i, j] = 0.0; c[i, j] = aW
+                elif in_hole_rows and i == i2:
+                    a[i, j] = apo + aN + aS + aE + hh * dy
+                    d[i, j] = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hh * dy * Th - Qrd - Qrl - Qru
+                    b[i, j] = aE; c[i, j] = 0.0
+                else:
+                    aP = apo + aN + aS + aE + aW
+                    dd = apo * To[i, j]
+                    if j > 0:
+                        dd += aN * T[i, j - 1]
+                    if j < ny - 1:
+                        dd += aS * T[i, j + 1]
+                    if j == 0:
+                        aP += ho * dx; dd += ho * dx * Tsa
+                    if j == ny - 1:
+                        aP += hi * dx; dd += hi * dx * Tint
+                    a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
+        for j in prange(ny):
+            P = np.empty(nx); Q = np.empty(nx)
+            P[0] = b[0, j] / a[0, j]; Q[0] = d[0, j] / a[0, j]
+            for i in range(1, nx):
+                denom = a[i, j] - c[i, j] * P[i - 1]
+                P[i] = b[i, j] / denom
+                Q[i] = (d[i, j] + c[i, j] * Q[i - 1]) / denom
+            Tnew[nx - 1, j] = Q[nx - 1]
+            for i in range(nx - 2, -1, -1):
+                Tnew[i, j] = P[i] * Tnew[i + 1, j] + Q[i]
+        error = 0.0
+        for j in prange(ny):
+            for i in range(nx):
+                error += (T[i, j] - Tnew[i, j]) / T[i, j]
+                T[i, j] = Tnew[i, j]
+        error = error / nx / ny
+        if abs(error) <= tol:
+            break
+    return iters, hh
+
+
+@njit(cache=True)
+def solve_day_hueca_prod_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
+                             rhoair, cair, T0, i1, j1, i2, j2, a21, e22, E,
+                             Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                             tol_inner, tol_day, max_days):
+    """Versión paralela de :func:`solve_day_hueca_prod` (usa ``_step_hueca_par``)."""
+    nx, ny = k.shape
+    nsteps = Tsa_arr.shape[0]
+    T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
+    for j in range(ny):
+        for i in range(nx):
+            T[i, j] = T0
+    Tint = T0; Th = T0
+    a = np.empty((nx, ny)); b = np.empty((nx, ny)); c = np.empty((nx, ny))
+    d = np.empty((nx, ny)); Tnew = np.empty((nx, ny))
+    Ti_s = np.empty(nsteps); Tso_s = np.empty(nsteps)
+    Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
+    Cair = rhoair * cair * La * X
+    Ch = rhoair * cair * a21 * e22
+    days = 0; C = 1.0e9; Qin = Qout = 0.0
+    while C > tol_day and days < max_days:
+        for j in range(ny):
+            for i in range(nx):
+                Told[i, j] = T[i, j]
+        Qin = Qout = 0.0
+        for s in range(nsteps):
+            tso = 0.0
+            for i in range(nx):
+                tso += T[i, 0]
+            Tso_s[s] = tso / (nx - 1)
+            for j in range(ny):
+                for i in range(nx):
+                    To[i, j] = T[i, j]
+            Ti_old = Tint; Th_old = Th
+            _, hh = _step_hueca_par(k, rhoc, To, T, Tsa_arr[s], Ti_old, Th_old,
+                                    ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E,
+                                    Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                                    a, b, c, d, Tnew, tol_inner)
+            qh = 0.0
+            for i in range(i1, i2):
+                qh += hh * dx * (T[i, j1 - 1] - Th_old)
+                qh += hh * dx * (T[i, j2] - Th_old)
+            for j in range(j1, j2):
+                qh += hh * dy * (T[i1 - 1, j] - Th_old)
+                qh += hh * dy * (T[i2, j] - Th_old)
+            Th = Th_old + dt * qh / Ch
+            flux = 0.0
+            for i in range(nx):
+                flux += hi * dx * (T[i, ny - 1] - Ti_old)
+            Tint = Ti_old + dt * flux / Cair
+            Ti_s[s] = Tint; Th_s[s] = Th
+            tsi = 0.0
+            for i in range(nx):
+                tsi += T[i, ny - 1]
+            Tsi_s[s] = tsi / (nx - 1)
+            e = flux * dt / X
+            if e > 0.0:
+                Qin += e
+            else:
+                Qout -= e
+        C = 0.0
+        for j in range(ny):
+            for i in range(nx):
+                C += abs(Told[i, j] - T[i, j])
+        C = C / nx / ny
+        days += 1
+    return Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qin, Qout
+
+
+@njit(parallel=True, cache=True)
+def _step_slab_par(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
+                   NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
+                   kair, gr, beta_exp, nu, alphaair,
+                   Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                   a, b, c, d, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol):
+    """Igual que :func:`_step_slab` pero con ensamble/TDMA/error en ``prange``."""
+    nx, ny = k.shape
+    sx = dx * E * _SIGMA; sy = dy * E * _SIGMA
+    iters = 0
+    while True:
+        iters += 1
+        for cidx in range(n_cav):
+            ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]
+            tup = 0.0; tdn = 0.0; tlf = 0.0; trt = 0.0
+            for i in range(ci1, ci2):
+                tup += T[i, cj1 - 1]
+                tdn += T[i, cj2]
+            nud = ci2 - ci1
+            for j in range(cj1, cj2):
+                tlf += T[ci1 - 1, j]
+                trt += T[ci2, j]
+            nlr = cj2 - cj1
+            tup /= nud; tdn /= nud; tlf /= nlr; trt /= nlr
+            hh[cidx] = _slab_hh(tup, tdn, e22, beta, kair, gr, beta_exp, nu, alphaair)
+            Tu = tup + 273.15; Td = tdn + 273.15
+            Tl = tlf + 273.15; Tr = trt + 273.15
+            Tu4 = Tu * Tu * Tu * Tu; Td4 = Td * Td * Td * Td
+            Tl4 = Tl * Tl * Tl * Tl; Tr4 = Tr * Tr * Tr * Tr
+            Qud = sx * (Tu4 - Td4) * Fud; Qul = sx * (Tu4 - Tl4) * Ful
+            Qur = sx * (Tu4 - Tr4) * Fur
+            Qru = sy * (Tr4 - Tu4) * Fru; Qrd = sy * (Tr4 - Td4) * Frd
+            Qrl = sy * (Tr4 - Tl4) * Frl
+            Qdu = sx * (Td4 - Tu4) * Fdu; Qdr = sx * (Td4 - Tr4) * Fdr
+            Qdl = sx * (Td4 - Tl4) * Fdl
+            Qlu = sy * (Tl4 - Tu4) * Flu; Qlr = sy * (Tl4 - Tr4) * Flr
+            Qld = sy * (Tl4 - Td4) * Fld
+            Qtop[cidx] = Qur + Qud + Qul
+            Qbot[cidx] = Qdl + Qdu + Qdr
+            Qleft[cidx] = Qlu + Qlr + Qld
+            Qright[cidx] = Qrd + Qrl + Qru
+        for j in prange(ny):
+            for i in range(nx):
+                nt = NT[i, j]
+                kij = k[i, j]
+                apo = rhoc[i, j] * dx * dy / dt
+                aN = aS = aE = aW = 0.0
+                if j > 0:
+                    kk = k[i, j - 1]; aN = 2.0 * kk * kij / (kk + kij) * dx / dy
+                if j < ny - 1:
+                    kk = k[i, j + 1]; aS = 2.0 * kk * kij / (kk + kij) * dx / dy
+                if i < nx - 1:
+                    kk = k[i + 1, j]; aE = 2.0 * kk * kij / (kk + kij) * dy / dx
+                if i > 0:
+                    kk = k[i - 1, j]; aW = 2.0 * kk * kij / (kk + kij) * dy / dx
+                if nt == 0:
+                    cc = cav_of[i, j]
+                    a[i, j] = 1.0; b[i, j] = 0.0; c[i, j] = 0.0; d[i, j] = Th[cc]
+                elif nt == 9:
+                    cc = cav_of[i, j]; hc = hh[cc]
+                    a[i, j] = apo + aN + hc * dx + aE + aW
+                    d[i, j] = aN * T[i, j - 1] + hc * dx * Th[cc] + apo * To[i, j] - Qtop[cc]
+                    b[i, j] = aE; c[i, j] = aW
+                elif nt == 10:
+                    cc = cav_of[i, j]; hc = hh[cc]
+                    a[i, j] = apo + hc * dx + aS + aE + aW
+                    d[i, j] = aS * T[i, j + 1] + hc * dx * Th[cc] + apo * To[i, j] - Qbot[cc]
+                    b[i, j] = aE; c[i, j] = aW
+                elif nt == 11:
+                    cc = cav_of[i, j]; hc = hh[cc]
+                    a[i, j] = apo + aN + aS + hc * dy + aW
+                    d[i, j] = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hc * dy * Th[cc] - Qleft[cc]
+                    b[i, j] = 0.0; c[i, j] = aW
+                elif nt == 12:
+                    cc = cav_of[i, j]; hc = hh[cc]
+                    a[i, j] = apo + aN + aS + aE + hc * dy
+                    d[i, j] = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hc * dy * Th[cc] - Qright[cc]
+                    b[i, j] = aE; c[i, j] = 0.0
+                else:
+                    aP = apo + aN + aS + aE + aW
+                    dd = apo * To[i, j]
+                    if j > 0:
+                        dd += aN * T[i, j - 1]
+                    if j < ny - 1:
+                        dd += aS * T[i, j + 1]
+                    if j == 0:
+                        aP += ho * dx; dd += ho * dx * Tsa
+                    if j == ny - 1:
+                        aP += hi * dx; dd += hi * dx * Tint
+                    a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
+        for j in prange(ny):
+            P = np.empty(nx); Q = np.empty(nx)
+            P[0] = b[0, j] / a[0, j]; Q[0] = d[0, j] / a[0, j]
+            for i in range(1, nx):
+                denom = a[i, j] - c[i, j] * P[i - 1]
+                P[i] = b[i, j] / denom
+                Q[i] = (d[i, j] + c[i, j] * Q[i - 1]) / denom
+            Tnew[nx - 1, j] = Q[nx - 1]
+            for i in range(nx - 2, -1, -1):
+                Tnew[i, j] = P[i] * Tnew[i + 1, j] + Q[i]
+        error = 0.0
+        for j in prange(ny):
+            for i in range(nx):
+                error += (T[i, j] - Tnew[i, j]) / T[i, j]
+                T[i, j] = Tnew[i, j]
+        error = error / nx / ny
+        if abs(error) <= tol:
+            break
+    return iters
+
+
+@njit(cache=True)
+def solve_day_slab_prod_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
+                            rhoair, cair, T0, cav_of, cav_i1, cav_i2, cj1, cj2,
+                            cavity_width, e22, E, beta,
+                            Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                            tol_inner, tol_day, max_days):
+    """Versión paralela de :func:`solve_day_slab_prod` (usa ``_step_slab_par``)."""
+    nx, ny = k.shape
+    nsteps = Tsa_arr.shape[0]
+    n_cav = cav_i1.shape[0]
+    T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
+    for j in range(ny):
+        for i in range(nx):
+            T[i, j] = T0
+    Tint = T0
+    Th = np.empty(n_cav)
+    for cidx in range(n_cav):
+        Th[cidx] = T0
+    a = np.empty((nx, ny)); b = np.empty((nx, ny)); c = np.empty((nx, ny))
+    d = np.empty((nx, ny)); Tnew = np.empty((nx, ny))
+    hh = np.empty(n_cav)
+    Qtop = np.empty(n_cav); Qbot = np.empty(n_cav)
+    Qleft = np.empty(n_cav); Qright = np.empty(n_cav)
+    Ti_s = np.empty(nsteps); Tso_s = np.empty(nsteps)
+    Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
+    Cair = rhoair * cair * La * X
+    Ch = rhoair * cair * cavity_width * e22
+    alphaair = _K_AIR / rhoair / cair
+    days = 0; C = 1.0e9; Qin = Qout = 0.0
+    while C > tol_day and days < max_days:
+        for j in range(ny):
+            for i in range(nx):
+                Told[i, j] = T[i, j]
+        Qin = Qout = 0.0
+        for s in range(nsteps):
+            tso = 0.0
+            for i in range(nx):
+                tso += T[i, 0]
+            Tso_s[s] = tso / (nx - 1)
+            for j in range(ny):
+                for i in range(nx):
+                    To[i, j] = T[i, j]
+            Ti_old = Tint
+            _step_slab_par(k, rhoc, To, T, Tsa_arr[s], Ti_old, Th, ho, hi, dt, dx, dy,
+                           NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
+                           _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair,
+                           Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                           a, b, c, d, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol_inner)
+            thsum = 0.0
+            for cidx in range(n_cav):
+                ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]; hc = hh[cidx]
+                qh = 0.0
+                for i in range(ci1, ci2):
+                    qh += hc * dx * (T[i, cj1 - 1] - Th[cidx])
+                    qh += hc * dx * (T[i, cj2] - Th[cidx])
+                for j in range(cj1, cj2):
+                    qh += hc * dy * (T[ci1 - 1, j] - Th[cidx])
+                    qh += hc * dy * (T[ci2, j] - Th[cidx])
+                Th[cidx] = Th[cidx] + dt * qh / Ch
+                thsum += Th[cidx]
+            Th_s[s] = thsum / n_cav
+            flux = 0.0
+            for i in range(nx):
+                flux += hi * dx * (T[i, ny - 1] - Ti_old)
+            Tint = Ti_old + dt * flux / Cair
+            Ti_s[s] = Tint
+            tsi = 0.0
+            for i in range(nx):
+                tsi += T[i, ny - 1]
+            Tsi_s[s] = tsi / (nx - 1)
+            e = flux * dt / X
+            if e > 0.0:
+                Qin += e
+            else:
+                Qout -= e
+        C = 0.0
+        for j in range(ny):
+            for i in range(nx):
+                C += abs(Told[i, j] - T[i, j])
+        C = C / nx / ny
+        days += 1
+    return Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qin, Qout
