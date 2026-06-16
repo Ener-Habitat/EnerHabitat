@@ -229,6 +229,25 @@ usuario). NO validado bit-a-bit contra el C: criterio de aceptación = metodolog
   ancho sobre el alma); el alma ocupa los bordes de `jcap` (base de la tapa) a la base del
   elemento. Verificado en `test_l_shape_cap_height`. `colado_cap=0` → alma a toda la altura.
 
+## Fase 9 — Aire acondicionado (AC) en muros y techos 2D: entregado
+
+`System2D.solveAC()` espejo del `System.solveAC()` 1D: mantiene el aire del recinto fijo en un
+setpoint y calcula la energía de enfriamiento/calentamiento. Reúsa los `_step_*` de 8a/8b.
+- **Kernels** (`ehtools2d`): `solve_day_2d_ac`, `solve_day_hueca_ac`, `solve_day_slab_ac` (+ sus
+  `_par`), reusando los `_step_*` existentes. Difieren de la flotación libre en: `Tint` **fijo**
+  en el setpoint (no se integra) y acumulan `Qcool/Qheat` (flujo neto en la superficie interior
+  por signo, `/X`) en vez de `Qin/Qout`. En AIRE el aire del hueco `Th`/`Th[c]` **sigue
+  flotando** (el AC solo controla el recinto).
+- **API** (`eh2d.System2D`): `solveAC()` rutea por tipo de elemento + `config2d.parallel`,
+  devuelve `Ti` (Series **constante** = setpoint), guarda `cooling_energy`/`heating_energy` y
+  deja `energy_transfer=None`; caché separada (`_ac_df/_ac_sig`). Atributo `setpoint` (default
+  `Tn.mean()`). `info()` imprime cooling/heating. **Despacho por clase** (igual que `solve()`):
+  no hay `solve2DAC` — `wall.solveAC()` corre el método 2D porque `wall` es `System2D`.
+- **Prueba** `tests/test_eh2d_ac.py` (4/4, malla chica, serial): metodología/sanidad
+  (`Ti`=setpoint, `Qcool/Qheat≥0`, `energy_transfer` None), periodicidad, **reduce al 1D** (techo
+  `Slab` RELLENA de un solo material ≈ `System.solveAC`, cooling/heating dentro de 5 %), y
+  **AIRE>EPS** (Qcool 606714 > 502574: el hueco transfiere más que el relleno aislante).
+
 
 ---
 
@@ -888,6 +907,7 @@ tests/test_eh2d_perf.py         # Fase 7 (benchmark/paralelización)
 tests/test_eh2d_hollowblock.py  # Fase 8a (muro bloque hueco end-to-end)
 tests/test_eh2d_inspect.py      # Inspector a escala (section/preview/section_report)
 tests/test_eh2d_slab.py         # Fase 8b (techo vigueta y bovedilla, N cavidades)
+tests/test_eh2d_ac.py           # Fase 9 (aire acondicionado 2D, solveAC)
 ```
 
 ## Riesgos / notas

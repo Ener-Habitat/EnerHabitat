@@ -1497,3 +1497,414 @@ def solve_day_slab_prod_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
         C = C / nx / ny
         days += 1
     return Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qin, Qout
+
+
+# =================================================================
+#  Aire acondicionado (AC) — Fase 9
+# =================================================================
+#
+# Mantiene el aire interior FIJO en un setpoint `Tset` (no se integra) y acumula
+# la carga: por paso, el flujo neto en la superficie interior `e=(Σ hi·dx·(T−Tset))·dt/X`
+# se suma a `Qcool` si entra calor (e>0) o a `Qheat` si sale (e<0). En las variantes
+# con aire (hueca/slab) el aire del hueco `Th`/`Th[c]` SIGUE flotando (el AC solo
+# controla el recinto). Reúsan los mismos `_step_*` que la flotación libre.
+
+
+@njit(cache=True)
+def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
+                    rhoair, cair, T0, Tset, tol_inner=1e-10, tol_day=5e-4, max_days=60):
+    """AC para conducción pura (RELLENA). Devuelve
+    (Ti_series(=Tset), Tso, Tsi, T_field, days, Qcool, Qheat)."""
+    nx, ny = k.shape
+    nsteps = Tsa_arr.shape[0]
+    T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
+    for j in range(ny):
+        for i in range(nx):
+            T[i, j] = T0
+    a = np.empty((nx, ny)); b = np.empty((nx, ny))
+    c = np.empty((nx, ny)); d = np.empty((nx, ny)); Tnew = np.empty((nx, ny))
+    P = np.empty(nx); Q = np.empty(nx); Tn = np.empty(nx)
+    Ti_s = np.empty(nsteps); Tso_s = np.empty(nsteps); Tsi_s = np.empty(nsteps)
+    days = 0; Qcool = Qheat = 0.0; C = 1.0e9
+    while C > tol_day and days < max_days:
+        for j in range(ny):
+            for i in range(nx):
+                Told[i, j] = T[i, j]
+        Qcool = Qheat = 0.0
+        for s in range(nsteps):
+            tso = 0.0
+            for i in range(nx):
+                tso += T[i, 0]
+            Tso_s[s] = tso / (nx - 1)
+            for j in range(ny):
+                for i in range(nx):
+                    To[i, j] = T[i, j]
+            _step_inner(k, rhoc, To, T, Tsa_arr[s], Tset, ho, hi, dt, dx, dy,
+                        a, b, c, d, P, Q, Tn, Tnew, tol_inner)
+            flux = 0.0
+            for i in range(nx):
+                flux += hi * dx * (T[i, ny - 1] - Tset)
+            e = flux * dt / X
+            if e > 0.0:
+                Qcool += e
+            else:
+                Qheat -= e
+            Ti_s[s] = Tset
+            tsi = 0.0
+            for i in range(nx):
+                tsi += T[i, ny - 1]
+            Tsi_s[s] = tsi / (nx - 1)
+        C = 0.0
+        for j in range(ny):
+            for i in range(nx):
+                C += abs(Told[i, j] - T[i, j])
+        C = C / nx / ny
+        days += 1
+    return Ti_s, Tso_s, Tsi_s, T, days, Qcool, Qheat
+
+
+@njit(cache=True)
+def solve_day_2d_ac_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
+                        rhoair, cair, T0, Tset, tol_inner=1e-10, tol_day=5e-4, max_days=60):
+    """Versión paralela de :func:`solve_day_2d_ac` (usa ``_step_inner_par``)."""
+    nx, ny = k.shape
+    nsteps = Tsa_arr.shape[0]
+    T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
+    for j in range(ny):
+        for i in range(nx):
+            T[i, j] = T0
+    a = np.empty((nx, ny)); b = np.empty((nx, ny))
+    c = np.empty((nx, ny)); d = np.empty((nx, ny)); Tnew = np.empty((nx, ny))
+    Ti_s = np.empty(nsteps); Tso_s = np.empty(nsteps); Tsi_s = np.empty(nsteps)
+    days = 0; Qcool = Qheat = 0.0; C = 1.0e9
+    while C > tol_day and days < max_days:
+        for j in range(ny):
+            for i in range(nx):
+                Told[i, j] = T[i, j]
+        Qcool = Qheat = 0.0
+        for s in range(nsteps):
+            tso = 0.0
+            for i in range(nx):
+                tso += T[i, 0]
+            Tso_s[s] = tso / (nx - 1)
+            for j in range(ny):
+                for i in range(nx):
+                    To[i, j] = T[i, j]
+            _step_inner_par(k, rhoc, To, T, Tsa_arr[s], Tset, ho, hi, dt, dx, dy,
+                            a, b, c, d, Tnew, tol_inner)
+            flux = 0.0
+            for i in range(nx):
+                flux += hi * dx * (T[i, ny - 1] - Tset)
+            e = flux * dt / X
+            if e > 0.0:
+                Qcool += e
+            else:
+                Qheat -= e
+            Ti_s[s] = Tset
+            tsi = 0.0
+            for i in range(nx):
+                tsi += T[i, ny - 1]
+            Tsi_s[s] = tsi / (nx - 1)
+        C = 0.0
+        for j in range(ny):
+            for i in range(nx):
+                C += abs(Told[i, j] - T[i, j])
+        C = C / nx / ny
+        days += 1
+    return Ti_s, Tso_s, Tsi_s, T, days, Qcool, Qheat
+
+
+@njit(cache=True)
+def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
+                       rhoair, cair, T0, Tset, i1, j1, i2, j2, a21, e22, E,
+                       Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                       tol_inner, tol_day, max_days):
+    """AC para muro con cámara de aire (Thueco flota, Tint=Tset fijo). Devuelve
+    (Ti(=Tset), Tso, Tsi, Th, T_field, days, Qcool, Qheat)."""
+    nx, ny = k.shape
+    nsteps = Tsa_arr.shape[0]
+    T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
+    for j in range(ny):
+        for i in range(nx):
+            T[i, j] = T0
+    Th = T0
+    a = np.empty((nx, ny)); b = np.empty((nx, ny)); c = np.empty((nx, ny))
+    d = np.empty((nx, ny)); Tnew = np.empty((nx, ny))
+    P = np.empty(nx); Q = np.empty(nx)
+    Ti_s = np.empty(nsteps); Tso_s = np.empty(nsteps)
+    Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
+    Ch = rhoair * cair * a21 * e22
+    days = 0; C = 1.0e9; Qcool = Qheat = 0.0
+    while C > tol_day and days < max_days:
+        for j in range(ny):
+            for i in range(nx):
+                Told[i, j] = T[i, j]
+        Qcool = Qheat = 0.0
+        for s in range(nsteps):
+            tso = 0.0
+            for i in range(nx):
+                tso += T[i, 0]
+            Tso_s[s] = tso / (nx - 1)
+            for j in range(ny):
+                for i in range(nx):
+                    To[i, j] = T[i, j]
+            Th_old = Th
+            _, hh = _step_hueca(k, rhoc, To, T, Tsa_arr[s], Tset, Th_old,
+                                ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E,
+                                Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                                a, b, c, d, P, Q, Tnew, tol_inner)
+            qh = 0.0
+            for i in range(i1, i2):
+                qh += hh * dx * (T[i, j1 - 1] - Th_old)
+                qh += hh * dx * (T[i, j2] - Th_old)
+            for j in range(j1, j2):
+                qh += hh * dy * (T[i1 - 1, j] - Th_old)
+                qh += hh * dy * (T[i2, j] - Th_old)
+            Th = Th_old + dt * qh / Ch
+            flux = 0.0
+            for i in range(nx):
+                flux += hi * dx * (T[i, ny - 1] - Tset)
+            e = flux * dt / X
+            if e > 0.0:
+                Qcool += e
+            else:
+                Qheat -= e
+            Ti_s[s] = Tset; Th_s[s] = Th
+            tsi = 0.0
+            for i in range(nx):
+                tsi += T[i, ny - 1]
+            Tsi_s[s] = tsi / (nx - 1)
+        C = 0.0
+        for j in range(ny):
+            for i in range(nx):
+                C += abs(Told[i, j] - T[i, j])
+        C = C / nx / ny
+        days += 1
+    return Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qcool, Qheat
+
+
+@njit(cache=True)
+def solve_day_hueca_ac_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
+                           rhoair, cair, T0, Tset, i1, j1, i2, j2, a21, e22, E,
+                           Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                           tol_inner, tol_day, max_days):
+    """Versión paralela de :func:`solve_day_hueca_ac` (usa ``_step_hueca_par``)."""
+    nx, ny = k.shape
+    nsteps = Tsa_arr.shape[0]
+    T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
+    for j in range(ny):
+        for i in range(nx):
+            T[i, j] = T0
+    Th = T0
+    a = np.empty((nx, ny)); b = np.empty((nx, ny)); c = np.empty((nx, ny))
+    d = np.empty((nx, ny)); Tnew = np.empty((nx, ny))
+    Ti_s = np.empty(nsteps); Tso_s = np.empty(nsteps)
+    Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
+    Ch = rhoair * cair * a21 * e22
+    days = 0; C = 1.0e9; Qcool = Qheat = 0.0
+    while C > tol_day and days < max_days:
+        for j in range(ny):
+            for i in range(nx):
+                Told[i, j] = T[i, j]
+        Qcool = Qheat = 0.0
+        for s in range(nsteps):
+            tso = 0.0
+            for i in range(nx):
+                tso += T[i, 0]
+            Tso_s[s] = tso / (nx - 1)
+            for j in range(ny):
+                for i in range(nx):
+                    To[i, j] = T[i, j]
+            Th_old = Th
+            _, hh = _step_hueca_par(k, rhoc, To, T, Tsa_arr[s], Tset, Th_old,
+                                    ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E,
+                                    Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                                    a, b, c, d, Tnew, tol_inner)
+            qh = 0.0
+            for i in range(i1, i2):
+                qh += hh * dx * (T[i, j1 - 1] - Th_old)
+                qh += hh * dx * (T[i, j2] - Th_old)
+            for j in range(j1, j2):
+                qh += hh * dy * (T[i1 - 1, j] - Th_old)
+                qh += hh * dy * (T[i2, j] - Th_old)
+            Th = Th_old + dt * qh / Ch
+            flux = 0.0
+            for i in range(nx):
+                flux += hi * dx * (T[i, ny - 1] - Tset)
+            e = flux * dt / X
+            if e > 0.0:
+                Qcool += e
+            else:
+                Qheat -= e
+            Ti_s[s] = Tset; Th_s[s] = Th
+            tsi = 0.0
+            for i in range(nx):
+                tsi += T[i, ny - 1]
+            Tsi_s[s] = tsi / (nx - 1)
+        C = 0.0
+        for j in range(ny):
+            for i in range(nx):
+                C += abs(Told[i, j] - T[i, j])
+        C = C / nx / ny
+        days += 1
+    return Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qcool, Qheat
+
+
+@njit(cache=True)
+def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
+                      rhoair, cair, T0, Tset, cav_of, cav_i1, cav_i2, cj1, cj2,
+                      cavity_width, e22, E, beta,
+                      Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                      tol_inner, tol_day, max_days):
+    """AC para techo de N cavidades (Thueco[c] flotan, Tint=Tset fijo). Devuelve
+    (Ti(=Tset), Tso, Tsi, Th_mean, T_field, days, Qcool, Qheat)."""
+    nx, ny = k.shape
+    nsteps = Tsa_arr.shape[0]
+    n_cav = cav_i1.shape[0]
+    T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
+    for j in range(ny):
+        for i in range(nx):
+            T[i, j] = T0
+    Th = np.empty(n_cav)
+    for cidx in range(n_cav):
+        Th[cidx] = T0
+    a = np.empty((nx, ny)); b = np.empty((nx, ny)); c = np.empty((nx, ny))
+    d = np.empty((nx, ny)); Tnew = np.empty((nx, ny))
+    P = np.empty(nx); Q = np.empty(nx)
+    hh = np.empty(n_cav); Qtop = np.empty(n_cav); Qbot = np.empty(n_cav)
+    Qleft = np.empty(n_cav); Qright = np.empty(n_cav)
+    Ti_s = np.empty(nsteps); Tso_s = np.empty(nsteps)
+    Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
+    Ch = rhoair * cair * cavity_width * e22
+    alphaair = _K_AIR / rhoair / cair
+    days = 0; C = 1.0e9; Qcool = Qheat = 0.0
+    while C > tol_day and days < max_days:
+        for j in range(ny):
+            for i in range(nx):
+                Told[i, j] = T[i, j]
+        Qcool = Qheat = 0.0
+        for s in range(nsteps):
+            tso = 0.0
+            for i in range(nx):
+                tso += T[i, 0]
+            Tso_s[s] = tso / (nx - 1)
+            for j in range(ny):
+                for i in range(nx):
+                    To[i, j] = T[i, j]
+            _step_slab(k, rhoc, To, T, Tsa_arr[s], Tset, Th, ho, hi, dt, dx, dy,
+                       NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
+                       _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair,
+                       Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                       a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol_inner)
+            thsum = 0.0
+            for cidx in range(n_cav):
+                ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]; hc = hh[cidx]
+                qh = 0.0
+                for i in range(ci1, ci2):
+                    qh += hc * dx * (T[i, cj1 - 1] - Th[cidx])
+                    qh += hc * dx * (T[i, cj2] - Th[cidx])
+                for j in range(cj1, cj2):
+                    qh += hc * dy * (T[ci1 - 1, j] - Th[cidx])
+                    qh += hc * dy * (T[ci2, j] - Th[cidx])
+                Th[cidx] = Th[cidx] + dt * qh / Ch
+                thsum += Th[cidx]
+            Th_s[s] = thsum / n_cav
+            flux = 0.0
+            for i in range(nx):
+                flux += hi * dx * (T[i, ny - 1] - Tset)
+            e = flux * dt / X
+            if e > 0.0:
+                Qcool += e
+            else:
+                Qheat -= e
+            Ti_s[s] = Tset
+            tsi = 0.0
+            for i in range(nx):
+                tsi += T[i, ny - 1]
+            Tsi_s[s] = tsi / (nx - 1)
+        C = 0.0
+        for j in range(ny):
+            for i in range(nx):
+                C += abs(Told[i, j] - T[i, j])
+        C = C / nx / ny
+        days += 1
+    return Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qcool, Qheat
+
+
+@njit(cache=True)
+def solve_day_slab_ac_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
+                          rhoair, cair, T0, Tset, cav_of, cav_i1, cav_i2, cj1, cj2,
+                          cavity_width, e22, E, beta,
+                          Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                          tol_inner, tol_day, max_days):
+    """Versión paralela de :func:`solve_day_slab_ac` (usa ``_step_slab_par``)."""
+    nx, ny = k.shape
+    nsteps = Tsa_arr.shape[0]
+    n_cav = cav_i1.shape[0]
+    T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
+    for j in range(ny):
+        for i in range(nx):
+            T[i, j] = T0
+    Th = np.empty(n_cav)
+    for cidx in range(n_cav):
+        Th[cidx] = T0
+    a = np.empty((nx, ny)); b = np.empty((nx, ny)); c = np.empty((nx, ny))
+    d = np.empty((nx, ny)); Tnew = np.empty((nx, ny))
+    hh = np.empty(n_cav); Qtop = np.empty(n_cav); Qbot = np.empty(n_cav)
+    Qleft = np.empty(n_cav); Qright = np.empty(n_cav)
+    Ti_s = np.empty(nsteps); Tso_s = np.empty(nsteps)
+    Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
+    Ch = rhoair * cair * cavity_width * e22
+    alphaair = _K_AIR / rhoair / cair
+    days = 0; C = 1.0e9; Qcool = Qheat = 0.0
+    while C > tol_day and days < max_days:
+        for j in range(ny):
+            for i in range(nx):
+                Told[i, j] = T[i, j]
+        Qcool = Qheat = 0.0
+        for s in range(nsteps):
+            tso = 0.0
+            for i in range(nx):
+                tso += T[i, 0]
+            Tso_s[s] = tso / (nx - 1)
+            for j in range(ny):
+                for i in range(nx):
+                    To[i, j] = T[i, j]
+            _step_slab_par(k, rhoc, To, T, Tsa_arr[s], Tset, Th, ho, hi, dt, dx, dy,
+                           NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
+                           _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair,
+                           Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
+                           a, b, c, d, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol_inner)
+            thsum = 0.0
+            for cidx in range(n_cav):
+                ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]; hc = hh[cidx]
+                qh = 0.0
+                for i in range(ci1, ci2):
+                    qh += hc * dx * (T[i, cj1 - 1] - Th[cidx])
+                    qh += hc * dx * (T[i, cj2] - Th[cidx])
+                for j in range(cj1, cj2):
+                    qh += hc * dy * (T[ci1 - 1, j] - Th[cidx])
+                    qh += hc * dy * (T[ci2, j] - Th[cidx])
+                Th[cidx] = Th[cidx] + dt * qh / Ch
+                thsum += Th[cidx]
+            Th_s[s] = thsum / n_cav
+            flux = 0.0
+            for i in range(nx):
+                flux += hi * dx * (T[i, ny - 1] - Tset)
+            e = flux * dt / X
+            if e > 0.0:
+                Qcool += e
+            else:
+                Qheat -= e
+            Ti_s[s] = Tset
+            tsi = 0.0
+            for i in range(nx):
+                tsi += T[i, ny - 1]
+            Tsi_s[s] = tsi / (nx - 1)
+        C = 0.0
+        for j in range(ny):
+            for i in range(nx):
+                C += abs(Told[i, j] - T[i, j])
+        C = C / nx / ny
+        days += 1
+    return Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qcool, Qheat

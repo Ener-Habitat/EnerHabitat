@@ -32,7 +32,10 @@ import numpy as np
 from .config import config, config2d
 from .ehtools2d import (solve_day_2d, solve_day_2d_par, solve_day_hueca_prod,
                         solve_day_hueca_prod_par, solve_day_slab_prod,
-                        solve_day_slab_prod_par, _view_factors)
+                        solve_day_slab_prod_par,
+                        solve_day_2d_ac, solve_day_2d_ac_par,
+                        solve_day_hueca_ac, solve_day_hueca_ac_par,
+                        solve_day_slab_ac, solve_day_slab_ac_par, _view_factors)
 
 
 class Bovedilla(Enum):
@@ -707,11 +710,16 @@ class System2D:
         self.azimuth = azimuth
         self.absortance = absortance
         self.layers = list(layers) if layers else []
+        self.setpoint = None          # AC: si None → Tn.mean() (como el 1D)
         self._sys1 = None
         self._solve_df = None
         self._solve_sig = None
+        self._ac_df = None
+        self._ac_sig = None
         self.energy_transfer = None
         self.Qout = None
+        self.cooling_energy = None
+        self.heating_energy = None
         self.days = None
         self.solve_dataframe = None
 
@@ -869,18 +877,89 @@ class System2D:
         self.solve_dataframe = res
         self._solve_df, self._solve_sig = res, sig
         self.energy_transfer, self.Qout = Qin, Qout
+        self.cooling_energy = self.heating_energy = None
+        self.days, self.Tfield = days, Tfield
+        return res["Ti"]
+
+    def solveAC(self):
+        """
+        Corre el día con **aire acondicionado**: mantiene el aire interior fijo en
+        el setpoint (``self.setpoint`` o ``Tn.mean()`` por default, como el 1D) y
+        devuelve ``Ti`` como ``pandas.Series`` **constante** (= setpoint). Guarda
+        ``cooling_energy`` (Qcool) y ``heating_energy`` (Qheat); ``energy_transfer``
+        queda ``None``. Espejo de ``System.solveAC`` 1D; caché separada de
+        ``solve()``. El aire del hueco (AIRE) sigue flotando: el AC solo controla
+        el recinto.
+        """
+        self._validate()
+        df = self.Tsa()
+        sig = self._signature() + ("ac", self.setpoint)
+        if self._ac_df is not None and self._ac_sig == sig:
+            return self._ac_df["Ti"]
+
+        import numpy as _np
+        Tsa_arr = df["Tsa"].to_numpy(dtype=_np.float64)
+        T0 = float(df["Tn"].mean())
+        Tset = float(self.setpoint) if self.setpoint is not None else T0
+        sec, elem = self._build_section()
+        m = sec.mesh
+        ho, hi, dt = config.ho, config.hi, float(config.dt)
+        La = config.La
+        rhoair, cair = config.AIR_DENSITY, config.AIR_HEAT_CAPACITY
+        par = config2d.parallel
+
+        if isinstance(elem, Slab) and elem.bovedilla is Bovedilla.AIRE:
+            g = elem._geom()
+            vf = _view_factors(g["cavity_width"], g["cavity"])
+            engine = solve_day_slab_ac_par if par else solve_day_slab_ac
+            out = engine(
+                sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
+                m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
+                sec.cav_of, sec.cav_i1, sec.cav_i2, sec.info["cj1"], sec.info["cj2"],
+                g["cavity_width"], g["cavity"], elem.emissivity, float(self.tilt), *vf,
+                config2d.tol_inner, config2d.tol_day, config2d.max_days)
+            Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat = out
+        elif elem.bovedilla is Bovedilla.AIRE:   # HollowBlock (muro)
+            a, e = elem._ae()
+            a21, e22 = a["a21"], e["e22"]
+            vf = _view_factors(a21, e22)
+            engine = solve_day_hueca_ac_par if par else solve_day_hueca_ac
+            out = engine(
+                sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
+                m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
+                m.i1, m.j1, m.i2, m.j2, a21, e22, elem.emissivity, *vf,
+                config2d.tol_inner, config2d.tol_day, config2d.max_days)
+            Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat = out
+        else:  # RELLENA (HollowBlock o Slab): conducción pura
+            engine = solve_day_2d_ac_par if par else solve_day_2d_ac
+            out = engine(
+                sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
+                m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
+                config2d.tol_inner, config2d.tol_day, config2d.max_days)
+            Ti, Tso, Tsi, Tfield, days, Qcool, Qheat = out
+            Th = _np.full_like(Ti, _np.nan)
+
+        res = df.copy()
+        res["Ti"] = Ti
+        res["Tso"] = Tso
+        res["Tsi"] = Tsi
+        res["Thueco"] = Th
+        self.solve_dataframe = res
+        self._ac_df, self._ac_sig = res, sig
+        self.cooling_energy, self.heating_energy = Qcool, Qheat
+        self.energy_transfer = None
         self.days, self.Tfield = days, Tfield
         return res["Ti"]
 
     # --- utilidades espejo de System ---
     def add_layer(self, material, width):
         self.layers.append((material, width))
-        self._solve_df = None
+        self._solve_df = self._ac_df = None
         return self.layers
 
     def remove_layer(self, index):
         del self.layers[index]
-        self._solve_df = None
+        self._solve_df = self._ac_df = None
         return self.layers
 
     def copy(self):
@@ -894,6 +973,8 @@ class System2D:
               f"Absortance: {self.absortance}")
         print(f"Malla 2D: {config2d.nx}×{config2d.ny}")
         print(f"Energy transfer (Qin): {self.energy_transfer}")
+        print(f"Cooling energy: {self.cooling_energy}   "
+              f"Heating energy: {self.heating_energy}")
         print("Layers (afuera→adentro):")
         for i, l in enumerate(self.layers):
             if isinstance(l, _ELEMENT_TYPES):
