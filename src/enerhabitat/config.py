@@ -212,3 +212,43 @@ class Config:
     
 # Global configuration instance
 config = Config()
+
+
+class Config2D:
+    """
+    Parámetros extra del solver 2D (vigueta y bovedilla). No toca el 1D: el resto
+    de la configuración (La, ho, hi, dt, aire) se reutiliza de ``config``.
+
+    Attributes:
+        nx (int): nodos a lo ancho de la celda (dirección x, laterales adiabáticos).
+        ny (int): nodos en el espesor (dirección y, exterior→interior).
+        tol_inner (float): tolerancia del lazo interno (Gauss-Seidel por líneas).
+        tol_day (float): tolerancia de la convergencia día-a-día.
+        max_days (int): tope de días de la convergencia.
+    """
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.nx = 80
+        self.ny = 160
+        self.tol_inner = 1e-10
+        self.tol_day = 5e-4
+        self.max_days = 60
+        self.version = 0
+
+    def info(self):
+        print("<enerhabitat.Config2D -- parámetros del solver 2D>")
+        print(f"nx (ancho):  \t{self.nx}")
+        print(f"ny (espesor):\t{self.ny}")
+        print(f"tol_inner:   \t{self.tol_inner}")
+        print(f"tol_day:     \t{self.tol_day}")
+        print(f"max_days:    \t{self.max_days}")
+
+    def to_dict(self):
+        return {"nx": self.nx, "ny": self.ny, "tol_inner": self.tol_inner,
+                "tol_day": self.tol_day, "max_days": self.max_days}
+
+
+# Global 2D configuration instance
+config2d = Config2D()

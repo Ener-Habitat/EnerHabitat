@@ -1,6 +1,6 @@
 [project]
 name = "enerhabitat"
-version = "0.1.9"
+version = "0.1.10"
 authors = [
     {name="Guillermo Barrios del Valle", email="gbv@ier.unam.mx"},
     {name="Fernando Rodriguez Calderon", email="ferrodriguez2509@gmail.com"}
@@ -28,6 +28,11 @@ license-files = ["LICEN[CS]E*"]
 dependencies = [
     "numba>=0.62.1",
     "pvlib>=0.13.1",
+]
+
+[project.optional-dependencies]
+viz = [
+    "matplotlib>=3.5",
 ]
 
 [project.urls]
