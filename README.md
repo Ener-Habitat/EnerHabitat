@@ -584,18 +584,53 @@ current working directory; otherwise set `eh.config.file` to the path you want
 to use.
 
 Material properties are declared in an `.ini` file, with the material name as
-the section header and `k`, `rho` and `c` as keys:
+the section header and `k`, `rho` and `c` as keys. Inline comments (`#` or `;`)
+are allowed.
+
+The example below defines **every material used in this README**, so you can run
+all the snippets as-is. The values are typical/illustrative — replace them with
+your own data:
 
 ```ini
-[concrete]
-k   = 1.35   # Thermal conductivity, W/m·K
-rho = 1800   # Density, kg/m³
-c   = 1000   # Specific heat, J/kg·K
+[Adobe]
+k   = 0.58    # Thermal conductivity, W/m·K
+rho = 1500    # Density, kg/m³
+c   = 1480    # Specific heat, J/kg·K
 
-[adobe]
-k   = 0.58
-rho = 1500
-c   = 1480
+[Mortero]     ; cement mortar / render
+k   = 0.70
+rho = 1800
+c   = 1000
+
+[Ladrillo]    ; fired-clay brick
+k   = 0.85
+rho = 1600
+c   = 840
+
+[Acero]       ; steel
+k   = 45.0
+rho = 7850
+c   = 460
+
+[Concreto]    ; structural concrete (ribs, topping, hollow block)
+k   = 1.80
+rho = 2200
+c   = 880
+
+[Bovedilla]   ; lightweight filler block
+k   = 0.50
+rho = 1200
+c   = 900
+
+[Yeso]        ; gypsum plaster
+k   = 0.37
+rho = 900
+c   = 1000
+
+[Impermeabilizante]   ; asphaltic waterproofing membrane
+k   = 0.17
+rho = 1100
+c   = 1000
 ```
 
 Point `config.file` to a different file when you need to switch material sets:
