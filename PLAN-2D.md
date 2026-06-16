@@ -41,28 +41,50 @@ bloque hueco (muro) y la vigueta y bovedilla (techo) — calcular la **energía 
 calentamiento** necesaria para mantener el aire interior en un setpoint. Reúsa toda la
 infraestructura 8a/8b; el cambio por kernel es chico.
 
-**Flujo de trabajo del usuario (idéntico 1D ↔ 2D):** el único cambio es `solve()` → `solveAC()`
-y leer `cooling_energy`/`heating_energy` en vez de `energy_transfer`.
+**Flujo de trabajo del usuario** (mismo idioma del paquete; el único cambio frente a la
+flotación libre es `solve()` → `solveAC()` y leer `cooling_energy`/`heating_energy`):
 
 ```python
-import enerhabitat as eh
-eh.config.file = "./materials.ini"
-loc = eh.Location("./epw/example.epw")
-loc.meanDay(month=5, year=2025)
-
 # --- 1D (vigente) ---
-sys = eh.System(loc, tilt=90, azimuth=90, absortance=0.6)
-sys.layers = [("Concreto", 0.15), ("EPS", 0.05)]
-sys.Tsa()
-ti = sys.solveAC()                       # mantiene Tint en el setpoint
-print(sys.cooling_energy, sys.heating_energy)   # Qcool, Qheat (energy_transfer = None)
+import enerhabitat as eh
+import pandas as pd
 
-# --- 2D (objetivo, Fase 9) — mismo flujo ---
-block = eh.HollowBlock("Concreto", emissivity=0.9, geometry={...})
-wall = eh.System2D(loc, tilt=90, azimuth=90, absortance=0.6)
-wall.layers = [("Aplanado", 0.02), block, ("Yeso", 0.01)]
+epw_file = "epw/MEX_CAM_Campeche-Ignacio.766961_TMYx.epw"
+
+wall = eh.System(eh.Location(epw_file))
+wall.azimuth = 90
+wall.absortance = 0.3
+wall.layers = [("Mortero", 0.025), ("Ladrillo", 0.10)]
+wall.location.meanDay(month=5, year=2025)
 wall.Tsa()
-ti = wall.solveAC()                      # idéntico; Tint fijo en el setpoint
+
+# Solución con aire acondicionado: mantiene Tint en el setpoint.
+ti = wall.solveAC()
+data = pd.concat([ti, wall.Tsa()], axis=1)        # Tsa comparte la rejilla dt → concat alinea
+print(wall.cooling_energy, wall.heating_energy)   # Qcool, Qheat (energy_transfer = None)
+```
+
+```python
+# --- 2D (objetivo, Fase 9) — MISMO flujo, con un elemento 2D en layers ---
+import enerhabitat as eh
+import pandas as pd
+
+epw_file = "epw/MEX_CAM_Campeche-Ignacio.766961_TMYx.epw"
+
+block = eh.HollowBlock("Concreto", emissivity=0.9, geometry={
+    "web": 0.02, "block_width": 0.16,
+    "cover_top": 0.02, "cavity": 0.08, "cover_bottom": 0.02})
+
+wall = eh.System2D(eh.Location(epw_file))
+wall.tilt = 90
+wall.azimuth = 90
+wall.absortance = 0.3
+wall.layers = [("Mortero", 0.025), block, ("Yeso", 0.01)]
+wall.location.meanDay(month=5, year=2025)
+wall.Tsa()
+
+ti = wall.solveAC()                               # idéntico; Tint fijo en el setpoint
+data = pd.concat([ti, wall.Tsa()], axis=1)
 print(wall.cooling_energy, wall.heating_energy)
 ```
 
