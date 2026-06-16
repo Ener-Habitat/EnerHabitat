@@ -697,7 +697,12 @@ del paquete usa celda completa).
 **4. Unidades de los índices** — revisión menor pendiente (ver [Riesgos / notas](#riesgos--notas));
 no toca 8b.
 
-### Inspector a escala de materiales — ✅ HECHO (referencia rápida)
+**5. Revisar el `README.md`** — integrar lo nuevo: API 2D (`System2D`, `HollowBlock`, `Slab`),
+`config2d` (incl. `parallel`), el inspector a escala (`preview`/`section_report`) y el motor
+serial/paralelo. Asegurar ejemplos de muro (bloque hueco) y techo (vigueta y bovedilla).
+
+**6. Cambio de versión** — bump de la versión del paquete (p. ej. en `pyproject.toml`/metadata)
+que refleje la API 2D (Fases 8a/8b) y actualizar el changelog si aplica.
 
 Implementado (detalle en [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md)). Uso, tras fijar `layers`
 y antes de `solve()`:
