@@ -41,6 +41,45 @@ bloque hueco (muro) y la vigueta y bovedilla (techo) — calcular la **energía 
 calentamiento** necesaria para mantener el aire interior en un setpoint. Reúsa toda la
 infraestructura 8a/8b; el cambio por kernel es chico.
 
+**Flujo de trabajo del usuario (idéntico 1D ↔ 2D):** el único cambio es `solve()` → `solveAC()`
+y leer `cooling_energy`/`heating_energy` en vez de `energy_transfer`.
+
+```python
+import enerhabitat as eh
+eh.config.file = "./materials.ini"
+loc = eh.Location("./epw/example.epw")
+loc.meanDay(month=5, year=2025)
+
+# --- 1D (vigente) ---
+sys = eh.System(loc, tilt=90, azimuth=90, absortance=0.6)
+sys.layers = [("Concreto", 0.15), ("EPS", 0.05)]
+sys.Tsa()
+ti = sys.solveAC()                       # mantiene Tint en el setpoint
+print(sys.cooling_energy, sys.heating_energy)   # Qcool, Qheat (energy_transfer = None)
+
+# --- 2D (objetivo, Fase 9) — mismo flujo ---
+block = eh.HollowBlock("Concreto", emissivity=0.9, geometry={...})
+wall = eh.System2D(loc, tilt=90, azimuth=90, absortance=0.6)
+wall.layers = [("Aplanado", 0.02), block, ("Yeso", 0.01)]
+wall.Tsa()
+ti = wall.solveAC()                      # idéntico; Tint fijo en el setpoint
+print(wall.cooling_energy, wall.heating_energy)
+```
+
+**Flujo interno (qué cambia frente a la flotación libre):**
+
+| paso | flotación libre (`solve`) | aire acondicionado (`solveAC`) |
+|------|---------------------------|--------------------------------|
+| aire interior `Tint` | nodo lumped, se **integra** cada paso | **fijo** en el setpoint (no se integra) |
+| frontera interior `j=ny-1` | `hi·dx·Tint` con `Tint` que evoluciona | `hi·dx·Tset` con `Tset` constante |
+| aire del hueco `Thueco` (AIRE) | flota | **flota igual** (el AC no toca la cavidad) |
+| energía | `Qin`/`Qout` (en régimen `Qin≈Qout`) | `Qcool` (flujo neto entra) / `Qheat` (sale) |
+| salida | `energy_transfer=Qin` | `cooling_energy=Qcool`, `heating_energy=Qheat` |
+
+Lazo interno (ambos): convergencia día-a-día → por paso, ensamblar coeficientes con `Tsa[t]` y
+la frontera interior, resolver el campo (línea-TDMA), y — en libre integrar `Tint`; en AC dejar
+`Tset` fijo y **acumular** `Qcool/Qheat` según el signo del flujo neto en la superficie interior.
+
 **Modelo (idéntico al 1D, `ehframe.__calc_solve(AC=True)`):**
 - El aire interior `Tint` se **fija en un setpoint** (default `Tn.mean()`, como el 1D; opción de
   exponer un atributo `setpoint`/`Tset`). **No** se integra en el tiempo (a diferencia de la
