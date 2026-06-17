@@ -493,7 +493,7 @@ class System():
             material (str): Material name.
             width (float): Width of the material in meters.
         """
-        self.__capas.append((material, width))
+        self.__layers.append((material, width))
         self.__invalidate_cache()
         return self.layers
     
@@ -504,9 +504,9 @@ class System():
         Args:
             index (int): Positive index of the layer to remove.
         """
-        if index < 0 or index >= len(self.__capas):
+        if index < 0 or index >= len(self.__layers):
             raise IndexError("Layer index out of range.")
-        del self.__capas[index]
+        del self.__layers[index]
         self.__invalidate_cache()
         return self.layers
     
@@ -676,14 +676,14 @@ class System():
         
     @property
     def layers(self):
-        return self.__capas
+        return self.__layers
     @layers.setter
-    def layers(self, capas:list):
+    def layers(self, layers:list):
         """
         List of tuples from outside to inside with material and width.
         Example: [('Brick',0.1), ('Insulation',0.05), ('Adobe',0.02)]
         """
-        self.__capas = capas
+        self.__layers = layers
         self.__invalidate_cache()
     
     @property
