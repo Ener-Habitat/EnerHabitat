@@ -253,6 +253,22 @@ setpoint y calcula la energía de enfriamiento/calentamiento. Reúsa los `_step_
   `Slab` RELLENA de un solo material ≈ `System.solveAC`, cooling/heating dentro de 5 %), y
   **AIRE>EPS** (Qcool 606714 > 502574: el hueco transfiere más que el relleno aislante).
 
+## Rename de la API en español → inglés (`Bovedilla`→`Fill`): entregado
+
+Última pieza de API pública en español, renombrada a inglés (rename **limpio, sin alias**):
+- Enum **`Bovedilla`→`Fill`**; miembros **`AIRE`/`RELLENA`/`RELLENA_SIMETRICA`→`AIR`/`SOLID`/
+  `SOLID_SYMMETRIC`**; valores `"aire"/"rellena"/"rellena_sim"`→`"air"/"solid"/"solid_sym"`.
+- Parámetro/atributo **`bovedilla`→`fill_type`** (en `HollowBlock`, `Slab`, `Section2D` y el
+  ruteo de `System2D.solve()/solveAC()`); encaja con el `fill_material` ya existente
+  (`fill_type=Fill.SOLID, fill_material="EPS"`). Export `Fill` en `__init__`.
+- **Intactos por colisión:** el material `"Bovedilla"` (`.ini`/ejemplos), la prosa
+  "vigueta y bovedilla", y los identificadores internos no públicos (`draw_rellena`,
+  `draw_hueca`, `solve_day_hueca*`, `Thueco`, `draw_viguetabovedilla*`).
+- **Verificado rename PURO** (sin cambio de comportamiento): geometry/coeffs/step exit 0
+  (golden), inspect 5/5, hollowblock 8/8, slab 8/8. README actualizado a `Fill`/`fill_type`.
+- *Pendiente menor:* prosa en español dentro de las **pruebas** (docstrings/mensajes) — no es
+  API; queda como tarea aparte si se quiere el 100 % inglés también en los tests.
+
 
 ---
 
