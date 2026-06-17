@@ -30,12 +30,9 @@ from enum import Enum
 import numpy as np
 
 from .config import config, config2d
-from .ehtools2d import (solve_day_2d, solve_day_2d_par, solve_day_hueca_prod,
-                        solve_day_hueca_prod_par, solve_day_slab_prod,
-                        solve_day_slab_prod_par,
-                        solve_day_2d_ac, solve_day_2d_ac_par,
-                        solve_day_hueca_ac, solve_day_hueca_ac_par,
-                        solve_day_slab_ac, solve_day_slab_ac_par, _view_factors)
+from .ehtools2d import (solve_day_2d, solve_day_hueca_prod, solve_day_slab_prod,
+                        solve_day_2d_ac, solve_day_hueca_ac, solve_day_slab_ac,
+                        _view_factors)
 
 
 class Fill(Enum):
@@ -843,13 +840,10 @@ class System2D:
         La = config.La
         rhoair, cair = config.AIR_DENSITY, config.AIR_HEAT_CAPACITY
 
-        par = config2d.parallel   # parallel engine if enabled (numba prange over rows)
-
         if isinstance(elem, Slab) and elem.fill_type is Fill.AIR:
             g = elem._geom()
             vf = _view_factors(g["cavity_width"], g["cavity"])
-            slab_engine = solve_day_slab_prod_par if par else solve_day_slab_prod
-            out = slab_engine(
+            out = solve_day_slab_prod(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
                 sec.cav_of, sec.cav_i1, sec.cav_i2, sec.info["cj1"], sec.info["cj2"],
@@ -860,16 +854,14 @@ class System2D:
             a, e = elem._ae()
             a21, e22 = a["a21"], e["e22"]
             vf = _view_factors(a21, e22)
-            hueca_engine = solve_day_hueca_prod_par if par else solve_day_hueca_prod
-            out = hueca_engine(
+            out = solve_day_hueca_prod(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
                 m.i1, m.j1, m.i2, m.j2, a21, e22, elem.emissivity, *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days)
             Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout = out
         else:  # SOLID (HollowBlock or Slab): pure conduction
-            rellena_engine = solve_day_2d_par if par else solve_day_2d
-            out = rellena_engine(
+            out = solve_day_2d(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days)
@@ -913,13 +905,11 @@ class System2D:
         ho, hi, dt = config.ho, config.hi, float(config.dt)
         La = config.La
         rhoair, cair = config.AIR_DENSITY, config.AIR_HEAT_CAPACITY
-        par = config2d.parallel
 
         if isinstance(elem, Slab) and elem.fill_type is Fill.AIR:
             g = elem._geom()
             vf = _view_factors(g["cavity_width"], g["cavity"])
-            engine = solve_day_slab_ac_par if par else solve_day_slab_ac
-            out = engine(
+            out = solve_day_slab_ac(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
                 sec.cav_of, sec.cav_i1, sec.cav_i2, sec.info["cj1"], sec.info["cj2"],
@@ -930,16 +920,14 @@ class System2D:
             a, e = elem._ae()
             a21, e22 = a["a21"], e["e22"]
             vf = _view_factors(a21, e22)
-            engine = solve_day_hueca_ac_par if par else solve_day_hueca_ac
-            out = engine(
+            out = solve_day_hueca_ac(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
                 m.i1, m.j1, m.i2, m.j2, a21, e22, elem.emissivity, *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days)
             Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat = out
         else:  # SOLID (HollowBlock or Slab): pure conduction
-            engine = solve_day_2d_ac_par if par else solve_day_2d_ac
-            out = engine(
+            out = solve_day_2d_ac(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days)

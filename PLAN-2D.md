@@ -21,7 +21,7 @@ en [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md).
 | 8b | API producción: **vigueta y bovedilla (techos)**, N cavidades, vigueta en L | ✅ |
 | 9 | **Aire acondicionado (AC)** en muros y techos 2D (`solveAC`, espejo del 1D) | ✅ |
 | — | **Inspector a escala** de la asignación de materiales | ✅ |
-| — | Motor serial/**paralelo** (`config2d.parallel`, default serial) · multi-hueco | ✅ |
+| — | Motor **serial** · multi-hueco (`prange` medido a 200×150 → ~break-even, **removido**) | ✅ |
 | — | Rename API español→inglés: `Bovedilla`/`AIRE`/`RELLENA` → `Fill`/`AIR`/`SOLID` | ✅ |
 | — | Extras: `dt` en API · barrido por procesos · `tipo 4` · unidades índices | ⏳ |
 | — | `README.md` integra la API 2D (System2D, HollowBlock, Slab, config2d, AC) | ✅ |
@@ -38,9 +38,10 @@ Lo que falta. El diseño base, los esquemas y la referencia de `System2D` están
 
 ### ⏳ Extras opcionales
 
-Refinamientos; ninguno bloquea. (El **motor paralelo `prange`**, la **vigueta en L** a altura
-L3+L4+L5+L6, el **AC 2D** (`solveAC`), el **rename `Bovedilla→Fill`/`bovedilla→fill_type`** y la
-integración del **`README.md`** ya están hechos — ver [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md).)
+Refinamientos; ninguno bloquea. (La **vigueta en L** a altura L3+L4+L5+L6, el **AC 2D**
+(`solveAC`), el **rename `Bovedilla→Fill`/`bovedilla→fill_type`** y la integración del
+**`README.md`** ya están hechos. El **`prange`** se midió y se **removió** por no aportar —
+ver [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md).)
 
 **1. `dt` efectivo en la API** — exponer un paso de tiempo 2D propio. **Bajo valor (medido):** el
 estudio de `dt` (ver `PLAN-2D-hecho.md`) mostró que `dt` **no afecta el resultado** (1D y 2D) y
@@ -49,7 +50,7 @@ que subir `dt`>~10 **ni siquiera acelera** (crecen las iteraciones internas). Ca
 **2. Barrido por procesos** — helper (`solve_many`) o patrón `multiprocessing`/`joblib` para
 correr muchas configuraciones independientes en paralelo (cada `solve()` serial). **Es la palanca
 real (medido):** ~6× a 8 procesos, ~10× a 16, escala casi lineal (ver el mapa en
-`PLAN-2D-hecho.md`); muy superior al `prange` interno (~1.06×). ⚠️ No combinar con hilos de numba.
+`PLAN-2D-hecho.md`); muy superior al `prange` que se midió (~1.06×) y se removió.
 
 **3. Variante simétrica / media celda (`tipo 4`)** — optimización geométrica posterior (el resto
 del paquete usa celda completa).

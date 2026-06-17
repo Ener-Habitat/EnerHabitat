@@ -136,21 +136,6 @@ def test_inspector_geometry():
     assert len(ks) >= 3
 
 
-def test_parallel_matches_serial():
-    # El paralelo (prange) es opción; debe reproducir al serial (Jacobi por filas).
-    # Opt-in (EH_TEST_PARALLEL=1): compilar el kernel paralelo tarda minutos, así que
-    # no se corre en la suite por default. Malla mínima para que sea rápido.
-    if not os.environ.get("EH_TEST_PARALLEL"):
-        print("SKIP test_parallel_matches_serial (define EH_TEST_PARALLEL=1)")
-        return
-    r = _roof()
-    config2d.nx, config2d.ny, config2d.max_days = 24, 32, 3
-    config2d.parallel = True
-    tip = r.solve().to_numpy()
-    config2d.parallel = False
-    tis = r.solve().to_numpy()
-    dmax = float(np.abs(tip - tis).max())
-    assert dmax <= 1e-6, f"paralelo vs serial max|Δ|={dmax:.2e}"
 
 
 def test_l_shape_cap_height():
@@ -218,8 +203,7 @@ def _demo():
 if __name__ == "__main__":
     for fn in (test_methodology_returns_series, test_periodicity, test_energy_balance,
                test_air_vs_insulating_fill, test_orientation_guard,
-               test_inspector_geometry, test_l_shape_cap_height,
-               test_parallel_matches_serial):
+               test_inspector_geometry, test_l_shape_cap_height):
         fn()
         print(f"PASS  {fn.__name__}")
     print()

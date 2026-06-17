@@ -166,6 +166,11 @@ nodo de aire del hueco `Thueco`, y casos `NT` 0, 9–12.
   rinde poco (~1.3×) por el TDMA secuencial en filas cortas; la palanca práctica mayor es
   **`dt=10`** (~1.6×, error despreciable). Combinadas ~2×. Ganancias mayores exigirían cambio
   algorítmico (line-Gauss-Seidel real para reducir iteraciones internas) o GPU (no portable).
+- **Actualización (estudio posterior, ver "Estudio de `dt` y paralelismo"):** re-medido a
+  200×150 el `prange` resultó ~break-even vs serial real (≤1.06×, peor con muchos hilos) y `dt`
+  no afecta el resultado. Por eso la **variante `prange` y su prueba `test_eh2d_perf.py` se
+  removieron** del paquete; el motor es solo serial y para volumen se recomienda paralelizar a
+  nivel de procesos (~6–10×).
 
 ---
 
@@ -284,7 +289,9 @@ en `/tmp` (no versionados). **Serial real de referencia = 542.6 s/día.**
 - **`prange` (hilos, TDMA por filas): no vale la pena.** vs serial real (542.6 s/día):
   4 hilos 514 s = **1.06×** (mejor caso); 18 hilos 640 s = **0.85× (más lento)**; bit-exacto
   (Δ=0). El "1 hilo paralelo" (1890 s) está inflado ~3.5× porque el kernel `_*_par` asigna `P,Q`
-  por fila dentro del `prange` (el serial reúsa buffers). → dejar **default serial**.
+  por fila dentro del `prange` (el serial reúsa buffers). → **se removió** todo el `prange`
+  (kernels `_*_par`, flag `config2d.parallel`, ruteo y prueba opt-in) para dejar el código limpio;
+  el motor es solo serial.
 - **Procesos (grano grueso): la palanca real.** K solves serial independientes a la vez (18 núcleos):
 
   | K | t/proc | slowdown/proc | throughput | speedup agregado (=K/slowdown) |
@@ -962,7 +969,6 @@ tests/test_eh2d_step.py         # Fase 3
 tests/test_eh2d_fullday.py      # Fase 4
 tests/test_eh2d_package.py      # Fase 5 (reducción al 1D)
 tests/test_eh2d_hueca.py        # Fase 6 (cámara de aire vs C)
-tests/test_eh2d_perf.py         # Fase 7 (benchmark/paralelización)
 tests/test_eh2d_hollowblock.py  # Fase 8a (muro bloque hueco end-to-end)
 tests/test_eh2d_inspect.py      # Inspector a escala (section/preview/section_report)
 tests/test_eh2d_slab.py         # Fase 8b (techo vigueta y bovedilla, N cavidades)

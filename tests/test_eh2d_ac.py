@@ -42,7 +42,6 @@ def _setup():
     config.file = MATERIALS
     config2d.nx, config2d.ny = 24, 60
     config2d.max_days = 30
-    config2d.parallel = False
     loc = eh.Location(EPW)
     loc.meanDay(month=5, year=2025)
     return loc

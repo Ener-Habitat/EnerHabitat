@@ -236,14 +236,6 @@ class Config2D:
         self.tol_inner = 1e-10
         self.tol_day = 5e-4
         self.max_days = 60
-        # Engine: serial by default. The parallel one (numba prange over rows) is an
-        # OPTION (parallel=True): it spreads the rows across the auto-detected cores,
-        # but the line-by-line sweep is fine-grained (thousands of prange regions with
-        # a barrier) -> it only pays off ~1.3x on fine meshes (>=~150^2) and is SLOWER
-        # on small meshes due to thread overhead (see Phase 7). For real volume
-        # (sweeping many configurations) prefer parallelizing at the process level,
-        # each solve serial. Verified: parallel reproduces serial bit-for-bit.
-        self.parallel = False
         self.version = 0
 
     def info(self):
@@ -253,12 +245,10 @@ class Config2D:
         print(f"tol_inner:   \t{self.tol_inner}")
         print(f"tol_day:     \t{self.tol_day}")
         print(f"max_days:    \t{self.max_days}")
-        print(f"parallel:    \t{self.parallel}")
 
     def to_dict(self):
         return {"nx": self.nx, "ny": self.ny, "tol_inner": self.tol_inner,
-                "tol_day": self.tol_day, "max_days": self.max_days,
-                "parallel": self.parallel}
+                "tol_day": self.tol_day, "max_days": self.max_days}
 
 
 # Global 2D configuration instance

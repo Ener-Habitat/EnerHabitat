@@ -527,20 +527,18 @@ inspector falls back to a to-scale ASCII drawing.
 | `tol_inner` | `1e-10` | inner (line-by-line) loop tolerance |
 | `tol_day`   | `5e-4`  | day-to-day convergence tolerance |
 | `max_days`  | `60`    | cap on the day-to-day iterations |
-| `parallel`  | `False` | use the multi-core engine (numba `prange` over mesh rows) |
 
 ```python
 from enerhabitat import config2d
 
 config2d.nx, config2d.ny = 120, 160
-config2d.parallel = True       # opt-in multi-core engine
 ```
 
-> The parallel engine reproduces the serial one bit-for-bit and auto-detects the
-> available cores, but the line-by-line sweep is fine-grained, so it only pays
-> off (~1.3×) on fine meshes and can be slower on small ones — hence the serial
-> default. For parameter sweeps, prefer running many independent `solve()` calls
-> in separate processes (each serial).
+> Each solve is single-threaded. For volume (many configurations), parallelise at
+> the **process level** — run many independent `solve()` calls in separate
+> processes (e.g. `multiprocessing`/`joblib`), each serial. This scales near-linearly
+> (≈6× at 8 processes on an 18-core machine); a per-solve thread parallelism was
+> measured and dropped as not worthwhile.
 
 ## Config (global)
 
