@@ -363,7 +363,7 @@ class System():
             self.azimuth = surface_azimuth
         """
         
-        mean_date = self.location.flag()["date"]  # Asegura que el DataFrame del día medio esté actualizado
+        mean_date = self.location.flag()["date"]  # ensure the mean-day DataFrame is up to date
         
         if  self.__flag["tsa_date"] != mean_date:
             self.__flag["tsa_date"] = mean_date
@@ -377,7 +377,7 @@ class System():
                        )
         
         if recalculate:
-            self.__tsa_dataframe = self.__calc_tsa()  # el método que calcula Tsa
+            self.__tsa_dataframe = self.__calc_tsa()  # the method that computes Tsa
             self.__updated = False
         
         self.__flag['recalculate'] = recalculate

@@ -110,25 +110,25 @@ class Config:
     
     @property
     def file(self):
-        try:    
-            # Verificar si el archivo existe
+        try:
+            # Check whether the file exists
             if not os.path.isfile(self.__materials_file):
                 raise FileNotFoundError()
             return self.__materials_file
         except FileNotFoundError:
             print(f"Error: {self.__materials_file} not found")
-            
+
     @file.setter
     def file(self, new_file):
-        try:    
-            # Verificar si el archivo existe
+        try:
+            # Check whether the file exists
             if not os.path.isfile(new_file):
                 raise FileNotFoundError()
 
-            # Actualizar la configuración global si se proporcionó una nueva ruta
+            # Update the global configuration with the new path
             self.__materials_file = new_file
-            
-            # Leer el .ini y obtener los nuevos materiales
+
+            # Read the .ini and load the new materials
             new_materials_dict = {}
             materials_data = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
             materials_data.read(self.file)
