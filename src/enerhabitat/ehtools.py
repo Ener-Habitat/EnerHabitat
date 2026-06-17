@@ -12,17 +12,17 @@ from dateutil.parser import parse
 
 def add_temperature_model(df, Tmin, Tmax, Ho, Hi):
     """
-    Calcula la temperatura ambiente y agrega una columna 'Ta' al DataFrame.
+    Compute the ambient temperature and add a 'Ta' column to the DataFrame.
 
     Args:
-        df (pd.DataFrame): DataFrame con la columna 'index' que representa los tiempos.
-        Tmin (float): Temperatura mínima.
-        Tmax (float): Temperatura máxima.
-        Ho (float): Hora de amanecer (en horas).
-        Hi (float): Hora de máxima temperatura (en horas).
+        df (pd.DataFrame): DataFrame whose 'index' represents the times.
+        Tmin (float): Minimum temperature.
+        Tmax (float): Maximum temperature.
+        Ho (float): Sunrise hour (in hours).
+        Hi (float): Hour of maximum temperature (in hours).
 
     Returns:
-        pd.DataFrame: DataFrame con una nueva columna Ta que contiene la temperatura ambiente.
+        pd.DataFrame: DataFrame with a new Ta column holding the ambient temperature.
     """
     Ho_sec = Ho * 3600
     Hi_sec = Hi * 3600
@@ -91,13 +91,13 @@ def calculate_DtaTn(Delta):
     elif Delta >= 52:
         tmp2 = 7.0 / 2
     else:
-        tmp2 = 0  # Opcional, para cubrir cualquier caso no contemplado, aunque el rango anterior es exhaustivo
+        tmp2 = 0  # Optional, to cover any unhandled case, although the ranges above are exhaustive
 
     return tmp2
 
 def get_sunrise_sunset_times(df):
     """
-    Función para calcular Ho y Hi
+    Function to compute Ho and Hi.
     """
     sunrise_time = df[df['elevation'] >= 0].index[0]
     sunset_time = df[df['elevation'] >= 0].index[-1]
@@ -113,23 +113,23 @@ def get_sunrise_sunset_times(df):
 =============================
 """
 
-def set_construction(propiedades, tuplas):
+def set_construction(materials, layers):
     """
-    Actualiza el diccionario cs con  las propiedades del material y los valores de L proporcionados en las tuplas.
-    
-    Argss:
-        propiedades (dict): Diccionario con las propiedades de los materiales.
-        tuplas (list): Lista de tuplas, donde cada tupla contiene el material y el valor de L.
-    
+    Update the cs dictionary with the material properties and the L values given in the tuples.
+
+    Args:
+        materials (dict): Dictionary with the material properties.
+        layers (list): List of tuples, where each tuple holds the material and its L value.
+
     Returns:
-        dict: Diccionario actualizado cs.
+        dict: Updated cs dictionary.
     """
-    cs ={}
-    for i, (material, L) in enumerate(tuplas, start=1):
-        capa = f"L{i}"
-        cs[capa] = {
+    cs = {}
+    for i, (material, L) in enumerate(layers, start=1):
+        layer = f"L{i}"
+        cs[layer] = {
             "L": L,
-            "material": propiedades[material]
+            "material": materials[material]
         }
     return cs
 
@@ -139,17 +139,17 @@ def get_total_L(cs):
 
 def set_k_rhoc(cs, nx):
     """
-    Calcula los arreglos de conductividad y el producto de calor específico y densidad
-    para cada volumen de control, y también calcula el tamaño de cada volumen de control (dx).
-    
+    Compute the conductivity and (specific-heat × density) arrays for each control
+    volume, and also compute the size of each control volume (dx).
+
     Args:
-        cs (dict): Diccionario con la configuración del sistema constructivo.
-        nx (int): Número de elementos de discretización.
-    
+        cs (dict): Dictionary with the constructive-system configuration.
+        nx (int): Number of discretisation elements.
+
     Returns:
-        tuple : [ k_array, rhoc_array, dx ] donde k_array es el arreglo de conductividad,
-        rhoc_array es el arreglo del producto de calor específico y densidad,
-        y dx es el tamaño de cada volumen de control.
+        tuple : [ k_array, rhoc_array, dx ] where k_array is the conductivity array,
+        rhoc_array is the (specific-heat × density) array, and dx is the size of
+        each control volume.
     """
     L_total = get_total_L(cs)
     dx = L_total / nx
@@ -157,7 +157,7 @@ def set_k_rhoc(cs, nx):
     k_array = np.zeros(nx)
     rhoc_array = np.zeros(nx)
 
-    # Inicializar la posición actual en el arreglo
+    # Initialise the current position in the array
     i = 0
 
     for L in cs.keys():
@@ -174,7 +174,7 @@ def set_k_rhoc(cs, nx):
             rhoc_array[i] = rhoc_value
             i += 1
 
-        # Considerar promedio armónico solo con el primer vecino
+        # Use the harmonic mean only with the first neighbour
         if i < nx and i > 0:
             k_array[i] = 2 * (k_array[i-1] * k_value) / (k_array[i-1] + k_value)
             rhoc_array[i] = rhoc_value
@@ -187,19 +187,19 @@ def prepare_static_coefficients(k_array, rhoc_array, dx, dt, ho, hi):
     Precompute mass and conductive coefficients that remain constant throughout the simulation.
 
     Args:
-        k_array (numpy.ndarray): Conductividad térmica por nodo.
-        rhoc_array (numpy.ndarray): Producto densidad * calor específico por nodo.
-        dx (float): Tamaño del volumen de control.
-        dt (float): Paso de tiempo.
-        ho (float): Coeficiente convectivo exterior.
-        hi (float): Coeficiente convectivo interior.
+        k_array (numpy.ndarray): Thermal conductivity per node.
+        rhoc_array (numpy.ndarray): Density × specific-heat product per node.
+        dx (float): Control-volume size.
+        dt (float): Time step.
+        ho (float): Outdoor convective coefficient.
+        hi (float): Indoor convective coefficient.
 
     Returns:
-        tuple: (mass_coeff, a_static, b_static, c_static) donde:
-            - mass_coeff (numpy.ndarray): Coeficientes de capacidad térmica por nodo.
-            - a_static (numpy.ndarray): Diagonal principal del sistema tridiagonal.
-            - b_static (numpy.ndarray): Diagonal superior del sistema tridiagonal.
-            - c_static (numpy.ndarray): Diagonal inferior del sistema tridiagonal.
+        tuple: (mass_coeff, a_static, b_static, c_static) where:
+            - mass_coeff (numpy.ndarray): Thermal-capacitance coefficients per node.
+            - a_static (numpy.ndarray): Main diagonal of the tridiagonal system.
+            - b_static (numpy.ndarray): Upper diagonal of the tridiagonal system.
+            - c_static (numpy.ndarray): Lower diagonal of the tridiagonal system.
     """
     nx = k_array.shape[0]
     mass_coeff = rhoc_array * (dx / dt)
@@ -249,16 +249,16 @@ def prepare_static_coefficients(k_array, rhoc_array, dx, dt, ho, hi):
 @njit(cache=True)
 def calculate_coefficients(mass_coeff, T, To, ho, Ti, hi, d):
     """
-    Actualiza in-place el vector de términos independientes del sistema tridiagonal.
+    Update in-place the right-hand-side vector of the tridiagonal system.
 
     Parameters:
-        mass_coeff (numpy.ndarray): Coeficientes de capacidad térmica precomputados por nodo.
-        T (numpy.ndarray): Temperaturas actuales del dominio.
-        To (float): Temperatura en el exterior.
-        ho (float): Coeficiente convectivo exterior.
-        Ti (float): Temperatura en el interior.
-        hi (float): Coeficiente convectivo interior.
-        d (numpy.ndarray): Arreglo destino para la fuente térmica.
+        mass_coeff (numpy.ndarray): Precomputed thermal-capacitance coefficients per node.
+        T (numpy.ndarray): Current domain temperatures.
+        To (float): Outdoor temperature.
+        ho (float): Outdoor convective coefficient.
+        Ti (float): Indoor temperature.
+        hi (float): Indoor convective coefficient.
+        d (numpy.ndarray): Destination array for the thermal source term.
     """
     nx = mass_coeff.shape[0]
 
@@ -280,26 +280,26 @@ def calculate_coefficients(mass_coeff, T, To, ho, Ti, hi, d):
 @njit(cache=True)
 def solve_PQ(a, b, c, d, T, nx, Tint, capacitance_factor, P, Q, Tn):
     """
-    Resuelve el sistema de ecuaciones usando el método TDMA y actualiza las temperaturas para el siguiente paso temporal.
+    Solve the equation system with the TDMA method and update the temperatures for the next time step.
 
     Args:
-        a (numpy.ndarray): Arreglo de coeficientes a.
-        b (numpy.ndarray): Arreglo de coeficientes b.
-        c (numpy.ndarray): Arreglo de coeficientes c.
-        d (numpy.ndarray): Arreglo de coeficientes d.
-        T (numpy.ndarray): Arreglo de temperaturas.
-        nx (int): Número de elementos de discretización.
-        Tint (float): Temperatura interna.
-        capacitance_factor (float): Factor lumped-capacitance precomputado para el recinto.
-        P (numpy.ndarray): Arreglo auxiliar para la fase de forward sweep.
-        Q (numpy.ndarray): Arreglo auxiliar para la fase de forward sweep.
-        Tn (numpy.ndarray): Arreglo auxiliar para el back substitution.
+        a (numpy.ndarray): Array of a coefficients.
+        b (numpy.ndarray): Array of b coefficients.
+        c (numpy.ndarray): Array of c coefficients.
+        d (numpy.ndarray): Array of d coefficients.
+        T (numpy.ndarray): Temperature array.
+        nx (int): Number of discretisation elements.
+        Tint (float): Indoor temperature.
+        capacitance_factor (float): Precomputed lumped-capacitance factor for the indoor space.
+        P (numpy.ndarray): Auxiliary array for the forward-sweep phase.
+        Q (numpy.ndarray): Auxiliary array for the forward-sweep phase.
+        Tn (numpy.ndarray): Auxiliary array for the back substitution.
 
     Returns:
-        tuple: (T, Tint) con las temperaturas de muro actualizadas y la temperatura interior.
+        tuple: (T, Tint) with the updated wall temperatures and the indoor temperature.
     """
 
-    # Inicializar P y Q
+    # Initialise P and Q
     inv_a0 = 1.0 / a[0]
     P[0] = b[0] * inv_a0
     Q[0] = d[0] * inv_a0
@@ -324,28 +324,28 @@ def solve_PQ(a, b, c, d, T, nx, Tint, capacitance_factor, P, Q, Tn):
 @njit(cache=True)
 def solve_PQ_AC(a, b, c, d, T, nx, Tint, P, Q, Tn):
     """
-    Resuelve el sistema tridiagonal con TDMA para el modo con aire acondicionado,
-    donde la temperatura interior Tint se mantiene constante (setpoint) en lugar
-    de evolucionar con el modelo lumped-capacitance.
+    Solve the tridiagonal system with TDMA for the air-conditioned mode, where the
+    indoor temperature Tint is held constant (setpoint) instead of evolving with the
+    lumped-capacitance model.
 
     Args:
-        a (numpy.ndarray): Diagonal principal del sistema tridiagonal.
-        b (numpy.ndarray): Diagonal superior del sistema tridiagonal.
-        c (numpy.ndarray): Diagonal inferior del sistema tridiagonal.
-        d (numpy.ndarray): Vector de términos independientes (fuente térmica).
-        T (numpy.ndarray): Arreglo de temperaturas, actualizado in-place.
-        nx (int): Número de elementos de discretización.
-        Tint (float): Temperatura interior (setpoint), devuelta sin cambios.
-        P (numpy.ndarray): Arreglo auxiliar para el forward sweep.
-        Q (numpy.ndarray): Arreglo auxiliar para el forward sweep.
-        Tn (numpy.ndarray): Arreglo auxiliar para el back substitution.
+        a (numpy.ndarray): Main diagonal of the tridiagonal system.
+        b (numpy.ndarray): Upper diagonal of the tridiagonal system.
+        c (numpy.ndarray): Lower diagonal of the tridiagonal system.
+        d (numpy.ndarray): Right-hand-side vector (thermal source term).
+        T (numpy.ndarray): Temperature array, updated in-place.
+        nx (int): Number of discretisation elements.
+        Tint (float): Indoor temperature (setpoint), returned unchanged.
+        P (numpy.ndarray): Auxiliary array for the forward sweep.
+        Q (numpy.ndarray): Auxiliary array for the forward sweep.
+        Tn (numpy.ndarray): Auxiliary array for the back substitution.
 
     Returns:
-        tuple: (T, Tint) con las temperaturas de muro actualizadas y la temperatura
-        interior (setpoint) sin cambios.
+        tuple: (T, Tint) with the updated wall temperatures and the indoor temperature
+        (setpoint) unchanged.
     """
 
-    # Inicializar P y Q
+    # Initialise P and Q
     inv_a0 = 1.0 / a[0]
     P[0] = b[0] * inv_a0
     Q[0] = d[0] * inv_a0

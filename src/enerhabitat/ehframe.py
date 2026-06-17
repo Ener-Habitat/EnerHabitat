@@ -301,7 +301,7 @@ class System():
         heating_energy (float): Total heating energy needed to mantain a constant Ti computed by solveAC()
         
     Methods:
-        Tsa(): Calculates the sun-air temperature per second for the average day experienced by a surface.
+        Tsa(): Calculates the sun-air temperature at the dt grid for the average day experienced by a surface.
         solve(energy): Solves the constructive system's inside temperature.
         solveAC(): Solves the constructive system's required cooling and heating energy to maintain the inside temperature.
         info(): Prints System information.
@@ -342,13 +342,16 @@ class System():
             # surface_azimuth:float=None
             ) -> pd.DataFrame: 
         """
-        Sun-air temperature per second for the average day experienced
-        by a surface based on a meanDay dataframe from System's Location
-        (Ta, Ig, Ib and Id).
+        Sun-air temperature for the average day experienced by a surface based
+        on a meanDay dataframe from System's Location (Ta, Ig, Ib and Id).
+
+        Sampled at the solver time step (config.dt), the same grid as solve(),
+        so Ti, Tsa, Is and Ig share identical timestamps and a plain concat
+        aligns without NaN.
 
         Returns:
             DataFrame: Predicted sun-air temperature ( Tsa ) and solar irradiance ( Is )
-            per second for the average day.
+            for the average day, at the dt grid.
         """
         
         """
@@ -360,7 +363,7 @@ class System():
             self.azimuth = surface_azimuth
         """
         
-        mean_date = self.location.flag()["date"]  # Asegura que el DataFrame del día medio esté actualizado
+        mean_date = self.location.flag()["date"]  # ensure the mean-day DataFrame is up to date
         
         if  self.__flag["tsa_date"] != mean_date:
             self.__flag["tsa_date"] = mean_date
@@ -374,7 +377,7 @@ class System():
                        )
         
         if recalculate:
-            self.__tsa_dataframe = self.__calc_tsa()  # el método que calcula Tsa
+            self.__tsa_dataframe = self.__calc_tsa()  # the method that computes Tsa
             self.__updated = False
         
         self.__flag['recalculate'] = recalculate
@@ -490,7 +493,7 @@ class System():
             material (str): Material name.
             width (float): Width of the material in meters.
         """
-        self.__capas.append((material, width))
+        self.__layers.append((material, width))
         self.__invalidate_cache()
         return self.layers
     
@@ -501,9 +504,9 @@ class System():
         Args:
             index (int): Positive index of the layer to remove.
         """
-        if index < 0 or index >= len(self.__capas):
+        if index < 0 or index >= len(self.__layers):
             raise IndexError("Layer index out of range.")
-        del self.__capas[index]
+        del self.__layers[index]
         self.__invalidate_cache()
         return self.layers
     
@@ -550,8 +553,14 @@ class System():
         # Add Tsa
         tsa_dataframe['Tsa'] = tsa_dataframe.Ta + tsa_dataframe.Is*absortance/outside_convection_heat_transfer - LWR
 
+        # Tsa and solve() share the same time grid: it is computed on the mean
+        # day per second (required by pvlib) and returned already subsampled to
+        # the solver time step dt, so that Ti, Tsa, Is and Ig live at the same
+        # instants and a concat aligns without NaN.
+        tsa_dataframe = tsa_dataframe.iloc[::config.dt]
+
         self.__tsa_solver_version = config.version
-        
+
         return tsa_dataframe
 
     def __calc_solve(self, AC=False) -> pd.DataFrame:
@@ -560,7 +569,7 @@ class System():
 
         Args:
             constructive_system (list): List of tuples from outside to inside with material and width.
-            Tsa_dataframe (DataFrame): Predicted sun-air temperature ( Tsa ) per second for the average day DataFrame.
+            Tsa_dataframe (DataFrame): Predicted sun-air temperature ( Tsa ) at the dt grid for the average day DataFrame.
 
         Returns:
             Ti (DataFrame): Interior temperature for the constructive system.
@@ -579,9 +588,9 @@ class System():
         SC_dataframe = self.Tsa().copy()
         constructive_system = self.layers
         
-        propiedades = config.materials
+        materials = config.materials
 
-        cs = set_construction(propiedades, constructive_system)
+        cs = set_construction(materials, constructive_system)
         k, rhoc, dx = set_k_rhoc(cs, Nx)
         mass_coeff, a_static, b_static, c_static = prepare_static_coefficients(k, rhoc, dx, dt, ho, hi)
 
@@ -594,7 +603,7 @@ class System():
         T = np.full(Nx, SC_dataframe.Tn.mean())
         SC_dataframe['Ti'] = SC_dataframe.Tn.mean()
 
-        SC_dataframe = SC_dataframe.iloc[::dt]
+        # Tsa() already comes at step dt (see __calc_tsa); no resampling here.
         Tsa_vals = SC_dataframe['Tsa'].to_numpy()
         Ti_vals = SC_dataframe['Ti'].to_numpy(copy=True)
         n_steps = Tsa_vals.shape[0]
@@ -629,15 +638,14 @@ class System():
             return SC_dataframe['Ti']
 
         else:
-            # Flotación libre: el aire interior es un nodo de capacitancia
-            # concentrada integrado EN EL TIEMPO. 'tint' es un escalar que se
-            # marcha paso a paso y persiste entre iteraciones (igual que el muro
-            # T, y que el solver original en C). En el permanente oscilatorio el
-            # ciclo cierra (Qin == Qout) y la energía transferida es cualquiera
-            # de las dos; se mide en la superficie interior [Nx-1] con hi y el
-            # aire del mismo instante (tinn, previo a la actualización),
-            # integrando en dt.
-            tint = float(Ti_vals[0])   # = Tn.mean(), inicializado una sola vez
+            # Free-running: the indoor air is a lumped-capacitance node
+            # integrated IN TIME. 'tint' is a scalar that advances step by step
+            # and persists between iterations (like the wall T, and like the
+            # original C solver). In the oscillatory steady state the cycle
+            # closes (Qin == Qout) and the transferred energy is either one; it
+            # is measured at the indoor surface [Nx-1] with hi and the air at
+            # the same instant (tinn, before the update), integrating over dt.
+            tint = float(Ti_vals[0])   # = Tn.mean(), initialized only once
             Qin = Qout = 0.0
             while C > 5e-4:
                 Told = T.copy()
@@ -657,7 +665,7 @@ class System():
             SC_dataframe['Ti'] = Ti_vals
 
             self.__last_solve = 'temp'
-            self.__energy_transfer = Qin   # permanente oscilatorio: Qin == Qout
+            self.__energy_transfer = Qin   # oscillatory steady state: Qin == Qout
             self.__cooling_energy = None
             self.__heating_energy = None
 
@@ -668,14 +676,14 @@ class System():
         
     @property
     def layers(self):
-        return self.__capas
+        return self.__layers
     @layers.setter
-    def layers(self, capas:list):
+    def layers(self, layers:list):
         """
         List of tuples from outside to inside with material and width.
         Example: [('Brick',0.1), ('Insulation',0.05), ('Adobe',0.02)]
         """
-        self.__capas = capas
+        self.__layers = layers
         self.__invalidate_cache()
     
     @property

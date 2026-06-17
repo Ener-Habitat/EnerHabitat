@@ -6,9 +6,14 @@
 
 **EnerHabitat** is a Python package for the thermal simulation of opaque
 constructive systems (walls and roofs) driven by EPW weather data. It solves
-the one-dimensional, time-dependent heat conduction equation across multi-layer
-systems and produces hourly indoor temperatures and air-conditioning energy
-demands for an *average day* of a chosen month.
+the time-dependent heat conduction equation across multi-layer systems and
+produces indoor temperatures and air-conditioning energy demands for an
+*average day* of a chosen month.
+
+Besides the **1-D** multi-layer path (`System`), EnerHabitat also models **2-D**
+cross-sections of units that are heterogeneous across their width — concrete
+hollow-block walls and joist-and-block (*vigueta y bovedilla*) roofs, with air
+cavities — through `System2D` (see [2D systems](#2d-systems-walls-and-roofs-with-cavities)).
 
 ## Contents
 - [Overview](#overview)
@@ -24,6 +29,11 @@ demands for an *average day* of a chosen month.
 - [API reference](#api-reference)
   - [Location](#location)
   - [System](#system)
+- [2D systems (walls and roofs with cavities)](#2d-systems-walls-and-roofs-with-cavities)
+  - [Hollow-block wall](#hollow-block-wall)
+  - [Joist-and-block roof](#joist-and-block-roof)
+  - [Inspecting the section](#inspecting-the-section)
+  - [2-D solver config (config2d)](#2-d-solver-config-config2d)
 - [Config (global)](#config-global)
 - [Materials](#materials)
 - [Dependencies](#dependencies)
@@ -209,8 +219,9 @@ data = wall.solve()
 
 # Attach Tsa to the result. Note that Tsa is a function of color, tilt,
 # orientation, month and location, so it must be recomputed whenever any of
-# those inputs change.
-data = pd.concat([data, wall.Tsa().asfreq("10min")], axis=1)
+# those inputs change. Tsa() and solve() share the same dt grid, so a plain
+# concat aligns without NaN.
+data = pd.concat([data, wall.Tsa()], axis=1)
 ```
 
 ### Two-layer system with air conditioning
@@ -230,7 +241,7 @@ wall.Tsa()
 
 # Air-conditioned solution: setpoint at the upper comfort bound
 data = wall.solveAC()
-data = pd.concat([data, wall.Tsa().asfreq("10min")], axis=1)
+data = pd.concat([data, wall.Tsa()], axis=1)
 
 # Cooling and heating energy demands, in J/(m²·day) over one average day
 print(wall.cooling_energy, wall.heating_energy)
@@ -347,8 +358,187 @@ h_energy = wall.heating_energy
 
 > Note: `Tsa` depends on `absortance` (color), `tilt`, `azimuth` (orientation),
 > `meanDay` (month) and `Location`. It must be recomputed whenever any of
-> these inputs change. Attach it to a result DataFrame with
-> `data = pd.concat([data, wall.Tsa().asfreq("10min")], axis=1)`.
+> these inputs change. `Tsa()` and `solve()` share the same `dt` time grid, so
+> attach it to a result DataFrame with a plain
+> `data = pd.concat([data, wall.Tsa()], axis=1)` (no resampling, no NaN).
+
+## 2D systems (walls and roofs with cavities)
+
+Real masonry units are **not** homogeneous across their width: a concrete
+hollow block has air cavities and webs, and a joist-and-block (*vigueta y
+bovedilla*) roof alternates concrete ribs, filler blocks and air cavities.
+EnerHabitat models these as a **2-D cross-section** (width × thickness) and
+solves the same transient conduction problem in two dimensions, adding the
+cavity physics: radiation between the four cavity walls plus Nusselt convection
+through a lumped cavity-air node (wall correlation for `tilt = 90`, Rayleigh
+roof correlation for `tilt = 0`).
+
+`System2D` is used **exactly like `System`** — same `Location`, `tilt`,
+`azimuth`, `absortance`, `Tsa()`, `solve()`, `solveAC()` and result attributes
+(`energy_transfer`, `cooling_energy`, `heating_energy`). The only difference is
+that its `layers` list contains, besides the usual homogeneous
+`(material, thickness)` tuples, **exactly one** 2-D element that captures the
+in-width heterogeneity:
+
+- **`HollowBlock`** — concrete hollow block, for **walls** (`tilt = 90`).
+- **`Slab`** — joist-and-block, for **roofs** (`tilt = 0`).
+
+Method dispatch is by type: `wall.solve()` / `wall.solveAC()` run the 2-D solver
+because `wall` is a `System2D` (there is no separate `solve2D` name). The
+element's thickness is derived from its geometry, so it is not repeated as a
+layer thickness, and `System2D` validates orientation (`HollowBlock` requires
+`tilt = 90`, `Slab` requires `tilt = 0`).
+
+### Hollow-block wall
+
+Cross-section of the repeating cell (`x` = width, `y` = thickness, outside on
+top). A single material with one air cavity; the left/right sides are adiabatic
+(symmetry), so the full inner web is `a12 = 2·web`. Thickness =
+`cover_top + cavity + cover_bottom`.
+
+![Hollow-block wall cross-section](https://raw.githubusercontent.com/Ener-Habitat/EnerHabitat/main/docs/img/hollow_block.png)
+
+```python
+import enerhabitat as eh
+import pandas as pd
+
+eh.config.file = "./materials.ini"
+epw_file = "epw/example.epw"
+
+# 1) Define the 2-D element (a concrete block with one air cavity)
+block = eh.HollowBlock(
+    material   = "Concreto",          # single material of the block
+    emissivity = 0.9,                 # cavity-wall emissivity (radiation)
+    geometry   = {                    # cell measures, in metres
+        "web":          0.02,         # half web (rib) thickness
+        "block_width":  0.16,         # cavity width
+        "cover_top":    0.02,         # outer shell
+        "cavity":       0.08,         # cavity height
+        "cover_bottom": 0.02,         # inner shell
+    },
+)
+
+# 2) Insert it into the layer stack (outside → inside)
+wall = eh.System2D(eh.Location(epw_file))
+wall.tilt = 90                        # walls only (required for HollowBlock)
+wall.azimuth = 90
+wall.absortance = 0.6
+wall.layers = [("Mortero", 0.02), block, ("Yeso", 0.01)]
+
+wall.location.meanDay(month=5, year=2025)
+wall.Tsa()
+
+ti = wall.solve()                     # free-running
+data = pd.concat([ti, wall.Tsa()], axis=1)
+print(wall.energy_transfer)           # Qin, J/(m²·day)
+```
+
+The cavity can also be **filled** with a solid material (e.g. an insulating
+core) instead of air — pass `fill_type=eh.Fill.SOLID` and the
+`fill_material`:
+
+```python
+block = eh.HollowBlock(
+    material      = "Concreto",
+    fill_type     = eh.Fill.SOLID,    # solid fill instead of air
+    fill_material = "EPS",            # insulating core
+    geometry      = {"web": 0.02, "block_width": 0.16,
+                     "cover_top": 0.02, "cavity": 0.08, "cover_bottom": 0.02},
+)
+```
+
+(Filling with the *same* material as the shell makes the block solid, i.e.
+equivalent to a homogeneous 1-D layer.)
+
+### Joist-and-block roof
+
+The roof slab has **three solids** (compression topping, an L-shaped concrete
+rib, and the filler block) plus **N equal cavities** that can be air
+(`Fill.AIR`) or a solid fill (`Fill.SOLID`). The L-shaped rib (web +
+foot) sits at each cell edge; its web rises through everything except the top
+`topping_cap` of the topping. Cross-section of the repeating cell (`x` = width,
+`y` = thickness, outside on top; 3 cavities shown):
+
+![Joist-and-block roof cross-section](https://raw.githubusercontent.com/Ener-Habitat/EnerHabitat/main/docs/img/slab.png)
+
+- `width = 2·(web + foot) + (n+1)·shoulder + n·cavity_width`
+- `thickness = topping + cover_top + cavity + cover_bottom`
+
+```python
+import enerhabitat as eh
+
+slab = eh.Slab(
+    rib_material     = "Concreto",       # joist/rib (L-shaped: web + foot)
+    block_material   = "Bovedilla",      # filler block around the cavities
+    topping_material = "Concreto",       # compression topping
+    fill_type        = eh.Fill.AIR,      # or eh.Fill.SOLID (solid fill)
+    fill_material    = None,             # required if SOLID
+    emissivity       = 0.9,              # required if AIR
+    geometry = {
+        "web":          0.025,   # rib web (d1)
+        "foot":         0.025,   # rib foot (d2)
+        "shoulder":     0.050,   # block between rib and cavities (d3)
+        "n_cavities":   3,
+        "cavity_width": 0.103,   # cavity width (d4)
+        "topping":       0.100,   # compression topping (L2+L3)
+        "topping_cap":   0.050,   # topping cap above the rib web (L2)
+        "cover_top":    0.030,   # block above the cavity (L4)
+        "cavity":       0.040,   # cavity height (L5)
+        "cover_bottom": 0.030,   # block below the cavity (L6)
+    },
+)
+
+roof = eh.System2D(eh.Location("epw/example.epw"))
+roof.tilt = 0                            # roofs only (required for Slab)
+roof.absortance = 0.3
+roof.layers = [("Impermeabilizante", 0.003), slab, ("Yeso", 0.015)]
+roof.location.meanDay(month=5, year=2025)
+roof.Tsa()
+
+ti = roof.solve()                        # free-running
+roof.solveAC()                           # or air-conditioned
+print(roof.cooling_energy, roof.heating_energy)
+```
+
+### Inspecting the section
+
+Before solving you can inspect, **to scale**, how materials and node types are
+laid out on the 2-D mesh:
+
+```python
+wall.section_report()              # table: node types + materials (k, ρc, y-range)
+wall.preview()                     # to-scale panels (node type, k, ρc)
+wall.preview(field="materials", backend="ascii")   # terminal fallback
+sec = wall.section()               # NT / k / rhoc arrays + mesh
+```
+
+matplotlib is an optional extra (`pip install enerhabitat[viz]`); without it the
+inspector falls back to a to-scale ASCII drawing.
+
+### 2-D solver config (config2d)
+
+`config2d` holds the 2-D-only parameters (mesh and convergence); the physics
+(`La`, `ho`, `hi`, `dt`, air properties) is reused from `config`.
+
+| Attribute   | Default | Description |
+| ----------- | ------- | ----------- |
+| `nx`        | `80`    | mesh nodes across the cell width (sides are adiabatic) |
+| `ny`        | `160`   | mesh nodes through the thickness (outside → inside) |
+| `tol_inner` | `1e-10` | inner (line-by-line) loop tolerance |
+| `tol_day`   | `5e-4`  | day-to-day convergence tolerance |
+| `max_days`  | `60`    | cap on the day-to-day iterations |
+
+```python
+from enerhabitat import config2d
+
+config2d.nx, config2d.ny = 120, 160
+```
+
+> Each solve is single-threaded. For volume (many configurations), parallelise at
+> the **process level** — run many independent `solve()` calls in separate
+> processes (e.g. `multiprocessing`/`joblib`), each serial. This scales near-linearly
+> (≈6× at 8 processes on an 18-core machine); a per-solve thread parallelism was
+> measured and dropped as not worthwhile.
 
 ## Config (global)
 
@@ -424,18 +614,53 @@ current working directory; otherwise set `eh.config.file` to the path you want
 to use.
 
 Material properties are declared in an `.ini` file, with the material name as
-the section header and `k`, `rho` and `c` as keys:
+the section header and `k`, `rho` and `c` as keys. Inline comments (`#` or `;`)
+are allowed.
+
+The example below defines **every material used in this README**, so you can run
+all the snippets as-is. The values are typical/illustrative — replace them with
+your own data:
 
 ```ini
-[concrete]
-k   = 1.35   # Thermal conductivity, W/m·K
-rho = 1800   # Density, kg/m³
-c   = 1000   # Specific heat, J/kg·K
+[Adobe]
+k   = 0.58    # Thermal conductivity, W/m·K
+rho = 1500    # Density, kg/m³
+c   = 1480    # Specific heat, J/kg·K
 
-[adobe]
-k   = 0.58
-rho = 1500
-c   = 1480
+[Mortero]     ; cement mortar / render
+k   = 0.70
+rho = 1800
+c   = 1000
+
+[Ladrillo]    ; fired-clay brick
+k   = 0.85
+rho = 1600
+c   = 840
+
+[Acero]       ; steel
+k   = 45.0
+rho = 7850
+c   = 460
+
+[Concreto]    ; structural concrete (ribs, topping, hollow block)
+k   = 1.80
+rho = 2200
+c   = 880
+
+[Bovedilla]   ; lightweight filler block
+k   = 0.50
+rho = 1200
+c   = 900
+
+[Yeso]        ; gypsum plaster
+k   = 0.37
+rho = 900
+c   = 1000
+
+[Impermeabilizante]   ; asphaltic waterproofing membrane
+k   = 0.17
+rho = 1100
+c   = 1000
 ```
 
 Point `config.file` to a different file when you need to switch material sets:

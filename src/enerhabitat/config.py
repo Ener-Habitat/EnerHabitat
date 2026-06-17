@@ -110,25 +110,25 @@ class Config:
     
     @property
     def file(self):
-        try:    
-            # Verificar si el archivo existe
+        try:
+            # Check whether the file exists
             if not os.path.isfile(self.__materials_file):
                 raise FileNotFoundError()
             return self.__materials_file
         except FileNotFoundError:
             print(f"Error: {self.__materials_file} not found")
-            
+
     @file.setter
     def file(self, new_file):
-        try:    
-            # Verificar si el archivo existe
+        try:
+            # Check whether the file exists
             if not os.path.isfile(new_file):
                 raise FileNotFoundError()
 
-            # Actualizar la configuración global si se proporcionó una nueva ruta
+            # Update the global configuration with the new path
             self.__materials_file = new_file
-            
-            # Leer el .ini y obtener los nuevos materiales
+
+            # Read the .ini and load the new materials
             new_materials_dict = {}
             materials_data = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
             materials_data.read(self.file)
@@ -188,10 +188,10 @@ class Config:
         return self.__dt
     @dt.setter
     def dt(self, value):
-        # dt es fijo en 10 s y NO es configurable: el nodo de aire interior se
-        # integra con un paso explícito cuya estabilidad exige
-        # Fo = hi*dt/(rho_air*c_air*La) < 1. A 10 s, Fo ≈ 0.03. Se ignora la
-        # asignación para evitar resultados no físicos.
+        # dt is fixed at 10 s and is NOT configurable: the indoor-air node is
+        # integrated with an explicit step whose stability requires
+        # Fo = hi*dt/(rho_air*c_air*La) < 1. At 10 s, Fo ≈ 0.03. The assignment
+        # is ignored to avoid non-physical results.
         pass
         
     @property
@@ -212,3 +212,44 @@ class Config:
     
 # Global configuration instance
 config = Config()
+
+
+class Config2D:
+    """
+    Extra parameters for the 2D solver (joist and filler block). Does not touch
+    the 1D side: the rest of the configuration (La, ho, hi, dt, air) is reused
+    from ``config``.
+
+    Attributes:
+        nx (int): nodes across the cell width (x direction, adiabatic sides).
+        ny (int): nodes through the thickness (y direction, outside→inside).
+        tol_inner (float): inner-loop tolerance (line-by-line Gauss-Seidel).
+        tol_day (float): day-to-day convergence tolerance.
+        max_days (int): cap on the convergence iterations.
+    """
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.nx = 80
+        self.ny = 160
+        self.tol_inner = 1e-10
+        self.tol_day = 5e-4
+        self.max_days = 60
+        self.version = 0
+
+    def info(self):
+        print("<enerhabitat.Config2D -- 2D solver parameters>")
+        print(f"nx (width):   \t{self.nx}")
+        print(f"ny (thickness):\t{self.ny}")
+        print(f"tol_inner:   \t{self.tol_inner}")
+        print(f"tol_day:     \t{self.tol_day}")
+        print(f"max_days:    \t{self.max_days}")
+
+    def to_dict(self):
+        return {"nx": self.nx, "ny": self.ny, "tol_inner": self.tol_inner,
+                "tol_day": self.tol_day, "max_days": self.max_days}
+
+
+# Global 2D configuration instance
+config2d = Config2D()
