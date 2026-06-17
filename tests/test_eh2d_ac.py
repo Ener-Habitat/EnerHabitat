@@ -65,7 +65,7 @@ def _wall_hueco():
 def _roof(key, bovedilla, fill_material=None):
     if key not in _CACHE:
         loc = _setup()
-        slab = eh.Slab("Concreto", bovedilla=bovedilla, block_material="Bovedilla",
+        slab = eh.Slab("Concreto", fill_type=bovedilla, block_material="Bovedilla",
                        topping_material="Concreto", fill_material=fill_material,
                        emissivity=0.9, geometry=GEOM_ROOF)
         r = eh.System2D(loc, tilt=0, azimuth=0, absortance=0.3)
@@ -102,7 +102,7 @@ def test_reduces_to_1d():
     geom = {"web": 0.02, "foot": 0.02, "shoulder": 0.05, "n_cavities": 2,
             "cavity_width": 0.10, "topping": 0.10, "topping_cap": 0.0,
             "cover_top": 0.03, "cavity": 0.04, "cover_bottom": 0.03}   # suma 0.20
-    slab = eh.Slab(mat, bovedilla=eh.Bovedilla.RELLENA, block_material=mat,
+    slab = eh.Slab(mat, fill_type=eh.Fill.SOLID, block_material=mat,
                    topping_material=mat, fill_material=mat, geometry=geom)
     r2 = eh.System2D(loc, tilt=0, azimuth=0, absortance=0.3, layers=[slab])
     r2.solveAC()
@@ -121,8 +121,8 @@ def test_reduces_to_1d():
 
 
 def test_air_vs_insulating_fill():
-    ra = _roof("roof_aire", eh.Bovedilla.AIRE)
-    rf = _roof("roof_eps", eh.Bovedilla.RELLENA, fill_material="EPS")
+    ra = _roof("roof_aire", eh.Fill.AIR)
+    rf = _roof("roof_eps", eh.Fill.SOLID, fill_material="EPS")
     # La cámara de aire transfiere más que el relleno aislante → mayor carga de enfriamiento.
     assert ra.cooling_energy > rf.cooling_energy, \
         f"Qcool aire={ra.cooling_energy:.1f} debe superar relleno EPS={rf.cooling_energy:.1f}"
@@ -130,8 +130,8 @@ def test_air_vs_insulating_fill():
 
 def _demo():
     w = _wall_hueco()
-    ra = _roof("roof_aire", eh.Bovedilla.AIRE)
-    rf = _roof("roof_eps", eh.Bovedilla.RELLENA, fill_material="EPS")
+    ra = _roof("roof_aire", eh.Fill.AIR)
+    rf = _roof("roof_eps", eh.Fill.SOLID, fill_material="EPS")
     bar = "═" * 70
     print(bar)
     print("  FASE 9 · Aire acondicionado en sistemas 2D (System2D.solveAC)")

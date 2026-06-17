@@ -2,8 +2,8 @@
 Fase 8b — Vigueta y bovedilla en techos (API `System2D` + `Slab`).
 
 Losa de techo (`tilt=0`) con tres materiales sólidos (topping, vigueta en L,
-bovedilla) y N cavidades iguales — de aire (`Bovedilla.AIRE`, Nusselt de techo
-Rayleigh + radiación por hueco) o de relleno (`Bovedilla.RELLENA`). Se verifica
+bovedilla) y N cavidades iguales — de aire (`Fill.AIR`, Nusselt de techo
+Rayleigh + radiación por hueco) o de relleno (`Fill.SOLID`). Se verifica
 con la MISMA metodología que el 1D / 8a (config.file → Location → meanDay → Tsa →
 solve), NO contra el C bit-a-bit:
 
@@ -52,9 +52,9 @@ def _setup():
     return loc
 
 
-def _roof(bovedilla=eh.Bovedilla.AIRE, fill_material=None):
+def _roof(fill_type=eh.Fill.AIR, fill_material=None):
     loc = _setup()
-    slab = eh.Slab("Concreto", bovedilla=bovedilla, block_material="Bovedilla",
+    slab = eh.Slab("Concreto", fill_type=fill_type, block_material="Bovedilla",
                    topping_material="Concreto", fill_material=fill_material,
                    emissivity=0.9, geometry=GEOM)
     roof = eh.System2D(location=loc)
@@ -105,7 +105,7 @@ def test_energy_balance():
 
 def test_air_vs_insulating_fill():
     ra, _ = _solved("aire")
-    rf, _ = _solved("eps", bovedilla=eh.Bovedilla.RELLENA, fill_material="EPS")
+    rf, _ = _solved("eps", fill_type=eh.Fill.SOLID, fill_material="EPS")
     da, dfll = _decrement(ra), _decrement(rf)
     assert da > dfll, f"decremento aire={da:.3f} debe superar relleno EPS={dfll:.3f}"
 
@@ -178,7 +178,7 @@ def test_l_shape_cap_height():
 
 def _demo():
     ra, _ = _solved("aire")
-    rf, _ = _solved("eps", bovedilla=eh.Bovedilla.RELLENA, fill_material="EPS")
+    rf, _ = _solved("eps", fill_type=eh.Fill.SOLID, fill_material="EPS")
     bar = "═" * 70
     print(bar)
     print("  FASE 8b · Techo de vigueta y bovedilla (System2D + Slab)")

@@ -1,5 +1,5 @@
 """
-Fase 6 — Bovedilla con cámara de aire (`tipo 1`).
+Fase 6 — Fill con cámara de aire (`tipo 1`).
 
 Valida el port de la física de cavidad (paredes NT 9-12, aire NT 0, radiación entre
 paredes con factores de vista, Nusselt ``hh``, nodo de aire ``Thueco``):
@@ -18,7 +18,7 @@ import os
 
 import numpy as np
 
-from enerhabitat.eh2d import Section2D, Bovedilla
+from enerhabitat.eh2d import Section2D, Fill
 from enerhabitat.ehtools2d import solve_step_hueca, solve_day_hueca, _view_factors
 
 from test_eh2d_geometry import read_inp, read_field, read_meta
@@ -41,7 +41,7 @@ def _section():
     e = {x: g(x) for x in ("e21", "e22", "e23")}
     sec = Section2D(nx=int(params["nx"]), ny=int(params["ny"]), L=L, k=k, rhoc=rhoc,
                     kr=g("kr"), rhocr=g("rhocr"), a=a, e=e, layer=int(params["layer"]),
-                    bovedilla=Bovedilla.AIRE).build()
+                    fill_type=Fill.AIR).build()
     return sec, params
 
 

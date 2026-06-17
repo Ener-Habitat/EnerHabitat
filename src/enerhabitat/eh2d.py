@@ -5,7 +5,7 @@
 
 Faithful port of the geometry/topology of the C solver `legacy_eh/2dTfree/`
 (see ``PLAN-2D.md``). This phase builds, for a **solid filler block**
-(``Bovedilla.RELLENA``, C ``tipo 2``):
+(``Fill.SOLID``, C ``tipo 2``):
 
     NT[i][j]        node-type mesh (1-8 boundaries/corners, 13 interior)
     k[i][j]         conductivity per node
@@ -38,18 +38,18 @@ from .ehtools2d import (solve_day_2d, solve_day_2d_par, solve_day_hueca_prod,
                         solve_day_slab_ac, solve_day_slab_ac_par, _view_factors)
 
 
-class Bovedilla(Enum):
+class Fill(Enum):
     """State of the filler block (what the C numeric ``tipo`` controls)."""
-    RELLENA = "rellena"            # tipo 2: solid block (fill kr, rhocr)
-    AIRE = "aire"                  # tipo 1: air cavity (radiation + Nusselt)  [Phase 6]
-    RELLENA_SIMETRICA = "rellena_sim"  # tipo 4: symmetric half cell, solid    [later]
+    SOLID = "solid"            # tipo 2: solid block (fill kr, rhocr)
+    AIR = "air"                  # tipo 1: air cavity (radiation + Nusselt)  [Phase 6]
+    SOLID_SYMMETRIC = "solid_sym"  # tipo 4: symmetric half cell, solid    [later]
 
 
 # Mapping to the C `tipo` integers, to read .inp files and legacy golden masters.
 TIPO_C = {
-    Bovedilla.AIRE: 1,
-    Bovedilla.RELLENA: 2,
-    Bovedilla.RELLENA_SIMETRICA: 4,
+    Fill.AIR: 1,
+    Fill.SOLID: 2,
+    Fill.SOLID_SYMMETRIC: 4,
 }
 
 
@@ -288,7 +288,7 @@ def compute_mesh_slab(nx, ny, L, layer, web, foot, shoulder, n_cav, cavity_width
 def draw_slab_multi(nx, ny, cav_i1, cav_i2, cj1, cj2, hollow):
     """
     ``NT`` mesh of the N-cavity roof slab. ``hollow=True`` → each cavity is air
-    (0) surrounded by walls 9/10/11/12; ``hollow=False`` (RELLENA) → the cavity
+    (0) surrounded by walls 9/10/11/12; ``hollow=False`` (SOLID) → the cavity
     stays an interior node (13, fill material). Returns ``(NT, cav_of)`` with
     ``cav_of[i,j]`` = cavity index of the air/wall nodes (−1 elsewhere).
     """
@@ -311,7 +311,7 @@ def draw_slab_multi(nx, ny, cav_i1, cav_i2, cj1, cj2, hollow):
             cav_of[i1 - 1, cj1:cj2] = c
             cav_of[i2, cj1:cj2] = c
             cav_of[i1:i2, cj1:cj2] = c
-    # RELLENA: the cavity region stays 13 (the material is filled in set_krhoc).
+    # SOLID: the cavity region stays 13 (the material is filled in set_krhoc).
     return NT, cav_of
 
 
@@ -421,7 +421,7 @@ class Section2D:
 
     Layers L1..L7 (outside to inside) with ``k``/``rhoc`` per layer; filler-block
     fill with ``kr``/``rhocr``; horizontal geometry ``a*`` and filler-block
-    thicknesses ``e2*``. For now only ``Bovedilla.RELLENA`` (``tipo 2``).
+    thicknesses ``e2*``. For now only ``Fill.SOLID`` (``tipo 2``).
     """
     nx: int
     ny: int
@@ -433,7 +433,7 @@ class Section2D:
     a: dict           # a11,a12,a13,a14,a21,a22,a23
     e: dict           # e21,e22,e23
     layer: int = 1
-    bovedilla: Bovedilla = Bovedilla.RELLENA
+    fill_type: Fill = Fill.SOLID
 
     mesh: Mesh2D = field(init=False, default=None)
     NT: np.ndarray = field(init=False, default=None)
@@ -443,18 +443,18 @@ class Section2D:
     def build(self):
         """Builds ``mesh``, ``NT``, ``kfield``, ``rhocfield`` and returns self."""
         m = compute_mesh(self.nx, self.ny, self.L, self.layer, self.a, self.e)
-        if self.bovedilla is Bovedilla.RELLENA:
+        if self.fill_type is Fill.SOLID:
             NT = draw_rellena(m.nx, m.ny, m.i1, m.j1, m.i2, m.j2)
             kf, rf = set_krhoc_rellena(m.nx, m.ny, m.dx, m.dy,
                                        self.L, self.k, self.rhoc,
                                        self.kr, self.rhocr, NT)
-        elif self.bovedilla is Bovedilla.AIRE:
+        elif self.fill_type is Fill.AIR:
             NT = draw_hueca(m.nx, m.ny, m.i1, m.j1, m.i2, m.j2)
             kf, rf = set_krhoc_hueca(m.nx, m.ny, m.dx, m.dy,
                                      self.L, self.k, self.rhoc)
         else:
             raise NotImplementedError(
-                f"{self.bovedilla} (symmetric tipo 4) not ported yet.")
+                f"{self.fill_type} (symmetric tipo 4) not ported yet.")
         self.mesh, self.NT, self.kfield, self.rhocfield = m, NT, kf, rf
         return self
 
@@ -562,15 +562,15 @@ def _geom_pick(g, friendly, raw, default=None):
 class HollowBlock:
     """
     Concrete hollow block for **walls** (`tilt=90`). A shell of one material with
-    one cell that is either an **air cavity** (``Bovedilla.AIRE``: wall Nusselt
+    one cell that is either an **air cavity** (``Fill.AIR``: wall Nusselt
     convection + radiation between the cavity walls) or **filled** with a solid
-    material (``Bovedilla.RELLENA``: e.g. an insulating core), ``fill_material``.
+    material (``Fill.SOLID``: e.g. an insulating core), ``fill_material``.
 
     Args:
         material (str): shell/block material (e.g. "Concreto"), from ``config``.
-        bovedilla (Bovedilla): ``AIRE`` (air cavity) or ``RELLENA`` (solid fill).
-        fill_material (str|None): cavity fill material; required if ``RELLENA``.
-        emissivity (float): emissivity of the cavity walls (radiation, ``AIRE``).
+        fill_type (Fill): ``AIR`` (air cavity) or ``SOLID`` (solid fill).
+        fill_material (str|None): cavity fill material; required if ``SOLID``.
+        emissivity (float): emissivity of the cavity walls (radiation, ``AIR``).
         geometry (dict): cell measures; friendly keys
             ``web``(=a11), ``block_width``(=a21), ``cover_top``(=e21),
             ``cavity``(=e22), ``cover_bottom``(=e23); the raw ``a11..e23`` are
@@ -579,15 +579,15 @@ class HollowBlock:
 
     required_tilt = 90
 
-    def __init__(self, material, bovedilla=Bovedilla.AIRE, fill_material=None,
+    def __init__(self, material, fill_type=Fill.AIR, fill_material=None,
                  emissivity=0.9, geometry=None):
         self.material = material
-        self.bovedilla = bovedilla
+        self.fill_type = fill_type
         self.fill_material = fill_material
         self.emissivity = emissivity
         self.geometry = dict(geometry or {})
-        if bovedilla is Bovedilla.RELLENA and not fill_material:
-            raise ValueError("HollowBlock RELLENA requires fill_material.")
+        if fill_type is Fill.SOLID and not fill_material:
+            raise ValueError("HollowBlock SOLID requires fill_material.")
 
     @property
     def material_main(self):
@@ -612,7 +612,7 @@ class HollowBlock:
         return e["e21"] + e["e22"] + e["e23"]
 
     def signature(self):
-        return ("HollowBlock", self.material, self.bovedilla.value,
+        return ("HollowBlock", self.material, self.fill_type.value,
                 self.fill_material, self.emissivity,
                 tuple(sorted(self.geometry.items())))
 
@@ -622,18 +622,18 @@ class Slab:
     Joist and filler block for **roofs** (`tilt=0`). Three solid materials —
     ``rib_material`` (joist, **L**-shaped), ``block_material`` (filler block, which
     surrounds the cavities) and ``topping_material`` (compression layer) — plus N
-    equal cavities of air (``Bovedilla.AIRE``) or fill (``Bovedilla.RELLENA``). The
+    equal cavities of air (``Fill.AIR``) or fill (``Fill.SOLID``). The
     cavity is horizontal → roof Nusselt (Rayleigh). L1/finishes are NOT part of the
     element: they go as homogeneous layers in ``System2D.layers``.
 
     Args:
         rib_material (str): joist material (web + foot).
-        bovedilla (Bovedilla): ``AIRE`` (cavity) or ``RELLENA`` (solid).
+        fill_type (Fill): ``AIR`` (cavity) or ``SOLID`` (solid).
         block_material (str): filler-block material (surrounds the cavity);
             defaults to the same as ``rib_material``.
         topping_material (str): topping material; defaults to ``rib_material``.
-        fill_material (str|None): cavity fill material if ``RELLENA``.
-        emissivity (float): emissivity of the cavity walls (radiation) if AIRE.
+        fill_material (str|None): cavity fill material if ``SOLID``.
+        emissivity (float): emissivity of the cavity walls (radiation) if AIR.
         geometry (dict): friendly keys ``web``(=d1), ``foot``(=d2),
             ``shoulder``(=d3), ``n_cavities``, ``cavity_width``(=d4), ``topping``
             (=L2+L3, total topping thickness), ``topping_cap`` (=L2, the full-width
@@ -646,18 +646,18 @@ class Slab:
 
     required_tilt = 0
 
-    def __init__(self, rib_material, bovedilla=Bovedilla.AIRE, block_material=None,
+    def __init__(self, rib_material, fill_type=Fill.AIR, block_material=None,
                  topping_material=None, fill_material=None, emissivity=0.9,
                  geometry=None):
         self.rib_material = rib_material
         self.block_material = block_material or rib_material
         self.topping_material = topping_material or rib_material
-        self.bovedilla = bovedilla
+        self.fill_type = fill_type
         self.fill_material = fill_material
         self.emissivity = emissivity
         self.geometry = dict(geometry or {})
-        if bovedilla is Bovedilla.RELLENA and not fill_material:
-            raise ValueError("Slab RELLENA requires fill_material.")
+        if fill_type is Fill.SOLID and not fill_material:
+            raise ValueError("Slab SOLID requires fill_material.")
 
     @property
     def material_main(self):
@@ -684,7 +684,7 @@ class Slab:
 
     def signature(self):
         return ("Slab", self.rib_material, self.block_material, self.topping_material,
-                self.bovedilla.value, self.fill_material, self.emissivity,
+                self.fill_type.value, self.fill_material, self.emissivity,
                 tuple(sorted(self.geometry.items())))
 
 
@@ -792,7 +792,7 @@ class System2D:
             k_block, rc_block = kr(elem.block_material)
             k_col, rc_col = kr(elem.topping_material)
             k_fill = rc_fill = 0.0
-            hollow = elem.bovedilla is Bovedilla.AIRE
+            hollow = elem.fill_type is Fill.AIR
             if not hollow:
                 k_fill, rc_fill = kr(elem.fill_material)
             sec = SlabSection(
@@ -805,12 +805,12 @@ class System2D:
 
         a, e = elem._ae()
         kr = rcr = 0.0
-        if elem.bovedilla is Bovedilla.RELLENA:
+        if elem.fill_type is Fill.SOLID:
             fm = mats[elem.fill_material]
             kr, rcr = fm.k, fm.rho * fm.c
         sec = Section2D(nx=config2d.nx, ny=config2d.ny, L=L, k=k, rhoc=rhoc,
                         kr=kr, rhocr=rcr, a=a, e=e, layer=idx + 1,
-                        bovedilla=elem.bovedilla).build()
+                        fill_type=elem.fill_type).build()
         return sec, elem
 
     # --- solution ---
@@ -845,7 +845,7 @@ class System2D:
 
         par = config2d.parallel   # parallel engine if enabled (numba prange over rows)
 
-        if isinstance(elem, Slab) and elem.bovedilla is Bovedilla.AIRE:
+        if isinstance(elem, Slab) and elem.fill_type is Fill.AIR:
             g = elem._geom()
             vf = _view_factors(g["cavity_width"], g["cavity"])
             slab_engine = solve_day_slab_prod_par if par else solve_day_slab_prod
@@ -856,7 +856,7 @@ class System2D:
                 g["cavity_width"], g["cavity"], elem.emissivity, float(self.tilt), *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days)
             Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout = out
-        elif elem.bovedilla is Bovedilla.AIRE:   # HollowBlock (wall)
+        elif elem.fill_type is Fill.AIR:   # HollowBlock (wall)
             a, e = elem._ae()
             a21, e22 = a["a21"], e["e22"]
             vf = _view_factors(a21, e22)
@@ -867,7 +867,7 @@ class System2D:
                 m.i1, m.j1, m.i2, m.j2, a21, e22, elem.emissivity, *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days)
             Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout = out
-        else:  # RELLENA (HollowBlock or Slab): pure conduction
+        else:  # SOLID (HollowBlock or Slab): pure conduction
             rellena_engine = solve_day_2d_par if par else solve_day_2d
             out = rellena_engine(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
@@ -895,7 +895,7 @@ class System2D:
         returns ``Ti`` as a **constant** ``pandas.Series`` (= setpoint). Stores
         ``cooling_energy`` (Qcool) and ``heating_energy`` (Qheat); ``energy_transfer``
         is left ``None``. Mirror of the 1D ``System.solveAC``; cache separate from
-        ``solve()``. The cavity air (AIRE) keeps floating: the AC only controls the
+        ``solve()``. The cavity air (AIR) keeps floating: the AC only controls the
         indoor air.
         """
         self._validate()
@@ -915,7 +915,7 @@ class System2D:
         rhoair, cair = config.AIR_DENSITY, config.AIR_HEAT_CAPACITY
         par = config2d.parallel
 
-        if isinstance(elem, Slab) and elem.bovedilla is Bovedilla.AIRE:
+        if isinstance(elem, Slab) and elem.fill_type is Fill.AIR:
             g = elem._geom()
             vf = _view_factors(g["cavity_width"], g["cavity"])
             engine = solve_day_slab_ac_par if par else solve_day_slab_ac
@@ -926,7 +926,7 @@ class System2D:
                 g["cavity_width"], g["cavity"], elem.emissivity, float(self.tilt), *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days)
             Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat = out
-        elif elem.bovedilla is Bovedilla.AIRE:   # HollowBlock (wall)
+        elif elem.fill_type is Fill.AIR:   # HollowBlock (wall)
             a, e = elem._ae()
             a21, e22 = a["a21"], e["e22"]
             vf = _view_factors(a21, e22)
@@ -937,7 +937,7 @@ class System2D:
                 m.i1, m.j1, m.i2, m.j2, a21, e22, elem.emissivity, *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days)
             Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat = out
-        else:  # RELLENA (HollowBlock or Slab): pure conduction
+        else:  # SOLID (HollowBlock or Slab): pure conduction
             engine = solve_day_2d_ac_par if par else solve_day_2d_ac
             out = engine(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
@@ -986,7 +986,7 @@ class System2D:
         for i, l in enumerate(self.layers):
             if isinstance(l, _ELEMENT_TYPES):
                 print(f"\t{i+1}: {type(l).__name__}({l.material_main}, "
-                      f"{l.bovedilla.value}, {l.thickness:.3f} m)")
+                      f"{l.fill_type.value}, {l.thickness:.3f} m)")
             else:
                 print(f"\t{i+1}: {l[0]}, {l[1]} m")
 

@@ -1513,7 +1513,7 @@ def solve_day_slab_prod_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
 @njit(cache=True)
 def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                     rhoair, cair, T0, Tset, tol_inner=1e-10, tol_day=5e-4, max_days=60):
-    """AC for pure conduction (RELLENA). Returns
+    """AC for pure conduction (SOLID). Returns
     (Ti_series(=Tset), Tso, Tsi, T_field, days, Qcool, Qheat)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]

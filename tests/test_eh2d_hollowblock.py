@@ -65,7 +65,7 @@ def _solved():
 
 def _wall_filled(fill="EPS"):
     loc = _setup()
-    block = eh.HollowBlock("Concreto", bovedilla=eh.Bovedilla.RELLENA,
+    block = eh.HollowBlock("Concreto", fill_type=eh.Fill.SOLID,
                            fill_material=fill, geometry=GEOM)
     wall = eh.System2D(location=loc, tilt=90, azimuth=90, absortance=0.6)
     wall.layers = [("Mortero", 0.02), block, ("Yeso", 0.01)]
@@ -133,7 +133,7 @@ def test_filled_reduces_to_1d():
     # en x) → debe coincidir con la simulación 1D del muro equivalente.
     loc = _setup()
     eh.config.Nx = 60                      # igualar la discretización 1D a config2d.ny (=60)
-    block = eh.HollowBlock("Concreto", bovedilla=eh.Bovedilla.RELLENA,
+    block = eh.HollowBlock("Concreto", fill_type=eh.Fill.SOLID,
                            fill_material="Concreto", geometry=GEOM)
     w2 = eh.System2D(loc, tilt=90, azimuth=90, absortance=0.6,
                      layers=[("Mortero", 0.02), block, ("Yeso", 0.01)])
@@ -157,7 +157,7 @@ def test_filled_methodology():
 
 def test_filled_requires_fill_material():
     try:
-        eh.HollowBlock("Concreto", bovedilla=eh.Bovedilla.RELLENA, geometry=GEOM)
+        eh.HollowBlock("Concreto", fill_type=eh.Fill.SOLID, geometry=GEOM)
     except ValueError:
         pass
     else:

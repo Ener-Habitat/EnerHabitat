@@ -21,7 +21,7 @@ import time
 import numpy as np
 import numba
 
-from enerhabitat.eh2d import Section2D, Bovedilla
+from enerhabitat.eh2d import Section2D, Fill
 from enerhabitat.ehtools2d import solve_day_2d, solve_day_2d_par
 
 RHOAIR = 1.1797660470258469
@@ -35,7 +35,7 @@ def _geom(nx, ny):
     sec = Section2D(nx=nx, ny=ny, L=[0.12, 0, 0, 0, 0, 0, 0],
                     k=[1.35, 0, 0, 0, 0, 0, 0], rhoc=[1.8e6, 0, 0, 0, 0, 0, 0],
                     kr=0.026, rhocr=64000, a=A, e=E, layer=1,
-                    bovedilla=Bovedilla.RELLENA).build()
+                    fill_type=Fill.SOLID).build()
     return sec
 
 

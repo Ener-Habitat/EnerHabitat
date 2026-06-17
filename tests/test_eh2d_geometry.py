@@ -16,7 +16,7 @@ import os
 
 import numpy as np
 
-from enerhabitat.eh2d import Section2D, Bovedilla, TIPO_C
+from enerhabitat.eh2d import Section2D, Fill, TIPO_C
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GOLDEN = os.path.join(HERE, "golden", "2d")
@@ -69,7 +69,7 @@ def section_from_inp(params):
         nx=int(params["nx"]), ny=int(params["ny"]),
         L=L, k=k, rhoc=rhoc, kr=g("kr"), rhocr=g("rhocr"),
         a=a, e=e, layer=int(params["layer"]),
-        bovedilla=Bovedilla.RELLENA,
+        fill_type=Fill.SOLID,
     )
     return sec.build()
 
@@ -78,7 +78,7 @@ def section_from_inp(params):
 
 def _build():
     params = read_inp(INP)
-    assert int(params["tipo"]) == TIPO_C[Bovedilla.RELLENA], \
+    assert int(params["tipo"]) == TIPO_C[Fill.SOLID], \
         "el .inp golden debe ser tipo 2 (bovedilla rellena)"
     sec = section_from_inp(params)
     meta = read_meta(os.path.join(GOLDEN, "dump_meta.dat"))
@@ -161,7 +161,7 @@ def _demo():
     small = Section2D(nx=40, ny=40, L=[0.12, 0, 0, 0, 0, 0, 0],
                       k=[1.35, 0, 0, 0, 0, 0, 0], rhoc=[1.8e6, 0, 0, 0, 0, 0, 0],
                       kr=0.026, rhocr=64000, a=a, e=e, layer=1,
-                      bovedilla=Bovedilla.RELLENA).build()
+                      fill_type=Fill.SOLID).build()
 
     print(f"\n{bar}\n  Esquema de tipos de nodo NT (malla {small.nx}×{small.ny}, "
           f"exterior arriba)")

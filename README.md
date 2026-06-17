@@ -434,14 +434,14 @@ print(wall.energy_transfer)           # Qin, J/(m²·day)
 ```
 
 The cavity can also be **filled** with a solid material (e.g. an insulating
-core) instead of air — pass `bovedilla=eh.Bovedilla.RELLENA` and the
+core) instead of air — pass `fill_type=eh.Fill.SOLID` and the
 `fill_material`:
 
 ```python
 block = eh.HollowBlock(
     material      = "Concreto",
-    bovedilla     = eh.Bovedilla.RELLENA,   # solid fill instead of air
-    fill_material = "EPS",                  # insulating core
+    fill_type     = eh.Fill.SOLID,    # solid fill instead of air
+    fill_material = "EPS",            # insulating core
     geometry      = {"web": 0.02, "block_width": 0.16,
                      "cover_top": 0.02, "cavity": 0.08, "cover_bottom": 0.02},
 )
@@ -454,7 +454,7 @@ equivalent to a homogeneous 1-D layer.)
 
 The roof slab has **three solids** (compression topping, an L-shaped concrete
 rib, and the filler block) plus **N equal cavities** that can be air
-(`Bovedilla.AIRE`) or a solid fill (`Bovedilla.RELLENA`). The L-shaped rib (web +
+(`Fill.AIR`) or a solid fill (`Fill.SOLID`). The L-shaped rib (web +
 foot) sits at each cell edge; its web rises through everything except the top
 `topping_cap` of the topping. Cross-section of the repeating cell (`x` = width,
 `y` = thickness, outside on top; 3 cavities shown):
@@ -468,12 +468,12 @@ foot) sits at each cell edge; its web rises through everything except the top
 import enerhabitat as eh
 
 slab = eh.Slab(
-    rib_material    = "Concreto",        # joist/rib (L-shaped: web + foot)
-    block_material  = "Bovedilla",       # filler block around the cavities
-    topping_material = "Concreto",        # compression topping
-    bovedilla       = eh.Bovedilla.AIRE, # or eh.Bovedilla.RELLENA (solid fill)
-    fill_material   = None,              # required if RELLENA
-    emissivity      = 0.9,               # required if AIRE
+    rib_material     = "Concreto",       # joist/rib (L-shaped: web + foot)
+    block_material   = "Bovedilla",      # filler block around the cavities
+    topping_material = "Concreto",       # compression topping
+    fill_type        = eh.Fill.AIR,      # or eh.Fill.SOLID (solid fill)
+    fill_material    = None,             # required if SOLID
+    emissivity       = 0.9,              # required if AIR
     geometry = {
         "web":          0.025,   # rib web (d1)
         "foot":         0.025,   # rib foot (d2)
