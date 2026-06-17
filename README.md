@@ -433,6 +433,23 @@ data = pd.concat([ti, wall.Tsa()], axis=1)
 print(wall.energy_transfer)           # Qin, J/(m²·day)
 ```
 
+The cavity can also be **filled** with a solid material (e.g. an insulating
+core) instead of air — pass `bovedilla=eh.Bovedilla.RELLENA` and the
+`fill_material`:
+
+```python
+block = eh.HollowBlock(
+    material      = "Concreto",
+    bovedilla     = eh.Bovedilla.RELLENA,   # solid fill instead of air
+    fill_material = "EPS",                  # insulating core
+    geometry      = {"web": 0.02, "block_width": 0.16,
+                     "cover_top": 0.02, "cavity": 0.08, "cover_bottom": 0.02},
+)
+```
+
+(Filling with the *same* material as the shell makes the block solid, i.e.
+equivalent to a homogeneous 1-D layer.)
+
 ### Joist-and-block roof
 
 The roof slab has **three solids** (compression topping, an L-shaped concrete

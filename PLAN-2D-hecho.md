@@ -173,17 +173,22 @@ nodo de aire del hueco `Thueco`, y casos `NT` 0, 9–12.
 
 - `ehtools2d.solve_day_hueca_prod`: versión de **producción** del día con cámara de aire
   (aire interior con un solo `dt`, superficies `/(nx-1)`, + `Qin/Qout`); no toca la fiel.
-- `eh2d.HollowBlock(material, emissivity, geometry)`: elemento 2D de muro (bovedilla `AIRE`,
-  `required_tilt=90`, geometría amistosa `web/block_width/cover_*` + alias `a*/e*`). Exportado.
+- `eh2d.HollowBlock(material, bovedilla, fill_material, emissivity, geometry)`: elemento 2D de
+  muro, `required_tilt=90`, geometría amistosa `web/block_width/cover_*` + alias `a*/e*`. La
+  cavidad puede ser de **aire** (`Bovedilla.AIRE`, default) o **rellena** de un sólido
+  (`Bovedilla.RELLENA` + `fill_material`, p. ej. núcleo aislante; reúsa `solve_day_2d`). Exportado.
 - `eh2d.System2D` **reescrita** (patrón de `System`): `Tsa()` por composición de un `System`
   1D, `_build_section()` mapea `layers`(+elemento) → `Section2D`, `solve()` enruta por tipo
   (AIRE→`solve_day_hueca_prod`), devuelve `pandas.Series` `Ti` alineada a `Tsa()`, guarda
   `energy_transfer/Qout/days/solve_dataframe`. Validación elemento↔`tilt`. Se borró el
   `_build_fields` simplificado.
 - Fixture `tests/materials_2d.ini` (Concreto, Mortero, Yeso, EPS).
-- **Prueba** `tests/test_eh2d_hollowblock.py` (5/5 pasan, malla chica): metodología (flujo
-  idéntico al 1D), periodicidad (4 días), balance de energía (`Qin=Qout`, 0.00 %), guardas de
-  orientación (`tilt≠90` falla) y de "un elemento". Demo: factor de decremento 0.47.
+- **Prueba** `tests/test_eh2d_hollowblock.py` (8/8 pasan, malla chica): metodología (flujo
+  idéntico al 1D), periodicidad, balance de energía (`Qin=Qout`, 0.00 %), guardas de
+  orientación (`tilt≠90` falla) y de "un elemento"; y para la **cavidad rellena**:
+  `test_filled_reduces_to_1d` (relleno del MISMO material = macizo → coincide con la simulación
+  1D del muro equivalente, `Nx=ny=60`, `atol 0.1 °C`), metodología con relleno EPS y guarda de
+  `fill_material`. Demo: factor de decremento 0.47.
 
 ## Inspector a escala de la asignación de materiales: entregado
 
