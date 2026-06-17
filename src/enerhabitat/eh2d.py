@@ -561,26 +561,33 @@ def _geom_pick(g, friendly, raw, default=None):
 
 class HollowBlock:
     """
-    Concrete hollow block for **walls** (`tilt=90`). A single material with one
-    air cavity (wall Nusselt convection + radiation between walls). It is an
-    ``AIRE`` filler block whose frame material is ``material`` itself.
+    Concrete hollow block for **walls** (`tilt=90`). A shell of one material with
+    one cell that is either an **air cavity** (``Bovedilla.AIRE``: wall Nusselt
+    convection + radiation between the cavity walls) or **filled** with a solid
+    material (``Bovedilla.RELLENA``: e.g. an insulating core), ``fill_material``.
 
     Args:
-        material (str): block material (e.g. "Concreto"), from ``config``.
-        emissivity (float): emissivity of the cavity walls (radiation).
+        material (str): shell/block material (e.g. "Concreto"), from ``config``.
+        bovedilla (Bovedilla): ``AIRE`` (air cavity) or ``RELLENA`` (solid fill).
+        fill_material (str|None): cavity fill material; required if ``RELLENA``.
+        emissivity (float): emissivity of the cavity walls (radiation, ``AIRE``).
         geometry (dict): cell measures; friendly keys
             ``web``(=a11), ``block_width``(=a21), ``cover_top``(=e21),
             ``cavity``(=e22), ``cover_bottom``(=e23); the raw ``a11..e23`` are
             accepted too. By symmetry ``a12 = 2·web`` unless ``a12`` is given.
     """
 
-    bovedilla = Bovedilla.AIRE
     required_tilt = 90
 
-    def __init__(self, material, emissivity=0.9, geometry=None):
+    def __init__(self, material, bovedilla=Bovedilla.AIRE, fill_material=None,
+                 emissivity=0.9, geometry=None):
         self.material = material
+        self.bovedilla = bovedilla
+        self.fill_material = fill_material
         self.emissivity = emissivity
         self.geometry = dict(geometry or {})
+        if bovedilla is Bovedilla.RELLENA and not fill_material:
+            raise ValueError("HollowBlock RELLENA requires fill_material.")
 
     @property
     def material_main(self):
@@ -605,7 +612,8 @@ class HollowBlock:
         return e["e21"] + e["e22"] + e["e23"]
 
     def signature(self):
-        return ("HollowBlock", self.material, self.emissivity,
+        return ("HollowBlock", self.material, self.bovedilla.value,
+                self.fill_material, self.emissivity,
                 tuple(sorted(self.geometry.items())))
 
 

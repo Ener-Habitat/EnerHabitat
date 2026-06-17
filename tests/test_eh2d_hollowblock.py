@@ -63,6 +63,23 @@ def _solved():
     return _CACHE["w"]
 
 
+def _wall_filled(fill="EPS"):
+    loc = _setup()
+    block = eh.HollowBlock("Concreto", bovedilla=eh.Bovedilla.RELLENA,
+                           fill_material=fill, geometry=GEOM)
+    wall = eh.System2D(location=loc, tilt=90, azimuth=90, absortance=0.6)
+    wall.layers = [("Mortero", 0.02), block, ("Yeso", 0.01)]
+    return wall
+
+
+def _solved_filled():
+    if "wf" not in _CACHE:
+        w = _wall_filled()
+        ti = w.solve()
+        _CACHE["wf"] = (w, ti)
+    return _CACHE["wf"]
+
+
 # --- pruebas -------------------------------------------------------------------
 
 def test_methodology_returns_series():
@@ -111,6 +128,42 @@ def test_requires_one_element():
         raise AssertionError("se esperaba ValueError por falta de elemento 2D")
 
 
+def test_filled_reduces_to_1d():
+    # Bloque hueco RELLENO del MISMO material que la cáscara → macizo (homogéneo
+    # en x) → debe coincidir con la simulación 1D del muro equivalente.
+    loc = _setup()
+    eh.config.Nx = 60                      # igualar la discretización 1D a config2d.ny (=60)
+    block = eh.HollowBlock("Concreto", bovedilla=eh.Bovedilla.RELLENA,
+                           fill_material="Concreto", geometry=GEOM)
+    w2 = eh.System2D(loc, tilt=90, azimuth=90, absortance=0.6,
+                     layers=[("Mortero", 0.02), block, ("Yeso", 0.01)])
+    Ti2 = w2.solve().to_numpy()
+    s1 = eh.System(loc, tilt=90, azimuth=90, absortance=0.6,
+                   layers=[("Mortero", 0.02), ("Concreto", block.thickness), ("Yeso", 0.01)])
+    s1.Tsa()
+    Ti1 = s1.solve().to_numpy()
+    d = float(np.abs(Ti1 - Ti2).max())
+    eh.config.Nx = 200                     # restaurar default
+    assert d <= 0.1, f"bloque relleno (sólido) 2D vs 1D: max|Δ|={d:.3e} °C"
+
+
+def test_filled_methodology():
+    w, ti = _solved_filled()               # relleno con EPS (núcleo aislante)
+    assert isinstance(ti, pd.Series) and len(ti) == len(w.Tsa())
+    assert 0 < w.days < config2d.max_days
+    qin, qout = w.energy_transfer, w.Qout
+    assert abs(qin - qout) / max(abs(qin), 1e-9) <= 0.02
+
+
+def test_filled_requires_fill_material():
+    try:
+        eh.HollowBlock("Concreto", bovedilla=eh.Bovedilla.RELLENA, geometry=GEOM)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("se esperaba ValueError por RELLENA sin fill_material")
+
+
 def _demo():
     w, ti = _solved()
     bar = "═" * 70
@@ -146,7 +199,9 @@ def _demo():
 
 if __name__ == "__main__":
     for fn in (test_methodology_returns_series, test_periodicity, test_energy_balance,
-               test_orientation_guard, test_requires_one_element):
+               test_orientation_guard, test_requires_one_element,
+               test_filled_reduces_to_1d, test_filled_methodology,
+               test_filled_requires_fill_material):
         fn()
         print(f"PASS  {fn.__name__}")
     print()
