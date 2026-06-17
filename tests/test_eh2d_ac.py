@@ -34,7 +34,7 @@ MATERIALS = os.path.join(HERE, "materials_2d.ini")
 GEOM_WALL = {"web": 0.02, "block_width": 0.16,
              "cover_top": 0.02, "cavity": 0.08, "cover_bottom": 0.02}
 GEOM_ROOF = {"web": 0.025, "foot": 0.025, "shoulder": 0.050, "n_cavities": 3,
-             "cavity_width": 0.103, "colado": 0.100, "colado_cap": 0.050,
+             "cavity_width": 0.103, "topping": 0.100, "topping_cap": 0.050,
              "cover_top": 0.030, "cavity": 0.040, "cover_bottom": 0.030}
 
 
@@ -66,7 +66,7 @@ def _roof(key, bovedilla, fill_material=None):
     if key not in _CACHE:
         loc = _setup()
         slab = eh.Slab("Concreto", bovedilla=bovedilla, block_material="Bovedilla",
-                       colado_material="Concreto", fill_material=fill_material,
+                       topping_material="Concreto", fill_material=fill_material,
                        emissivity=0.9, geometry=GEOM_ROOF)
         r = eh.System2D(loc, tilt=0, azimuth=0, absortance=0.3)
         r.layers = [("Aplanado", 0.003), slab, ("Yeso", 0.015)]
@@ -100,10 +100,10 @@ def test_reduces_to_1d():
     config2d.ny = config.Nx                      # mismo nº de nodos en el espesor que el 1D
     mat, Lt = "Concreto", 0.20
     geom = {"web": 0.02, "foot": 0.02, "shoulder": 0.05, "n_cavities": 2,
-            "cavity_width": 0.10, "colado": 0.10, "colado_cap": 0.0,
+            "cavity_width": 0.10, "topping": 0.10, "topping_cap": 0.0,
             "cover_top": 0.03, "cavity": 0.04, "cover_bottom": 0.03}   # suma 0.20
     slab = eh.Slab(mat, bovedilla=eh.Bovedilla.RELLENA, block_material=mat,
-                   colado_material=mat, fill_material=mat, geometry=geom)
+                   topping_material=mat, fill_material=mat, geometry=geom)
     r2 = eh.System2D(loc, tilt=0, azimuth=0, absortance=0.3, layers=[slab])
     r2.solveAC()
 

@@ -828,7 +828,7 @@ def solve_day_2d_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
 #
 # Generaliza la física de cavidad (Fase 6) a una losa de techo con:
 #   - N cavidades de aire iguales (cada una un nodo lumped Thueco[c]);
-#   - tres materiales sólidos (colado, vigueta en L, bovedilla) codificados
+#   - tres materiales sólidos (topping, vigueta en L, bovedilla) codificados
 #     enteramente en los campos k/rhoc por nodo → el ensamble de conducción no
 #     cambia, solo lee k/rhoc;
 #   - Nusselt de **techo** (Rayleigh, beta=0) además del de muro (beta=90).

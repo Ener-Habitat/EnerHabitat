@@ -1,7 +1,7 @@
 """
 Fase 8b — Vigueta y bovedilla en techos (API `System2D` + `Slab`).
 
-Losa de techo (`tilt=0`) con tres materiales sólidos (colado, vigueta en L,
+Losa de techo (`tilt=0`) con tres materiales sólidos (topping, vigueta en L,
 bovedilla) y N cavidades iguales — de aire (`Bovedilla.AIRE`, Nusselt de techo
 Rayleigh + radiación por hueco) o de relleno (`Bovedilla.RELLENA`). Se verifica
 con la MISMA metodología que el 1D / 8a (config.file → Location → meanDay → Tsa →
@@ -37,9 +37,9 @@ EPW = os.path.join(HERE, "MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-
 MATERIALS = os.path.join(HERE, "materials_2d.ini")
 
 # Geometría del paper (Fig. 2b), mm→m: vigueta en L (web/foot), 3 cavidades.
-# colado=L2+L3=100, colado_cap=L2=50 → el alma de la L sube L3+L4+L5+L6=150 (no la tapa L2).
+# topping=L2+L3=100, topping_cap=L2=50 → el alma de la L sube L3+L4+L5+L6=150 (no la tapa L2).
 GEOM = {"web": 0.025, "foot": 0.025, "shoulder": 0.050, "n_cavities": 3,
-        "cavity_width": 0.103, "colado": 0.100, "colado_cap": 0.050,
+        "cavity_width": 0.103, "topping": 0.100, "topping_cap": 0.050,
         "cover_top": 0.030, "cavity": 0.040, "cover_bottom": 0.030}
 
 
@@ -55,7 +55,7 @@ def _setup():
 def _roof(bovedilla=eh.Bovedilla.AIRE, fill_material=None):
     loc = _setup()
     slab = eh.Slab("Concreto", bovedilla=bovedilla, block_material="Bovedilla",
-                   colado_material="Concreto", fill_material=fill_material,
+                   topping_material="Concreto", fill_material=fill_material,
                    emissivity=0.9, geometry=GEOM)
     roof = eh.System2D(location=loc)
     roof.tilt = 0
@@ -131,7 +131,7 @@ def test_inspector_geometry():
     assert len(sec.cav_i1) == GEOM["n_cavities"]
     nts = set(np.unique(sec.NT).tolist())
     assert {0, 9, 10, 11, 12}.issubset(nts)         # aire + 4 paredes por hueco
-    # tres materiales sólidos distintos (colado, vigueta, bovedilla) en el campo k
+    # tres materiales sólidos distintos (topping, vigueta, bovedilla) en el campo k
     ks = sorted({round(float(v), 4) for v in np.unique(sec.kfield)})
     assert len(ks) >= 3
 
@@ -154,24 +154,24 @@ def test_parallel_matches_serial():
 
 
 def test_l_shape_cap_height():
-    # vigueta de k distinto al colado para poder distinguir el alma de la tapa.
+    # vigueta de k distinto al topping para poder distinguir el alma de la tapa.
     g = {"web": 0.025, "foot": 0.025, "shoulder": 0.050, "n_cav": 3,
-         "cavity_width": 0.103, "colado": 0.100, "colado_cap": 0.050,
+         "cavity_width": 0.103, "topping": 0.100, "topping_cap": 0.050,
          "cover_top": 0.030, "cavity": 0.040, "cover_bottom": 0.030}
     nx, ny = 48, 64
     L = [0.0, 0.200, 0, 0, 0, 0, 0]
     sec = SlabSection(nx=nx, ny=ny, L=L, k=[0, 1.4, 0, 0, 0, 0, 0],
                       rhoc=[0, 2e6, 0, 0, 0, 0, 0], layer=2, geom=g,
-                      k_colado=1.4, rc_colado=2e6, k_rib=2.0, rc_rib=2.2e6,
+                      k_topping=1.4, rc_topping=2e6, k_rib=2.0, rc_rib=2.2e6,
                       k_block=0.5, rc_block=1.1e6, emissivity=0.9, beta=0.0,
                       hollow=True).build()
     jet, jcap, jeb = sec.info["jet"], sec.info["jcap"], sec.info["jeb"]
     col = sec.kfield[0]                       # columna del alma (i=0)
-    # tapa L2 [jet, jcap): colado (1.4), no vigueta
-    assert np.allclose(col[jet:jcap], 1.4), "la tapa de colado L2 no debe ser vigueta"
+    # tapa L2 [jet, jcap): topping (1.4), no vigueta
+    assert np.allclose(col[jet:jcap], 1.4), "la tapa de topping L2 no debe ser vigueta"
     # alma [jcap, jeb): vigueta (2.0)
     assert np.allclose(col[jcap:jeb], 2.0), "el alma de la L debe ser vigueta de jcap a la base"
-    # altura de la L ≈ L3+L4+L5+L6 = 150 mm (colado - colado_cap + resto)
+    # altura de la L ≈ L3+L4+L5+L6 = 150 mm (topping - topping_cap + resto)
     h_mm = (jeb - jcap) * sec.mesh.dy * 1000.0
     assert abs(h_mm - 150.0) < 2.0 * sec.mesh.dy * 1000.0, f"altura L={h_mm:.1f} mm (esperado ~150)"
 

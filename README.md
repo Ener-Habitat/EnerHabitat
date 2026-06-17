@@ -391,6 +391,13 @@ layer thickness, and `System2D` validates orientation (`HollowBlock` requires
 
 ### Hollow-block wall
 
+Cross-section of the repeating cell (`x` = width, `y` = thickness, outside on
+top). A single material with one air cavity; the left/right sides are adiabatic
+(symmetry), so the full inner web is `a12 = 2·web`. Thickness =
+`cover_top + cavity + cover_bottom`.
+
+![Hollow-block wall cross-section](https://raw.githubusercontent.com/Ener-Habitat/EnerHabitat/main/docs/img/hollow_block.png)
+
 ```python
 import enerhabitat as eh
 import pandas as pd
@@ -430,7 +437,15 @@ print(wall.energy_transfer)           # Qin, J/(m²·day)
 
 The roof slab has **three solids** (compression topping, an L-shaped concrete
 rib, and the filler block) plus **N equal cavities** that can be air
-(`Bovedilla.AIRE`) or a solid fill (`Bovedilla.RELLENA`):
+(`Bovedilla.AIRE`) or a solid fill (`Bovedilla.RELLENA`). The L-shaped rib (web +
+foot) sits at each cell edge; its web rises through everything except the top
+`topping_cap` of the topping. Cross-section of the repeating cell (`x` = width,
+`y` = thickness, outside on top; 3 cavities shown):
+
+![Joist-and-block roof cross-section](https://raw.githubusercontent.com/Ener-Habitat/EnerHabitat/main/docs/img/slab.png)
+
+- `width = 2·(web + foot) + (n+1)·shoulder + n·cavity_width`
+- `thickness = topping + cover_top + cavity + cover_bottom`
 
 ```python
 import enerhabitat as eh
@@ -438,7 +453,7 @@ import enerhabitat as eh
 slab = eh.Slab(
     rib_material    = "Concreto",        # joist/rib (L-shaped: web + foot)
     block_material  = "Bovedilla",       # filler block around the cavities
-    colado_material = "Concreto",        # compression topping
+    topping_material = "Concreto",        # compression topping
     bovedilla       = eh.Bovedilla.AIRE, # or eh.Bovedilla.RELLENA (solid fill)
     fill_material   = None,              # required if RELLENA
     emissivity      = 0.9,               # required if AIRE
@@ -448,8 +463,8 @@ slab = eh.Slab(
         "shoulder":     0.050,   # block between rib and cavities (d3)
         "n_cavities":   3,
         "cavity_width": 0.103,   # cavity width (d4)
-        "colado":       0.100,   # compression topping (L2+L3)
-        "colado_cap":   0.050,   # topping cap above the rib web (L2)
+        "topping":       0.100,   # compression topping (L2+L3)
+        "topping_cap":   0.050,   # topping cap above the rib web (L2)
         "cover_top":    0.030,   # block above the cavity (L4)
         "cavity":       0.040,   # cavity height (L5)
         "cover_bottom": 0.030,   # block below the cavity (L6)

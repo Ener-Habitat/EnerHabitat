@@ -195,7 +195,7 @@ y rango en `y`). matplotlib como extra opcional `enerhabitat[viz]`. Prueba
 
 ## Fase 8b — Vigueta y bovedilla (techos): entregado
 
-Losa de techo (`tilt=0`) con **tres sólidos** (colado / vigueta en **L** / bovedilla) + **N
+Losa de techo (`tilt=0`) con **tres sólidos** (topping / vigueta en **L** / bovedilla) + **N
 cavidades** iguales (aire o relleno), modelo derivado de la Fig. 2b del paper (revisado con el
 usuario). NO validado bit-a-bit contra el C: criterio de aceptación = metodología + periodicidad
 + energía (como 8a).
@@ -205,9 +205,9 @@ usuario). NO validado bit-a-bit contra el C: criterio de aceptación = metodolog
   Stefan-Boltzmann + Nusselt por hueco), `solve_day_slab_prod` (día con **N nodos `Th`**, un solo
   `dt`, superficies `/(nx-1)`, `Qin/Qout`), wrapper `solve_step_slab`.
 - **Geometría** (`eh2d`): `compute_mesh_slab` (`X=2·(d1+d2)+(n+1)·d3+n·d4`; bandas verticales
-  colado/cover_top/cavity/cover_bottom; bounds x de cada cavidad), `draw_slab_multi` (N huecos
+  topping/cover_top/cavity/cover_bottom; bounds x de cada cavidad), `draw_slab_multi` (N huecos
   + paredes 9-12 + `cav_of`, o relleno), `set_krhoc_slab` (vigueta en L: alma `web` de `jcap`
-  (base de la tapa L2) a la base + pie `foot` solo en `cover_bottom`; colado banda superior;
+  (base de la tapa L2) a la base + pie `foot` solo en `cover_bottom`; topping banda superior;
   bovedilla resto; fill si RELLENA),
   dataclass `SlabSection` (expone `NT/kfield/rhocfield/mesh` para el inspector).
 - **API** (`eh2d`): clase **`Slab`** (`required_tilt=0`) en `_ELEMENT_TYPES`; `_build_section`/
@@ -225,9 +225,9 @@ usuario). NO validado bit-a-bit contra el C: criterio de aceptación = metodolog
   0.225**, guarda de orientación (`tilt≠0` falla), inspector (3 cavidades + vigueta en L + 3
   materiales), altura de la L (`test_l_shape_cap_height`), y paralelo==serial (opt-in).
 - **Vigueta en L — altura (corregido con el usuario):** la L tiene altura **L3+L4+L5+L6** (sube
-  por L3 pero NO por la tapa L2). Implementado con `colado_cap` (=L2, tapa de colado a todo el
+  por L3 pero NO por la tapa L2). Implementado con `topping_cap` (=L2, tapa de topping a todo el
   ancho sobre el alma); el alma ocupa los bordes de `jcap` (base de la tapa) a la base del
-  elemento. Verificado en `test_l_shape_cap_height`. `colado_cap=0` → alma a toda la altura.
+  elemento. Verificado en `test_l_shape_cap_height`. `topping_cap=0` → alma a toda la altura.
 
 ## Fase 9 — Aire acondicionado (AC) en muros y techos 2D: entregado
 
@@ -569,7 +569,7 @@ Un **solo material** (concreto) con una cámara de aire. Cavidad **vertical** �
 ```
 
 ##### (8b) Vigueta y bovedilla — TECHO (`tilt=0`) · modelo definitivo (Fig. 2b del paper)
-**Tres sólidos + aire** (revisado con el usuario sobre la Fig. 2b): **colado** (capa de
+**Tres sólidos + aire** (revisado con el usuario sobre la Fig. 2b): **topping** (capa de
 compresión, todo el ancho), **vigueta en L** (alma vertical + pie horizontal = repisa de
 apoyo), **bovedilla** (bloque que rodea las cavidades) y **N cavidades de aire**. Cavidad
 **horizontal** → Nusselt de techo (Rayleigh). El elemento 2D (`Slab`) es la pila **L2–L6**;
@@ -582,12 +582,12 @@ normales en `layers[]`.
 
         │ d1 │ d2 │ d3 │   d4   │ d3 │   d4   │ d3 │   d4   │ d3 │ d2 │ d1 │
    L2   │▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│  COLADO (todo el ancho)
-   L3   │██│▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│██│  colado + almas que asoman
-   ─────┼──┼──────────────────────────────────────────┼──┼─  línea L3/L4 (colado/bovedilla)
+   L3   │██│▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│██│  topping + almas que asoman
+   ─────┼──┼──────────────────────────────────────────┼──┼─  línea L3/L4 (topping/bovedilla)
    L4   │██│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│██│  bovedilla (techo del hueco)
    L5   │██│░░┌────┐░░┌────┐░░┌────┐░░│██│  N cavidades de AIRE
    L6   │████│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│████│  pie de la L + bovedilla
-   █ = vigueta en L (rib_material)   ▒ = colado (colado_material)
+   █ = vigueta en L (rib_material)   ▒ = topping (topping_material)
    ░ = bovedilla (block_material)    ┌┐ = AIRE (cavidad)
    vigueta en L = alma d1 (sube de L6 hasta asomar en L3) + pie d2 (solo L6) ← repisa de apoyo
    X = 2·(d1+d2) + (n+1)·d3 + n·d4    (n cavidades; n+1 segmentos d3 de bovedilla)
@@ -617,9 +617,9 @@ El centro de la banda `e22` es un hueco rodeado por 4 paredes; el aire es un nod
 | (multi-hueco) | `a12,a13,a14,a22,a23` | varios huecos por celda (`a14≠0`); default = un hueco |
 
 > **Nota (8b, `Slab`):** la vigueta y bovedilla del techo NO es un rectángulo de un material.
-> Usa **tres sólidos** (`rib_material` vigueta, `block_material` bovedilla, `colado_material`
-> colado) y la **vigueta en L** (`web=d1` alma + `foot=d2` pie en L6). Su geometría se nombra
-> `web/foot/shoulder/n_cavities/cavity_width/colado/cavity/cover_bottom` (ver
+> Usa **tres sólidos** (`rib_material` vigueta, `block_material` bovedilla, `topping_material`
+> topping) y la **vigueta en L** (`web=d1` alma + `foot=d2` pie en L6). Su geometría se nombra
+> `web/foot/shoulder/n_cavities/cavity_width/topping/cavity/cover_bottom` (ver
 > [(8b) modelo definitivo](#8b-vigueta-y-bovedilla--techo-tilt0--modelo-definitivo-fig-2b-del-paper)).
 > La tabla de arriba aplica tal cual a `HollowBlock` (8a, un material, vigueta rectangular).
 
@@ -680,7 +680,7 @@ ti = wall.solve()                     # → pandas Series Ti
 slab = eh.Slab(
     rib_material    = "Concreto",          # vigueta (alma + pie, en L)
     block_material  = "Bovedilla",         # bloque que rodea las cavidades
-    colado_material = "Concreto",          # capa de compresión (L2+L3)
+    topping_material = "Concreto",          # capa de compresión (L2+L3)
     bovedilla       = eh.Bovedilla.AIRE,   # o RELLENA (entonces fill_material)
     fill_material   = None,                # material del hueco si RELLENA
     emissivity      = 0.9,                 # requerido si AIRE
@@ -690,8 +690,8 @@ slab = eh.Slab(
         "shoulder":     0.050,   # d3   bovedilla entre vigueta/cavidades (n+1 segmentos)
         "n_cavities":   3,
         "cavity_width": 0.103,   # d4
-        "colado":       0.100,   # L2+L3  capa de compresión (espesor total)
-        "colado_cap":   0.050,   # L2     tapa de colado SOBRE el alma (el alma sube L3+L4+L5+L6)
+        "topping":       0.100,   # L2+L3  capa de compresión (espesor total)
+        "topping_cap":   0.050,   # L2     tapa de topping SOBRE el alma (el alma sube L3+L4+L5+L6)
         "cover_top":    0.030,   # L4     bovedilla sobre la cavidad
         "cavity":       0.040,   # L5     alto de la cavidad de aire
         "cover_bottom": 0.030,   # L6     parte baja (aloja el pie de la L)
@@ -724,14 +724,14 @@ La `System2D` actual (clase plana) se **reescribe** replicando el patrón de `Sy
      `geometry` (`web/block_width/cover_top/cavity/cover_bottom` + alias `a*/e*`). Internamente
      es una bovedilla `AIRE` con `rib_material == fill-context == material`. Exige `tilt=90`.
    - **`Slab`** (techo, **3 sólidos + aire**): `rib_material` (vigueta), `block_material`
-     (bloque que rodea la cavidad), `colado_material` (capa de compresión), `bovedilla`
+     (bloque que rodea la cavidad), `topping_material` (capa de compresión), `bovedilla`
      (`Bovedilla`), `fill_material` (str|None, requerido si RELLENA), `emissivity` (float,
      requerido si AIRE), `geometry` (vigueta en **L**: `web`=d1, `foot`=d2, `shoulder`=d3,
-     `n_cavities`, `cavity_width`=d4, `colado`=L2+L3, `cavity`=L5, `cover_bottom`=L6 + alias
+     `n_cavities`, `cavity_width`=d4, `topping`=L2+L3, `cavity`=L5, `cover_bottom`=L6 + alias
      `a*/d*`). Exige `tilt=0`. La vigueta es una **L** (alma `web` que sube de L6 hasta asomar
      en L3 + pie `foot` solo en L6 = repisa de apoyo de la bovedilla), **no** un rectángulo.
    - `HollowBlock`: `thickness = cover_top+cavity+cover_bottom`. `Slab`:
-     `thickness = colado + cavity + cover_bottom` (espesor de L2–L6); **L1 y acabados quedan
+     `thickness = topping + cavity + cover_bottom` (espesor de L2–L6); **L1 y acabados quedan
      fuera** del elemento → van en `layers[]`. Validación de campos en ambas.
 1. **Constructor:** `System2D(location, tilt=90, azimuth=0, absortance=0.8, layers=[])`.
    `layers` = lista afuera→adentro de tuplas `(material, L)` y **un** elemento 2D
@@ -794,11 +794,11 @@ La `System2D` actual (clase plana) se **reescribe** replicando el patrón de `Sy
   `_step_hueca_par`+`solve_day_hueca_prod_par` (muro); ver extras (default **serial**).
 - **Geometría** (`eh2d`): `compute_mesh_slab` (`X=2·(d1+d2)+(n+1)·d3+n·d4`, bandas verticales,
   bounds x de cada cavidad), `draw_slab_multi` (N huecos `0`+paredes `9-12` para AIRE / relleno
-  `13` para RELLENA, + `cav_of`), `set_krhoc_slab` (**3 sólidos**: colado / vigueta en **L**
+  `13` para RELLENA, + `cav_of`), `set_krhoc_slab` (**3 sólidos**: topping / vigueta en **L**
   —alma `web` de `jcap` (base de la tapa L2) a la base + pie `foot` solo en `cover_bottom`— /
   bovedilla; + fill si RELLENA),
   dataclass `SlabSection` (expone `NT/kfield/rhocfield/mesh` para el inspector).
-- **API** (`eh2d`): clase **`Slab`** (`rib_material/block_material/colado_material/bovedilla/
+- **API** (`eh2d`): clase **`Slab`** (`rib_material/block_material/topping_material/bovedilla/
   fill_material/emissivity/geometry`, `required_tilt=0`), sumada a `_ELEMENT_TYPES`;
   `System2D._build_section`/`solve()` rutean `Slab` (RELLENA→`solve_day_2d`,
   AIRE→`solve_day_slab_prod` con `beta=tilt`); exportada en `__init__`. Motor serial/paralelo
@@ -809,11 +809,11 @@ La `System2D` actual (clase plana) se **reescribe** replicando el patrón de `Sy
 - **Material nuevo** en el fixture `tests/materials_2d.ini`: `Bovedilla` (bloque ligero).
 
 **Vigueta en L — altura (corregido con el usuario):** el alma de la L tiene altura
-**L3+L4+L5+L6** (sube por L3 pero **no** por la tapa L2 del colado). Se implementó con la clave
-`colado_cap` (=L2, tapa de colado a todo el ancho por encima del alma): el alma ocupa los bordes
+**L3+L4+L5+L6** (sube por L3 pero **no** por la tapa L2 del topping). Se implementó con la clave
+`topping_cap` (=L2, tapa de topping a todo el ancho por encima del alma): el alma ocupa los bordes
 desde `jcap` (base de la tapa) hasta la base del elemento. Verificado en
-`test_l_shape_cap_height` (con vigueta de `k` distinto al colado: la tapa L2 queda colado, el
-alma de `jcap` a la base queda vigueta, altura ≈150 mm). `colado_cap=0` (default) → alma a toda
+`test_l_shape_cap_height` (con vigueta de `k` distinto al topping: la tapa L2 queda topping, el
+alma de `jcap` a la base queda vigueta, altura ≈150 mm). `topping_cap=0` (default) → alma a toda
 la altura. Multi-cavidad usa celda completa (sin simetría). Reúsa la Referencia de diseño
 (`System2D`/`_build_section`,
 solver de aire de producción). **Decisiones tomadas:** geometría de **N cavidades iguales** con
@@ -822,7 +822,7 @@ aire** y **vigueta en L** (revisado con el usuario sobre la Fig. 2b).
 
 El diseño detallado abajo se conserva como referencia de implementación.
 
-**Modelo definitivo (Fig. 2b).** Tres sólidos: **colado** (capa de compresión, todo el
+**Modelo definitivo (Fig. 2b).** Tres sólidos: **topping** (capa de compresión, todo el
 ancho), **vigueta en L** (alma vertical en el borde + pie horizontal en L6 = repisa de apoyo)
 y **bovedilla** (bloque que rodea las N cavidades de aire). El elemento `Slab` es la pila
 **L2–L6**; **L1 y los acabados/recubrimientos NO son parte del `Slab`** → van como capas
@@ -832,36 +832,36 @@ homogéneas en `layers[]`. (Esquema en
 ```
         │ d1 │ d2 │ d3 │   d4   │ d3 │   d4   │ d3 │   d4   │ d3 │ d2 │ d1 │
    L2   │▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│  COLADO (todo el ancho)
-   L3   │██│▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│██│  colado + almas que asoman
+   L3   │██│▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│██│  topping + almas que asoman
    L4   │██│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│██│  bovedilla (techo del hueco)
    L5   │██│░░┌──┐░░┌──┐░░┌──┐░░│██│  N cavidades de AIRE
    L6   │████│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│████│  pie de la L + bovedilla
-   █=vigueta en L (rib_material)  ▒=colado (colado_material)  ░=bovedilla (block_material)
+   █=vigueta en L (rib_material)  ▒=topping (topping_material)  ░=bovedilla (block_material)
 ```
 Mapeo a las medidas crudas del C / paper: vigueta `web=d1` (alma) + `foot=d2` (pie, solo L6);
 `shoulder=d3` (bovedilla entre vigueta/cavidades, **n+1** segmentos); `cavity_width=d4`
 (**n** cavidades). Ancho `X = 2·(d1+d2) + (n+1)·d3 + n·d4` (ej. `2·50+4·50+3·103 = 609 mm`).
-Vertical: `colado` = L2+L3 (todo el ancho), `cavity` = L5 (alto del hueco), `cover_bottom`
+Vertical: `topping` = L2+L3 (todo el ancho), `cavity` = L5 (alto del hueco), `cover_bottom`
 = L6 (aloja el pie). El alma de la vigueta sube de L6 y **asoma sobre la línea L3/L4** dentro
-del colado (detalle a honrar de la figura: el alma interrumpe el colado en L3 en los bordes).
+del topping (detalle a honrar de la figura: el alma interrumpe el topping en L3 en los bordes).
 
 **API objetivo (`Slab`):** ver el ejemplo completo en
 [Referencia de diseño › (8b) Techo](#principio-rector-misma-metodología-que-el-system-1d)
-(`rib_material/block_material/colado_material/bovedilla/fill_material/emissivity` +
-`geometry` con `web/foot/shoulder/n_cavities/cavity_width/colado/cavity/cover_bottom`).
+(`rib_material/block_material/topping_material/bovedilla/fill_material/emissivity` +
+`geometry` con `web/foot/shoulder/n_cavities/cavity_width/topping/cavity/cover_bottom`).
 
 **Pasos:**
-1. Clase **`Slab`** (`rib_material/block_material/colado_material/bovedilla/fill_material/
+1. Clase **`Slab`** (`rib_material/block_material/topping_material/bovedilla/fill_material/
    emissivity/geometry`) + validación `Slab`↔`tilt=0`; reconocerla como elemento 2D
-   (`_ELEMENT_TYPES`). `thickness = colado+cavity+cover_bottom` (L2–L6); L1/acabados quedan
+   (`_ELEMENT_TYPES`). `thickness = topping+cavity+cover_bottom` (L2–L6); L1/acabados quedan
    fuera, en `layers[]`.
 2. **Geometría N cavidades + vigueta en L + 3 materiales**: `draw_slab_multi` (genera el
-   colado a todo el ancho, la **vigueta en L** —alma `d1` que sube y asoma en L3 + pie `d2`
+   topping a todo el ancho, la **vigueta en L** —alma `d1` que sube y asoma en L3 + pie `d2`
    en L6—, los N rectángulos de aire con sus paredes 9–12, las almas/hombros `d3` de bovedilla
    y la bovedilla que rodea los huecos) y un `set_krhoc_slab` que asigna **tres** `k/ρc`
-   (vigueta, bovedilla, colado). `compute_mesh` para N huecos (`X=2·(d1+d2)+(n+1)·d3+n·d4`).
+   (vigueta, bovedilla, topping). `compute_mesh` para N huecos (`X=2·(d1+d2)+(n+1)·d3+n·d4`).
    Celda completa (sin media celda). **Nuevo tipo de nodo** para la pared izq/der de la L y la
-   interfaz colado/bovedilla si hace falta distinguir materiales en `calculate_coefficients`.
+   interfaz topping/bovedilla si hace falta distinguir materiales en `calculate_coefficients`.
 3. **Física por hueco**: generalizar `_step_hueca`/`solve_day_hueca_prod` a **N nodos
    `Thueco`** (uno por cavidad), con radiación (factores de vista con `l=cavity_width`,
    `h=cavity`) y Nusselt **por cavidad**. Las almas/hombros (`d3`) y la vigueta conducen entre
