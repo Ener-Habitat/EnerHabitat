@@ -269,6 +269,44 @@ setpoint y calcula la energía de enfriamiento/calentamiento. Reúsa los `_step_
 - *Pendiente menor:* prosa en español dentro de las **pruebas** (docstrings/mensajes) — no es
   API; queda como tarea aparte si se quiere el 100 % inglés también en los tests.
 
+## Estudio de `dt` y paralelismo (medido): entregado
+
+Barrido de `dt`∈{1,5,10,15,20,30,60} (1D y 2D) y mapa de paralelismo a **200×150** (ancho `nx=200`
+⊥ al flujo, espesor `ny=150` ∥ al flujo; `dt=60`, 1 día, muro `HollowBlock` AIRE). Scripts ad-hoc
+en `/tmp` (no versionados). **Serial real de referencia = 542.6 s/día.**
+
+- **`dt` no afecta el resultado.** 1D (muro Concreto 0.15 m): `Ti` idéntico a 2 decimales de
+  1→60 s (Δmedia ≤0.006 °C, ΔET ≤0.1 %). 2D (200×150): decremento 0.477–0.478, ET varía ~0.2 %
+  de 5→60 s; **converge en 4 días** en todos (lo manda el criterio, no `max_days`). Además
+  **subir `dt`>~10 NO acelera**: a mayor `dt` crecen las iteraciones internas por paso y el
+  costo/día queda ~constante (dt=10..60 todos ~47–49 min en el barrido 7-way). → el bloqueo del
+  1D a `dt=10` es muy conservador; exponer `dt` aporta poco.
+- **`prange` (hilos, TDMA por filas): no vale la pena.** vs serial real (542.6 s/día):
+  4 hilos 514 s = **1.06×** (mejor caso); 18 hilos 640 s = **0.85× (más lento)**; bit-exacto
+  (Δ=0). El "1 hilo paralelo" (1890 s) está inflado ~3.5× porque el kernel `_*_par` asigna `P,Q`
+  por fila dentro del `prange` (el serial reúsa buffers). → dejar **default serial**.
+- **Procesos (grano grueso): la palanca real.** K solves serial independientes a la vez (18 núcleos):
+
+  | K | t/proc | slowdown/proc | throughput | speedup agregado (=K/slowdown) |
+  |---|--------|---------------|------------|--------------------------------|
+  | 1 | 542.6 s | 1.00× | 0.11/min | 1.0× |
+  | 2 | 567 s | 1.05× | 0.21 | 1.9× |
+  | 3 | 596 s | 1.10× | 0.30 | 2.7× |
+  | 4 | 610 s | 1.13× | 0.39 | 3.5× |
+  | 6 | 687 s | 1.27× | 0.52 | 4.7× |
+  | 8 | 693 s | 1.28× | 0.69 | **6.25×** |
+  | 12 | 869 s | 1.60× | 0.83 | 7.5× |
+  | 16 | 869 s | 1.60× | 1.09 | **10.0×** |
+
+  Casi lineal hasta ~K=8 (penalización por proceso ≤1.28×); de K=12 en adelante la penalización
+  se estanca en ~1.60× (ancho de banda de memoria) pero el **throughput sigue subiendo** (no
+  satura duro antes de los 18 núcleos): **~6× a K=8, ~10× a K=16**.
+- **Recomendación:** para volumen, paralelizar a **nivel de procesos** (cada solve serial); zona
+  eficiente **~4–8 concurrentes** (poca penalización), hasta ~16 para máximo throughput (~10×). Es
+  el extra "barrido por procesos" del plan. El `prange` interno y el ajuste de `dt` no aportan.
+- *Nota metodológica:* suspender la laptop **corrompe los tiempos** (cuenta el sueño como
+  wall-clock); el K=2 inicial (3986 s) y un K=12 salieron así y se **remidieron limpios**.
+
 
 ---
 

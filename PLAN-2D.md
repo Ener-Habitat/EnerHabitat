@@ -42,12 +42,14 @@ Refinamientos; ninguno bloquea. (El **motor paralelo `prange`**, la **vigueta en
 L3+L4+L5+L6, el **AC 2D** (`solveAC`), el **rename `Bovedilla→Fill`/`bovedilla→fill_type`** y la
 integración del **`README.md`** ya están hechos — ver [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md).)
 
-**1. `dt` efectivo en la API** — exponer un paso de tiempo 2D propio en `config2d`/`System2D`
-(la Fase 7 midió `dt=10` → ~1.6× con error despreciable) para canjear velocidad↔precisión.
+**1. `dt` efectivo en la API** — exponer un paso de tiempo 2D propio. **Bajo valor (medido):** el
+estudio de `dt` (ver `PLAN-2D-hecho.md`) mostró que `dt` **no afecta el resultado** (1D y 2D) y
+que subir `dt`>~10 **ni siquiera acelera** (crecen las iteraciones internas). Casi no aporta.
 
 **2. Barrido por procesos** — helper (`solve_many`) o patrón `multiprocessing`/`joblib` para
-correr muchas configuraciones independientes en paralelo (cada `solve()` serial); es la palanca
-real de velocidad para volumen. ⚠️ No combinar con los hilos de numba.
+correr muchas configuraciones independientes en paralelo (cada `solve()` serial). **Es la palanca
+real (medido):** ~6× a 8 procesos, ~10× a 16, escala casi lineal (ver el mapa en
+`PLAN-2D-hecho.md`); muy superior al `prange` interno (~1.06×). ⚠️ No combinar con hilos de numba.
 
 **3. Variante simétrica / media celda (`tipo 4`)** — optimización geométrica posterior (el resto
 del paquete usa celda completa).
