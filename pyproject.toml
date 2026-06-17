@@ -1,11 +1,11 @@
 [project]
 name = "enerhabitat"
-version = "0.1.10"
+version = "0.2.0"
 authors = [
     {name="Guillermo Barrios del Valle", email="gbv@ier.unam.mx"},
     {name="Fernando Rodriguez Calderon", email="ferrodriguez2509@gmail.com"}
 ]
-description = "Paquete instalable para EnerHabitat"
+description = "Thermal simulation of opaque constructive systems (walls and roofs) from EPW data — 1D and 2D"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
