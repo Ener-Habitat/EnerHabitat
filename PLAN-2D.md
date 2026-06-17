@@ -22,7 +22,7 @@ en [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md).
 | 9 | **Aire acondicionado (AC)** en muros y techos 2D (`solveAC`, espejo del 1D) | ✅ |
 | — | **Inspector a escala** de la asignación de materiales | ✅ |
 | — | Motor serial/**paralelo** (`config2d.parallel`, default serial) · multi-hueco | ✅ |
-| — | Rename API español→inglés: `Bovedilla`/`AIRE`/`RELLENA` → `Cavity`/`AIR`/`SOLID` | ⏳ |
+| — | Rename API español→inglés: `Bovedilla`/`AIRE`/`RELLENA` → `Fill`/`AIR`/`SOLID` | ⏳ |
 | — | Extras: `dt` en API · barrido por procesos · `tipo 4` · unidades índices | ⏳ |
 | — | `README.md` integra la API 2D (System2D, HollowBlock, Slab, config2d, AC) | ✅ |
 | — | Docs: cambio de versión del paquete | ⏳ |
@@ -48,28 +48,28 @@ Lo que falta. El diseño base, los esquemas y la referencia de `System2D` están
 
 | actual | propuesto | nota |
 |--------|-----------|------|
-| `Bovedilla` (enum) | **`Cavity`** | tipo de la celda del bloque |
-| `Bovedilla.AIRE` | **`Cavity.AIR`** | |
-| `Bovedilla.RELLENA` | **`Cavity.SOLID`** | |
-| `Bovedilla.RELLENA_SIMETRICA` | **`Cavity.SOLID_SYMMETRIC`** | (tipo 4, aún no portado) |
+| `Bovedilla` (enum) | **`Fill`** | tipo de relleno de la celda del bloque |
+| `Bovedilla.AIRE` | **`Fill.AIR`** | |
+| `Bovedilla.RELLENA` | **`Fill.SOLID`** | |
+| `Bovedilla.RELLENA_SIMETRICA` | **`Fill.SOLID_SYMMETRIC`** | (tipo 4, aún no portado) |
 | valores `"aire"/"rellena"/"rellena_sim"` | `"air"/"solid"/"solid_sym"` | solo afectan `.value`/`signature()`/`info()`; no hay datos persistidos |
-| parámetro/atributo `bovedilla=` | **`cavity_type=`** | **no** usar `cavity`: choca con la cota geométrica `cavity` (alto del hueco) |
+| parámetro/atributo `bovedilla=` | **`fill_type=`** | **no** usar `fill` a secas: se confunde con `fill_material`. `fill_type` (tipo) + `fill_material` (material) se leen coherentes |
 
-*Alternativas de nombre:* enum `Fill`/`FillType` con `AIR`/`SOLID`; parámetro `cell_type`.
-Recomendado: **`Cavity` + `cavity_type`**.
+**Decidido con el usuario:** enum **`Fill`** (`AIR`/`SOLID`/`SOLID_SYMMETRIC`) + parámetro
+**`fill_type`** — encaja con el `fill_material` ya existente (`fill_type=Fill.SOLID,
+fill_material="EPS"`). Alternativas descartadas: `Cavity`/`cavity_type` (choca con la cota
+geométrica `cavity`), `FillType`, `cell_type`.
 
-**Decisiones a tomar (1 sola, el resto va con la recomendación):**
-1. Nombre del enum y del parámetro (recomendado `Cavity` + `cavity_type`).
-2. ¿Alias retro-compatible `Bovedilla`? Recomendación: **rename limpio, sin alias** (como
-   `colado→topping`).
-3. ¿Renombrar también los valores string? Recomendación: **sí** (consistencia; afecta solo
-   `.value` interno).
+**Decisiones (resueltas):**
+1. Nombre del enum y del parámetro: **`Fill` + `fill_type`** (confirmado con el usuario).
+2. ¿Alias retro-compatible `Bovedilla`? **No** — rename limpio, sin alias (como `colado→topping`).
+3. ¿Renombrar también los valores string? **Sí** (consistencia; afecta solo `.value` interno).
 
 **Touchpoints (inventario):**
 - `src/enerhabitat/eh2d.py` (~46): enum + `TIPO_C` + `Section2D.bovedilla`/`build()` +
   `HollowBlock`/`Slab` (param, attr, `signature()`, validación) + `System2D.solve()/solveAC()`
   (`is Bovedilla.AIRE`/`RELLENA`) + `_build_section`.
-- `src/enerhabitat/__init__.py`: export `Bovedilla` → `Cavity`.
+- `src/enerhabitat/__init__.py`: export `Bovedilla` → `Fill`.
 - `src/enerhabitat/ehtools2d.py`: 1 comentario que menciona RELLENA/AIRE.
 - **Pruebas** que usan `Bovedilla`: `test_eh2d_slab.py` (15), `test_eh2d_ac.py` (13),
   `test_eh2d_geometry.py` (8), `test_eh2d_hueca.py` (5), `test_eh2d_hollowblock.py` (4),
@@ -78,11 +78,11 @@ Recomendado: **`Cavity` + `cavity_type`**.
 - `README.md` (~10).
 
 **Pasos:**
-1. Definir `Cavity` (miembros + valores) en `eh2d.py`; actualizar `TIPO_C`.
-2. Renombrar `bovedilla` → `cavity_type` en `HollowBlock`, `Slab`, `Section2D`, `SlabSection`
+1. Definir `Fill` (miembros + valores) en `eh2d.py`; actualizar `TIPO_C`.
+2. Renombrar `bovedilla` → `fill_type` en `HollowBlock`, `Slab`, `Section2D`, `SlabSection`
    (param, attr, docstrings, `signature()`), y la validación elemento↔tipo.
-3. Actualizar el ruteo en `System2D.solve()/solveAC()` y `_build_section` (`is Cavity.AIR`...).
-4. Export en `__init__` (`Cavity`).
+3. Actualizar el ruteo en `System2D.solve()/solveAC()` y `_build_section` (`is Fill.AIR`...).
+4. Export en `__init__` (`Fill`).
 5. Actualizar el comentario en `ehtools2d.py`, las pruebas y el `README.md`.
 6. Correr la suite 2D (slab, ac, hollowblock, hueca, inspect, geometry…) — debe pasar sin
    cambios de comportamiento (rename puro).
