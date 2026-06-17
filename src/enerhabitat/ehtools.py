@@ -113,23 +113,23 @@ def get_sunrise_sunset_times(df):
 =============================
 """
 
-def set_construction(propiedades, tuplas):
+def set_construction(materials, layers):
     """
     Update the cs dictionary with the material properties and the L values given in the tuples.
 
     Args:
-        propiedades (dict): Dictionary with the material properties.
-        tuplas (list): List of tuples, where each tuple holds the material and its L value.
+        materials (dict): Dictionary with the material properties.
+        layers (list): List of tuples, where each tuple holds the material and its L value.
 
     Returns:
         dict: Updated cs dictionary.
     """
-    cs ={}
-    for i, (material, L) in enumerate(tuplas, start=1):
-        capa = f"L{i}"
-        cs[capa] = {
+    cs = {}
+    for i, (material, L) in enumerate(layers, start=1):
+        layer = f"L{i}"
+        cs[layer] = {
             "L": L,
-            "material": propiedades[material]
+            "material": materials[material]
         }
     return cs
 

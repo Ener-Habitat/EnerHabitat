@@ -588,9 +588,9 @@ class System():
         SC_dataframe = self.Tsa().copy()
         constructive_system = self.layers
         
-        propiedades = config.materials
+        materials = config.materials
 
-        cs = set_construction(propiedades, constructive_system)
+        cs = set_construction(materials, constructive_system)
         k, rhoc, dx = set_k_rhoc(cs, Nx)
         mass_coeff, a_static, b_static, c_static = prepare_static_coefficients(k, rhoc, dx, dt, ho, hi)
 
