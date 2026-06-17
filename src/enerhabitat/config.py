@@ -188,10 +188,10 @@ class Config:
         return self.__dt
     @dt.setter
     def dt(self, value):
-        # dt es fijo en 10 s y NO es configurable: el nodo de aire interior se
-        # integra con un paso explícito cuya estabilidad exige
-        # Fo = hi*dt/(rho_air*c_air*La) < 1. A 10 s, Fo ≈ 0.03. Se ignora la
-        # asignación para evitar resultados no físicos.
+        # dt is fixed at 10 s and is NOT configurable: the indoor-air node is
+        # integrated with an explicit step whose stability requires
+        # Fo = hi*dt/(rho_air*c_air*La) < 1. At 10 s, Fo ≈ 0.03. The assignment
+        # is ignored to avoid non-physical results.
         pass
         
     @property
@@ -216,15 +216,16 @@ config = Config()
 
 class Config2D:
     """
-    Parámetros extra del solver 2D (vigueta y bovedilla). No toca el 1D: el resto
-    de la configuración (La, ho, hi, dt, aire) se reutiliza de ``config``.
+    Extra parameters for the 2D solver (joist and filler block). Does not touch
+    the 1D side: the rest of the configuration (La, ho, hi, dt, air) is reused
+    from ``config``.
 
     Attributes:
-        nx (int): nodos a lo ancho de la celda (dirección x, laterales adiabáticos).
-        ny (int): nodos en el espesor (dirección y, exterior→interior).
-        tol_inner (float): tolerancia del lazo interno (Gauss-Seidel por líneas).
-        tol_day (float): tolerancia de la convergencia día-a-día.
-        max_days (int): tope de días de la convergencia.
+        nx (int): nodes across the cell width (x direction, adiabatic sides).
+        ny (int): nodes through the thickness (y direction, outside→inside).
+        tol_inner (float): inner-loop tolerance (line-by-line Gauss-Seidel).
+        tol_day (float): day-to-day convergence tolerance.
+        max_days (int): cap on the convergence iterations.
     """
     def __init__(self):
         self.reset()
@@ -235,20 +236,20 @@ class Config2D:
         self.tol_inner = 1e-10
         self.tol_day = 5e-4
         self.max_days = 60
-        # Motor: serial por default. El paralelo (numba prange sobre filas) es una
-        # OPCIÓN (parallel=True): reparte las filas entre los núcleos auto-detectados,
-        # pero el barrido por líneas es de grano fino (miles de regiones prange con
-        # barrera) → solo rinde ~1.3× en mallas finas (≥~150²) y es MÁS lento en
-        # mallas chicas por el overhead de hilos (ver Fase 7). Para volumen real
-        # (barrer muchas configuraciones) conviene paralelizar a nivel de procesos,
-        # cada solve serial. Verificado: parallel reproduce serial al bit.
+        # Engine: serial by default. The parallel one (numba prange over rows) is an
+        # OPTION (parallel=True): it spreads the rows across the auto-detected cores,
+        # but the line-by-line sweep is fine-grained (thousands of prange regions with
+        # a barrier) -> it only pays off ~1.3x on fine meshes (>=~150^2) and is SLOWER
+        # on small meshes due to thread overhead (see Phase 7). For real volume
+        # (sweeping many configurations) prefer parallelizing at the process level,
+        # each solve serial. Verified: parallel reproduces serial bit-for-bit.
         self.parallel = False
         self.version = 0
 
     def info(self):
-        print("<enerhabitat.Config2D -- parámetros del solver 2D>")
-        print(f"nx (ancho):  \t{self.nx}")
-        print(f"ny (espesor):\t{self.ny}")
+        print("<enerhabitat.Config2D -- 2D solver parameters>")
+        print(f"nx (width):   \t{self.nx}")
+        print(f"ny (thickness):\t{self.ny}")
         print(f"tol_inner:   \t{self.tol_inner}")
         print(f"tol_day:     \t{self.tol_day}")
         print(f"max_days:    \t{self.max_days}")

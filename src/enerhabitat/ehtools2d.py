@@ -1,39 +1,39 @@
 """
 =================================================================
- ehtools2d — Kernels 2D (Fase 2: ensamble de coeficientes)
+ ehtools2d — 2D kernels (Phase 2: coefficient assembly)
 =================================================================
 
-Port fiel de ``calculate_coefficients`` del C (`legacy_eh/2dTfree/tools.h`) para
-**bovedilla rellena** (``tipo 2``: nodos ``NT`` 1-8 y 13). Los nodos de cámara de
-aire (0, 9-12) llegan en la Fase 6.
+Faithful port of the C ``calculate_coefficients`` (`legacy_eh/2dTfree/tools.h`)
+for a **solid filler block** (``tipo 2``: nodes ``NT`` 1-8 and 13). The air-cavity
+nodes (0, 9-12) arrive in Phase 6.
 
-Esquema de volumen finito implícito, 5 puntos, conductividad por **media armónica**
-``kh(a,b)=2ab/(a+b)``. Para cada nodo ``P=(i,j)``:
+Implicit finite-volume scheme, 5 points, conductivity by **harmonic mean**
+``kh(a,b)=2ab/(a+b)``. For each node ``P=(i,j)``:
 
     aP·T_P = aE·T_E + aW·T_W + aN·T_N + aS·T_S + apo·T_P° + S_b
 
-con vecinos en y (N=j-1 exterior, S=j+1 interior) **diferidos** al término ``d``
-(Gauss-Seidel por líneas; el TDMA implícito solo actúa en x). El solver arma
-``a=aP``, ``b=aE``, ``c=aW`` y ``d = aN·T_N + aS·T_S + apo·To + S_b``.
+with the y neighbours (N=j-1 outside, S=j+1 inside) **deferred** to the ``d`` term
+(line-by-line Gauss-Seidel; the implicit TDMA acts only in x). The solver builds
+``a=aP``, ``b=aE``, ``c=aW`` and ``d = aN·T_N + aS·T_S + apo·To + S_b``.
 
-Convención de malla idéntica a `eh2d`: matrices ``(nx,ny)`` indexadas ``[i,j]``,
-``j=0`` exterior (``Tsa,ho``), ``j=ny-1`` interior (``Tint,hi``); laterales
-``i=0``/``i=nx-1`` adiabáticos.
+Mesh convention identical to `eh2d`: ``(nx,ny)`` arrays indexed ``[i,j]``,
+``j=0`` outside (``Tsa,ho``), ``j=ny-1`` inside (``Tint,hi``); sides
+``i=0``/``i=nx-1`` adiabatic.
 """
 
 import numpy as np
 from numba import njit, prange
 
-# Tipos de nodo válidos para bovedilla rellena.
+# Node types valid for a solid filler block.
 _RELLENA_TYPES = {1, 2, 3, 4, 5, 6, 7, 8, 13}
 
 
 def _harmonic_faces(k, dx, dy):
     """
-    Conductancias de cara por media armónica, ya escaladas por la geometría.
-    Devuelve ``(aN, aS, aE, aW)`` con forma ``(nx,ny)``; cada una es 0 en la
-    frontera donde el vecino no existe (lo que coincide con los coeficientes que
-    el C pone a cero en esas fronteras).
+    Face conductances by harmonic mean, already scaled by the geometry.
+    Returns ``(aN, aS, aE, aW)`` of shape ``(nx,ny)``; each one is 0 on the
+    boundary where the neighbour does not exist (matching the coefficients the
+    C sets to zero on those boundaries).
     """
     aN = np.zeros_like(k)
     aS = np.zeros_like(k)
@@ -43,10 +43,10 @@ def _harmonic_faces(k, dx, dy):
     def kh(a, b):
         return 2.0 * a * b / (a + b)
 
-    # Norte (j-1, hacia exterior) y Sur (j+1, hacia interior): factor dx/dy.
+    # North (j-1, towards outside) and South (j+1, towards inside): factor dx/dy.
     aN[:, 1:] = kh(k[:, 1:], k[:, :-1]) * dx / dy
     aS[:, :-1] = kh(k[:, :-1], k[:, 1:]) * dx / dy
-    # Este (i+1) y Oeste (i-1): factor dy/dx.
+    # East (i+1) and West (i-1): factor dy/dx.
     aE[:-1, :] = kh(k[:-1, :], k[1:, :]) * dy / dx
     aW[1:, :] = kh(k[1:, :], k[:-1, :]) * dy / dx
     return aN, aS, aE, aW
@@ -54,16 +54,16 @@ def _harmonic_faces(k, dx, dy):
 
 def calculate_coefficients_2d(NT, k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy):
     """
-    Ensamble de ``a,b,c,d`` para bovedilla rellena (``tipo 2``).
+    Assembly of ``a,b,c,d`` for a solid filler block (``tipo 2``).
 
     Args:
-        NT (int array (nx,ny)): tipos de nodo (debe ser ⊆ {1-8,13}).
-        k, rhoc (float array (nx,ny)): conductividad y capacidad térmica por nodo.
-        To (float array (nx,ny)): campo del paso de tiempo anterior (``T°``).
-        T  (float array (nx,ny)): campo actual (para los vecinos diferidos N/S).
-        Tsa, Tint (float): temperatura sol-aire (exterior) y del aire interior.
-        ho, hi (float): coef. convectivos exterior e interior.
-        dt, dx, dy (float): paso temporal y de malla.
+        NT (int array (nx,ny)): node types (must be ⊆ {1-8,13}).
+        k, rhoc (float array (nx,ny)): conductivity and heat capacity per node.
+        To (float array (nx,ny)): field of the previous time step (``T°``).
+        T  (float array (nx,ny)): current field (for the deferred N/S neighbours).
+        Tsa, Tint (float): sun-air (outside) and indoor-air temperature.
+        ho, hi (float): outdoor and indoor convective coefficients.
+        dt, dx, dy (float): time and mesh step.
 
     Returns:
         (a, b, c, d) arrays (nx,ny). ``a=aP``, ``b=aE``, ``c=aW``,
@@ -73,8 +73,8 @@ def calculate_coefficients_2d(NT, k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy)
     bad = set(np.unique(NT).tolist()) - _RELLENA_TYPES
     if bad:
         raise NotImplementedError(
-            f"calculate_coefficients_2d solo soporta bovedilla rellena "
-            f"(NT ⊆ {sorted(_RELLENA_TYPES)}); aparecieron {sorted(bad)}.")
+            f"calculate_coefficients_2d only supports a solid filler block "
+            f"(NT ⊆ {sorted(_RELLENA_TYPES)}); got {sorted(bad)}.")
 
     k = np.asarray(k, dtype=np.float64)
     rhoc = np.asarray(rhoc, dtype=np.float64)
@@ -85,33 +85,33 @@ def calculate_coefficients_2d(NT, k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy)
     apo = rhoc * dx * dy / dt
     aN, aS, aE, aW = _harmonic_faces(k, dx, dy)
 
-    # Vecinos diferidos en y (en las fronteras el coef. ya es 0 → término nulo).
+    # Deferred y neighbours (on the boundaries the coef. is already 0 → null term).
     TN = np.zeros_like(T)
     TS = np.zeros_like(T)
     TN[:, 1:] = T[:, :-1]   # T_N = T[i, j-1]
     TS[:, :-1] = T[:, 1:]   # T_S = T[i, j+1]
 
-    # aP = apo + (conducciones activas) ; las inactivas ya valen 0.
+    # aP = apo + (active conductions) ; the inactive ones are already 0.
     a = apo + aN + aS + aE + aW
     d = apo * To + aN * TN + aS * TS
 
-    # Fronteras convectivas: exterior en j=0 (Tsa, ho), interior en j=ny-1 (Tint, hi).
+    # Convective boundaries: outside at j=0 (Tsa, ho), inside at j=ny-1 (Tint, hi).
     a[:, 0] += ho * dx
     d[:, 0] += ho * dx * Tsa
     a[:, ny - 1] += hi * dx
     d[:, ny - 1] += hi * dx * Tint
 
-    b = aE.copy()   # = aE (0 en i=nx-1, fronteras der. adiabáticas/types 2,4,7)
-    c = aW.copy()   # = aW (0 en i=0,    fronteras izq. adiabáticas/types 1,3,6)
+    b = aE.copy()   # = aE (0 at i=nx-1, adiabatic right boundaries/types 2,4,7)
+    c = aW.copy()   # = aW (0 at i=0,    adiabatic left boundaries/types 1,3,6)
 
     return a, b, c, d
 
 
 def _tdma_rows(a, b, c, d):
     """
-    TDMA (Thomas) implícito en x para **todas** las filas ``j`` a la vez.
-    ``a·T_i = b·T_{i+1} + c·T_{i-1} + d`` (b=aE, c=aW). Vectorizado sobre j;
-    el barrido en i replica exactamente el orden de operaciones del C.
+    Implicit x TDMA (Thomas) for **all** rows ``j`` at once.
+    ``a·T_i = b·T_{i+1} + c·T_{i-1} + d`` (b=aE, c=aW). Vectorised over j;
+    the i sweep replicates exactly the C order of operations.
     """
     nx, ny = a.shape
     P = np.zeros((nx, ny))
@@ -134,27 +134,27 @@ def _tdma_rows(a, b, c, d):
 def solve_step_2d(NT, k, rhoc, To, Tsa, Tint, ho, hi, dt, dx, dy,
                   La, X, rhoair, cair, tol=1e-10, max_iter=100000):
     """
-    Port de ``solve_PQ`` para bovedilla rellena: **un** paso de tiempo.
+    Port of ``solve_PQ`` for a solid filler block: **one** time step.
 
-    Lazo interno (Gauss-Seidel por líneas): recalcula coeficientes con la `T` más
-    reciente, resuelve cada fila con TDMA en x (vecinos en y diferidos), y repite
-    hasta ``|error| <= tol`` con ``error = Σ (T-Tn)/T /(nx·ny)`` (con signo, como el
-    C). Luego actualiza el aire interior `Tint` (nodo lumped).
+    Inner loop (line-by-line Gauss-Seidel): recomputes coefficients with the most
+    recent `T`, solves each row with x TDMA (y neighbours deferred), and repeats
+    until ``|error| <= tol`` with ``error = Σ (T-Tn)/T /(nx·ny)`` (signed, like the
+    C). Then updates the indoor air `Tint` (lumped node).
 
     Args:
-        To: campo del paso anterior; también es la condición inicial del paso
-            (en el C, al iniciar el paso ``To == T``).
-        Tint: temperatura del aire interior al inicio del paso.
-        La, X, rhoair, cair: parámetros del nodo de aire interior.
+        To: previous-step field; also the initial condition of the step
+            (in the C, at the start of the step ``To == T``).
+        Tint: indoor-air temperature at the start of the step.
+        La, X, rhoair, cair: indoor-air node parameters.
 
     Returns:
-        dict con ``T`` (campo resuelto), ``Tint`` (actualizado), ``iters``,
+        dict with ``T`` (solved field), ``Tint`` (updated), ``iters``,
         ``Qin``, ``error``.
     """
     To = np.asarray(To, dtype=np.float64)
     nx, ny = To.shape
-    Ti = float(Tint)            # Tint "viejo", constante durante el lazo interno
-    T = To.copy()               # condición inicial = campo previo
+    Ti = float(Tint)            # "old" Tint, constant during the inner loop
+    T = To.copy()               # initial condition = previous field
 
     iters = 0
     error = 0.0
@@ -168,7 +168,7 @@ def solve_step_2d(NT, k, rhoc, To, Tsa, Tint, ho, hi, dt, dx, dy,
         if abs(error) <= tol or iters >= max_iter:
             break
 
-    # Flujo convectivo interior y actualización del aire interior (nodo lumped).
+    # Indoor convective flux and indoor-air update (lumped node).
     Tsurf = T[:, ny - 1]
     Qh = float(np.sum(hi * dt * dx * (Tsurf - Ti)))
     Qin = float(np.sum(np.where(Tsurf > Ti, hi * dx * (Tsurf - Ti), 0.0)))
@@ -179,35 +179,35 @@ def solve_step_2d(NT, k, rhoc, To, Tsa, Tint, ho, hi, dt, dx, dy,
 
 
 # =================================================================
-#  Motor de producción (JIT numba) — Fase 5
+#  Production engine (numba JIT) — Phase 5
 # =================================================================
 #
-# Solver del día completo con convergencia día-a-día, kernels compilados.
-# Diferencias CONSCIENTES respecto al port fiel (Fase 4), documentadas y
-# respaldadas por la regresión de la Fase 4:
-#   1. Actualización del aire interior con UN solo dt (físicamente correcta):
+# Full-day solver with day-to-day convergence, compiled kernels.
+# DELIBERATE differences from the faithful port (Phase 4), documented and
+# backed by the Phase 4 regression:
+#   1. Indoor-air update with a SINGLE dt (physically correct):
 #        Tint += dt·Σ_i hi·dx·(Tsurf_i − Ti)/(ρc·La·X)
-#      (el C tenía un dt² latente que solo coincide a dt=1). Así el 2D reduce
-#      EXACTAMENTE al 1D del paquete a cualquier dt.
-#   2. Promedios de superficie a /(nx-1) (medios nodos), para Tso y Tsi.
-#   3. ho, hi se toman tal cual (sin el override de muro del C); la elección de
-#      hi la hace la capa de API según corresponda.
+#      (the C had a latent dt² that only matches at dt=1). This makes the 2D reduce
+#      EXACTLY to the package's 1D at any dt.
+#   2. Surface averages to /(nx-1) (half nodes), for Tso and Tsi.
+#   3. ho, hi are taken as-is (without the C wall override); the choice of
+#      hi is made by the API layer as appropriate.
 
 
 @njit(cache=True)
 def _step_inner(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
                 a, b, c, d, P, Q, Tn, Tnew, tol):
-    """Lazo interno (Gauss-Seidel por líneas) de un paso; actualiza ``T`` in situ.
+    """Inner loop (line-by-line Gauss-Seidel) of one step; updates ``T`` in place.
 
-    Buffers de trabajo (preasignados): ``a,b,c,d`` (nx,ny), ``P,Q,Tn`` (nx),
-    ``Tnew`` (nx,ny). Asume NT ⊆ {1-8,13} (laterales adiabáticos, fronteras
-    convectivas en j=0/j=ny-1) — válido para bovedilla rellena.
+    Work buffers (preallocated): ``a,b,c,d`` (nx,ny), ``P,Q,Tn`` (nx),
+    ``Tnew`` (nx,ny). Assumes NT ⊆ {1-8,13} (adiabatic sides, convective
+    boundaries at j=0/j=ny-1) — valid for a solid filler block.
     """
     nx, ny = k.shape
     iters = 0
     while True:
         iters += 1
-        # ---- ensamble a,b,c,d ----
+        # ---- assemble a,b,c,d ----
         for j in range(ny):
             for i in range(nx):
                 kij = k[i, j]
@@ -241,7 +241,7 @@ def _step_inner(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
                 b[i, j] = aE
                 c[i, j] = aW
                 d[i, j] = dd
-        # ---- TDMA en x por cada fila j -> Tnew ----
+        # ---- x TDMA for each row j -> Tnew ----
         for j in range(ny):
             P[0] = b[0, j] / a[0, j]
             Q[0] = d[0, j] / a[0, j]
@@ -252,7 +252,7 @@ def _step_inner(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
             Tnew[nx - 1, j] = Q[nx - 1]
             for i in range(nx - 2, -1, -1):
                 Tnew[i, j] = P[i] * Tnew[i + 1, j] + Q[i]
-        # ---- error con signo y commit T <- Tnew ----
+        # ---- signed error and commit T <- Tnew ----
         error = 0.0
         for j in range(ny):
             for i in range(nx):
@@ -268,12 +268,12 @@ def _step_inner(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
 def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                  rhoair, cair, T0, tol_inner=1e-10, tol_day=5e-4, max_days=60):
     """
-    Motor de producción: corre el día completo repitiéndolo hasta régimen
-    periódico (``mean|T_día−T_día_previo| < tol_day``).
+    Production engine: runs the full day, repeating it until periodic steady
+    state (``mean|T_day−T_prev_day| < tol_day``).
 
     Returns:
         (Ti_series, Tso_series, Tsi_series, T_field, days, Qin, Qout)
-        Series con forma ``(nsteps,)`` (un valor por paso de ``Tsa_arr``).
+        Series of shape ``(nsteps,)`` (one value per ``Tsa_arr`` step).
     """
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
@@ -305,7 +305,7 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 Told[i, j] = T[i, j]
         Qin = Qout = 0.0
         for s in range(nsteps):
-            # Tso: superficie exterior antes de resolver, /(nx-1)
+            # Tso: outer surface before solving, /(nx-1)
             tso = 0.0
             for i in range(nx):
                 tso += T[i, 0]
@@ -317,18 +317,18 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             Ti_old = Tint
             _step_inner(k, rhoc, To, T, Tsa_arr[s], Tint, ho, hi, dt, dx, dy,
                         a, b, c, d, P, Q, Tn, Tnew, tol_inner)
-            # actualización del aire interior (UN dt, físicamente correcto)
+            # indoor-air update (ONE dt, physically correct)
             flux = 0.0
             for i in range(nx):
                 flux += hi * dx * (T[i, ny - 1] - Ti_old)
             Tint = Ti_old + dt * flux / Cair
             Ti_series[s] = Tint
-            # Tsi: superficie interior tras resolver, /(nx-1)
+            # Tsi: inner surface after solving, /(nx-1)
             tsi = 0.0
             for i in range(nx):
                 tsi += T[i, ny - 1]
             Tsi_series[s] = tsi / (nx - 1)
-            # energía (por unidad de área interior)
+            # energy (per unit indoor area)
             e = flux * dt / X
             if e > 0.0:
                 Qin += e
@@ -345,14 +345,14 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
 
 
 # =================================================================
-#  Bovedilla con cámara de aire (tipo 1) — Fase 6
+#  Filler block with air cavity (tipo 1) — Phase 6
 # =================================================================
 #
-# Física de cavidad: paredes del hueco (NT 9-12) convectan al aire del hueco
-# (coef. hh por Nusselt) y radian entre sí (Stefan-Boltzmann + factores de vista);
-# el aire del hueco es un nodo lumped Thueco (NT 0 fija T=Thueco). Port fiel de
-# la rama tipo==1 de solve_PQ + casos 0,9-12 de calculate_coefficients.
-# Sólo muro (beta=90): hh = 0.4005·|ΔT|^0.3033 / e22^0.0901.
+# Cavity physics: the cavity walls (NT 9-12) convect to the cavity air
+# (coef. hh by Nusselt) and radiate among themselves (Stefan-Boltzmann + view
+# factors); the cavity air is a lumped node Thueco (NT 0 fixes T=Thueco). Faithful
+# port of the tipo==1 branch of solve_PQ + cases 0,9-12 of calculate_coefficients.
+# Wall only (beta=90): hh = 0.4005·|ΔT|^0.3033 / e22^0.0901.
 
 _SIGMA = 5.6704e-8
 
@@ -362,13 +362,13 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                 i1, j1, i2, j2, e22, E,
                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                 a, b, c, d, P, Q, Tnew, tol):
-    """Lazo interno de un paso para bovedilla con cámara de aire (muro)."""
+    """Inner loop of one step for a filler block with air cavity (wall)."""
     nx, ny = k.shape
     iters = 0
     hh = 1.0
     while True:
         iters += 1
-        # --- temperaturas medias de las 4 paredes (T actual) ---
+        # --- mean temperatures of the 4 walls (current T) ---
         tup = tdn = tlf = trt = 0.0
         for i in range(i1, i2):
             tup += T[i, j1 - 1]
@@ -379,9 +379,9 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
             trt += T[i2, j]
         nlr = j2 - j1
         tup /= nud; tdn /= nud; tlf /= nlr; trt /= nlr
-        # --- Nusselt (muro) ---
+        # --- Nusselt (wall) ---
         hh = 0.4005 * (abs(tup - tdn) ** 0.3033) / (e22 ** 0.0901)
-        # --- radiación entre paredes (factores de vista) ---
+        # --- radiation between walls (view factors) ---
         Tu = tup + 273.15; Td = tdn + 273.15; Tl = tlf + 273.15; Tr = trt + 273.15
         Tu4 = Tu * Tu * Tu * Tu; Td4 = Td * Td * Td * Td
         Tl4 = Tl * Tl * Tl * Tl; Tr4 = Tr * Tr * Tr * Tr
@@ -399,11 +399,11 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
         Qlu = sy * (Tl4 - Tu4) * Flu
         Qlr = sy * (Tl4 - Tr4) * Flr
         Qld = sy * (Tl4 - Td4) * Fld
-        # --- ensamble a,b,c,d ---
+        # --- assemble a,b,c,d ---
         for j in range(ny):
             for i in range(nx):
                 nt_ij = 0
-                # tipo de nodo deducido de las coordenadas del hueco
+                # node type deduced from the cavity coordinates
                 kij = k[i, j]
                 apo = rhoc[i, j] * dx * dy / dt
                 aN = aS = aE = aW = 0.0
@@ -418,30 +418,30 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                 in_hole_cols = (i1 <= i) and (i < i2)
                 in_hole_rows = (j1 <= j) and (j < j2)
                 if in_hole_cols and in_hole_rows:
-                    # aire del hueco: T = Th
+                    # cavity air: T = Th
                     a[i, j] = 1.0; b[i, j] = 0.0; c[i, j] = 0.0; d[i, j] = Th
                 elif in_hole_cols and j == j1 - 1:
-                    # pared superior (NT 9): hueco al sur
+                    # top wall (NT 9): cavity to the south
                     aP = apo + aN + hh * dx + aE + aW
                     dd = aN * T[i, j - 1] + hh * dx * Th + apo * To[i, j] - Qur - Qud - Qul
                     a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
                 elif in_hole_cols and j == j2:
-                    # pared inferior (NT 10): hueco al norte
+                    # bottom wall (NT 10): cavity to the north
                     aP = apo + hh * dx + aS + aE + aW
                     dd = aS * T[i, j + 1] + hh * dx * Th + apo * To[i, j] - Qdl - Qdu - Qdr
                     a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
                 elif in_hole_rows and i == i1 - 1:
-                    # pared izquierda (NT 11): hueco al este
+                    # left wall (NT 11): cavity to the east
                     aP = apo + aN + aS + hh * dy + aW
                     dd = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hh * dy * Th - Qlu - Qlr - Qld
                     a[i, j] = aP; b[i, j] = 0.0; c[i, j] = aW; d[i, j] = dd
                 elif in_hole_rows and i == i2:
-                    # pared derecha (NT 12): hueco al oeste
+                    # right wall (NT 12): cavity to the west
                     aP = apo + aN + aS + aE + hh * dy
                     dd = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hh * dy * Th - Qrd - Qrl - Qru
                     a[i, j] = aP; b[i, j] = aE; c[i, j] = 0.0; d[i, j] = dd
                 else:
-                    # nodo estándar (1-8,13)
+                    # standard node (1-8,13)
                     aP = apo + aN + aS + aE + aW
                     dd = apo * To[i, j]
                     if j > 0:
@@ -453,7 +453,7 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                     if j == ny - 1:
                         aP += hi * dx; dd += hi * dx * Tint
                     a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
-        # --- TDMA en x por fila ---
+        # --- x TDMA per row ---
         for j in range(ny):
             P[0] = b[0, j] / a[0, j]
             Q[0] = d[0, j] / a[0, j]
@@ -464,7 +464,7 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
             Tnew[nx - 1, j] = Q[nx - 1]
             for i in range(nx - 2, -1, -1):
                 Tnew[i, j] = P[i] * Tnew[i + 1, j] + Q[i]
-        # --- error y commit ---
+        # --- error and commit ---
         error = 0.0
         for j in range(ny):
             for i in range(nx):
@@ -477,7 +477,7 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
 
 
 def _view_factors(a21, e22):
-    """Factores de vista de la cavidad (h=e22 alto, l=a21 ancho), como el C."""
+    """Cavity view factors (h=e22 height, l=a21 width), like the C."""
     h, l = e22, a21
     Fur = 0.5 * (1.0 + h / l - (1.0 + (h * h) / (l * l)) ** 0.5)
     Ful = Fur
@@ -494,11 +494,11 @@ def solve_step_hueca(NT, k, rhoc, To, Tsa, Tint, Thueco, ho, hi, dt, dx, dy,
                      La, X, rhoair, cair, i1, j1, i2, j2, a21, e22, E, beta,
                      tol=1e-10):
     """
-    Un paso de tiempo para bovedilla con cámara de aire (muro, beta=90).
-    Devuelve dict con ``T, Tint, Thueco, hh, iters``.
+    One time step for a filler block with air cavity (wall, beta=90).
+    Returns a dict with ``T, Tint, Thueco, hh, iters``.
     """
     if beta != 90.0:
-        raise NotImplementedError("solve_step_hueca: sólo muro (beta=90) por ahora.")
+        raise NotImplementedError("solve_step_hueca: wall only (beta=90) for now.")
     k = np.asarray(k, dtype=np.float64)
     rhoc = np.asarray(rhoc, dtype=np.float64)
     To = np.asarray(To, dtype=np.float64)
@@ -512,7 +512,7 @@ def solve_step_hueca(NT, k, rhoc, To, Tsa, Tint, Thueco, ho, hi, dt, dx, dy,
     iters, hh = _step_hueca(k, rhoc, To, T, Tsa, Ti, Th, ho, hi, dt, dx, dy,
                             i1, j1, i2, j2, e22, E, *vf,
                             a, b, cc, d, P, Q, Tnew, tol)
-    # aire del hueco (lumped, un solo dt)
+    # cavity air (lumped, single dt)
     Qh_hole = 0.0
     for i in range(i1, i2):
         Qh_hole += hh * dx * (T[i, j1 - 1] - Th)
@@ -522,7 +522,7 @@ def solve_step_hueca(NT, k, rhoc, To, Tsa, Tint, Thueco, ho, hi, dt, dx, dy,
         Qh_hole += hh * dy * (T[i2, j] - Th)
     Ch = rhoair * cair * a21 * e22
     Th_new = (Qh_hole + (Ch / dt) * Th) * dt / Ch
-    # aire interior (idéntico al port fiel tipo 2: dt²)
+    # indoor air (identical to the faithful tipo 2 port: dt²)
     Tsurf = T[:, ny - 1]
     Qh = float(np.sum(hi * dt * dx * (Tsurf - Ti)))
     Cair = rhoair * cair * La * X
@@ -536,9 +536,9 @@ def solve_day_hueca(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                     Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                     tol_inner, tol_day, max_days):
     """
-    Día completo con convergencia día-a-día para bovedilla con cámara de aire.
-    Réplica fiel del C (Tso /nx, Tsi /(nx-1), Tint con dt², Thueco lumped).
-    El aire del hueco ``Th`` y el interior ``Tint`` marchan paso a paso.
+    Full day with day-to-day convergence for a filler block with air cavity.
+    Faithful replica of the C (Tso /nx, Tsi /(nx-1), Tint with dt², Thueco lumped).
+    The cavity air ``Th`` and the indoor air ``Tint`` march step by step.
 
     Returns:
         (Ti_series, Tso_series, Tsi_series, Th_series, T_field, days)
@@ -568,7 +568,7 @@ def solve_day_hueca(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             tso = 0.0
             for i in range(nx):
                 tso += T[i, 0]
-            Tso_s[s] = tso / nx          # Tsout del C: /nx (réplica fiel)
+            Tso_s[s] = tso / nx          # C's Tsout: /nx (faithful replica)
             for j in range(ny):
                 for i in range(nx):
                     To[i, j] = T[i, j]
@@ -578,7 +578,7 @@ def solve_day_hueca(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                                 ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E,
                                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                                 a, b, c, d, P, Q, Tnew, tol_inner)
-            # aire del hueco
+            # cavity air
             qh = 0.0
             for i in range(i1, i2):
                 qh += hh * dx * (T[i, j1 - 1] - Th_old)
@@ -587,7 +587,7 @@ def solve_day_hueca(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 qh += hh * dy * (T[i1 - 1, j] - Th_old)
                 qh += hh * dy * (T[i2, j] - Th_old)
             Th = (qh + (Ch / dt) * Th_old) * dt / Ch
-            # aire interior (dt², fiel)
+            # indoor air (dt², faithful)
             qi = 0.0
             for i in range(nx):
                 qi += hi * dt * dx * (T[i, ny - 1] - Ti_old)
@@ -597,7 +597,7 @@ def solve_day_hueca(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             tsi = 0.0
             for i in range(nx):
                 tsi += T[i, ny - 1]
-            Tsi_s[s] = tsi / (nx - 1)    # max_min del C: /(nx-1)
+            Tsi_s[s] = tsi / (nx - 1)    # C's max_min: /(nx-1)
         C = 0.0
         for j in range(ny):
             for i in range(nx):
@@ -613,11 +613,11 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                          Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                          tol_inner, tol_day, max_days):
     """
-    Versión de **producción** del día con cámara de aire (bloque hueco / bovedilla
-    con aire). Igual que :func:`solve_day_hueca` pero con las correcciones
-    conscientes de Fase 5: aire interior con **un solo `dt`** y superficies a
-    `/(nx-1)`. La física del hueco (radiación + Nusselt + `Thueco`) es idéntica.
-    Devuelve además `Qin, Qout` (energía por unidad de área interior, último día).
+    **Production** version of the day with air cavity (hollow block / filler
+    block with air). Same as :func:`solve_day_hueca` but with the Phase 5
+    deliberate corrections: indoor air with a **single `dt`** and surfaces at
+    `/(nx-1)`. The cavity physics (radiation + Nusselt + `Thueco`) is identical.
+    Also returns `Qin, Qout` (energy per unit indoor area, last day).
 
     Returns:
         (Ti_series, Tso_series, Tsi_series, Th_series, T_field, days, Qin, Qout)
@@ -649,7 +649,7 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             tso = 0.0
             for i in range(nx):
                 tso += T[i, 0]
-            Tso_s[s] = tso / (nx - 1)        # producción: /(nx-1)
+            Tso_s[s] = tso / (nx - 1)        # production: /(nx-1)
             for j in range(ny):
                 for i in range(nx):
                     To[i, j] = T[i, j]
@@ -659,7 +659,7 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                                 ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E,
                                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                                 a, b, c, d, P, Q, Tnew, tol_inner)
-            # aire del hueco (un solo dt, igual que la fiel — ya era correcto)
+            # cavity air (single dt, same as the faithful one — already correct)
             qh = 0.0
             for i in range(i1, i2):
                 qh += hh * dx * (T[i, j1 - 1] - Th_old)
@@ -668,7 +668,7 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 qh += hh * dy * (T[i1 - 1, j] - Th_old)
                 qh += hh * dy * (T[i2, j] - Th_old)
             Th = (qh + (Ch / dt) * Th_old) * dt / Ch
-            # aire interior (un solo dt, físicamente correcto)
+            # indoor air (single dt, physically correct)
             flux = 0.0
             for i in range(nx):
                 flux += hi * dx * (T[i, ny - 1] - Ti_old)
@@ -694,29 +694,29 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
 
 
 # =================================================================
-#  Variante paralela (numba prange) — Fase 7
+#  Parallel variant (numba prange) — Phase 7
 # =================================================================
 #
-# El método ya es Jacobi por líneas (las filas usan un único snapshot de T por
-# iteración interna y se resuelven a un buffer Tnew antes de T<-Tnew), así que las
-# filas son INDEPENDIENTES: paralelizar el barrido sobre j con prange no cambia el
-# algoritmo ni la convergencia, solo reparte filas entre hilos. Portable: numba
-# prange con su threading layer (workqueue por defecto, sin libs externas).
+# The method is already line-by-line Jacobi (rows use a single snapshot of T per
+# inner iteration and are solved into a Tnew buffer before T<-Tnew), so the rows
+# are INDEPENDENT: parallelising the j sweep with prange does not change the
+# algorithm or the convergence, it only spreads rows across threads. Portable: numba
+# prange with its threading layer (workqueue by default, no external libs).
 
 
 @njit(parallel=True, cache=True)
 def _step_inner_par(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
                     a, b, c, d, Tnew, tol):
-    """Igual que ``_step_inner`` pero con el barrido de filas en ``prange``.
+    """Same as ``_step_inner`` but with the row sweep in ``prange``.
 
-    Cada fila j del TDMA usa buffers P,Q locales (un arreglo por iteración del
-    prange) para evitar carreras. El error es una reducción de suma sobre j.
+    Each TDMA row j uses local P,Q buffers (one array per prange iteration) to
+    avoid races. The error is a sum reduction over j.
     """
     nx, ny = k.shape
     iters = 0
     while True:
         iters += 1
-        # ---- ensamble (filas independientes) ----
+        # ---- assemble (independent rows) ----
         for j in prange(ny):
             for i in range(nx):
                 kij = k[i, j]
@@ -741,7 +741,7 @@ def _step_inner_par(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
                 if j == ny - 1:
                     aP += hi * dx; dd += hi * dx * Tint
                 a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
-        # ---- TDMA por fila (P,Q locales por hilo) ----
+        # ---- TDMA per row (thread-local P,Q) ----
         for j in prange(ny):
             P = np.empty(nx)
             Q = np.empty(nx)
@@ -754,7 +754,7 @@ def _step_inner_par(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
             Tnew[nx - 1, j] = Q[nx - 1]
             for i in range(nx - 2, -1, -1):
                 Tnew[i, j] = P[i] * Tnew[i + 1, j] + Q[i]
-        # ---- error (reducción) y commit ----
+        # ---- error (reduction) and commit ----
         error = 0.0
         for j in prange(ny):
             for i in range(nx):
@@ -769,8 +769,8 @@ def _step_inner_par(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
 @njit(cache=True)
 def solve_day_2d_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                      rhoair, cair, T0, tol_inner=1e-10, tol_day=5e-4, max_days=60):
-    """Versión paralela de :func:`solve_day_2d`: el paralelismo (``prange`` sobre
-    filas) vive en ``_step_inner_par``; el lazo día/paso es secuencial."""
+    """Parallel version of :func:`solve_day_2d`: the parallelism (``prange`` over
+    rows) lives in ``_step_inner_par``; the day/step loop is sequential."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
     T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
@@ -823,20 +823,20 @@ def solve_day_2d_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
 
 
 # =================================================================
-#  Vigueta y bovedilla — TECHO, N cavidades, 3 sólidos (Fase 8b)
+#  Joist and filler block — ROOF, N cavities, 3 solids (Phase 8b)
 # =================================================================
 #
-# Generaliza la física de cavidad (Fase 6) a una losa de techo con:
-#   - N cavidades de aire iguales (cada una un nodo lumped Thueco[c]);
-#   - tres materiales sólidos (topping, vigueta en L, bovedilla) codificados
-#     enteramente en los campos k/rhoc por nodo → el ensamble de conducción no
-#     cambia, solo lee k/rhoc;
-#   - Nusselt de **techo** (Rayleigh, beta=0) además del de muro (beta=90).
-# El tipo de cada nodo se lee de NT (1-8,13 estándar; 0 aire, 9-12 paredes) y la
-# cavidad a la que pertenece cada nodo de aire/pared, de `cav_of`. Convenciones de
-# producción (un solo dt en Thueco/Tint, superficies /(nx-1)).
+# Generalises the cavity physics (Phase 6) to a roof slab with:
+#   - N equal air cavities (each one a lumped node Thueco[c]);
+#   - three solid materials (topping, L-shaped joist, filler block) encoded
+#     entirely in the per-node k/rhoc fields → the conduction assembly does not
+#     change, it only reads k/rhoc;
+#   - **roof** Nusselt (Rayleigh, beta=0) in addition to the wall one (beta=90).
+# Each node's type is read from NT (1-8,13 standard; 0 air, 9-12 walls) and the
+# cavity each air/wall node belongs to, from `cav_of`. Production conventions
+# (single dt in Thueco/Tint, surfaces /(nx-1)).
 #
-# Propiedades del aire para el Nusselt de techo (idénticas al C):
+# Air properties for the roof Nusselt (identical to the C):
 #   gr=9.81, Beta=1/300, nu=1.11e-5, kair=0.0262, alphaair=kair/(rhoair·cair).
 
 _GR = 9.81
@@ -847,11 +847,11 @@ _K_AIR = 0.0262
 
 @njit(cache=True)
 def _slab_hh(tup, tdn, e22, beta, kair, gr, beta_exp, nu, alphaair):
-    """Coef. convectivo de la cavidad ``hh``. ``beta=90`` muro, ``beta=0`` techo
-    (Rayleigh). ``tup`` = pared superior (exterior), ``tdn`` = inferior (interior)."""
+    """Cavity convective coefficient ``hh``. ``beta=90`` wall, ``beta=0`` roof
+    (Rayleigh). ``tup`` = top wall (outside), ``tdn`` = bottom (inside)."""
     if beta == 90.0:
         return 0.4005 * (abs(tup - tdn) ** 0.3033) / (e22 ** 0.0901)
-    # techo (beta=0): Rayleigh-Bénard; estable (tdn<=tup) → solo conducción.
+    # roof (beta=0): Rayleigh-Bénard; stable (tdn<=tup) → conduction only.
     if tdn <= tup:
         return kair / e22
     Ra = gr * beta_exp * (tdn - tup) * (e22 ** 3) / nu / alphaair
@@ -870,16 +870,16 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                kair, gr, beta_exp, nu, alphaair,
                Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol):
-    """Lazo interno (Gauss-Seidel por líneas) de un paso para la losa de techo con
-    N cavidades. ``Th`` (n_cav) constante durante el lazo; devuelve ``iters`` y
-    llena ``hh`` (n_cav). Actualiza ``T`` in situ."""
+    """Inner loop (line-by-line Gauss-Seidel) of one step for the N-cavity roof
+    slab. ``Th`` (n_cav) constant during the loop; returns ``iters`` and fills
+    ``hh`` (n_cav). Updates ``T`` in place."""
     nx, ny = k.shape
     sx = dx * E * _SIGMA
     sy = dy * E * _SIGMA
     iters = 0
     while True:
         iters += 1
-        # --- por cavidad: temperaturas medias de paredes, hh y radiación neta ---
+        # --- per cavity: mean wall temperatures, hh and net radiation ---
         for cidx in range(n_cav):
             ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]
             tup = 0.0; tdn = 0.0; tlf = 0.0; trt = 0.0
@@ -909,7 +909,7 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
             Qbot[cidx] = Qdl + Qdu + Qdr
             Qleft[cidx] = Qlu + Qlr + Qld
             Qright[cidx] = Qrd + Qrl + Qru
-        # --- ensamble a,b,c,d (driven por NT + cav_of) ---
+        # --- assemble a,b,c,d (driven by NT + cav_of) ---
         for j in range(ny):
             for i in range(nx):
                 nt = NT[i, j]
@@ -927,27 +927,27 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                 if nt == 0:
                     cc = cav_of[i, j]
                     a[i, j] = 1.0; b[i, j] = 0.0; c[i, j] = 0.0; d[i, j] = Th[cc]
-                elif nt == 9:                       # pared superior (hueco al sur)
+                elif nt == 9:                       # top wall (cavity to the south)
                     cc = cav_of[i, j]; hc = hh[cc]
                     a[i, j] = apo + aN + hc * dx + aE + aW
                     d[i, j] = aN * T[i, j - 1] + hc * dx * Th[cc] + apo * To[i, j] - Qtop[cc]
                     b[i, j] = aE; c[i, j] = aW
-                elif nt == 10:                      # pared inferior (hueco al norte)
+                elif nt == 10:                      # bottom wall (cavity to the north)
                     cc = cav_of[i, j]; hc = hh[cc]
                     a[i, j] = apo + hc * dx + aS + aE + aW
                     d[i, j] = aS * T[i, j + 1] + hc * dx * Th[cc] + apo * To[i, j] - Qbot[cc]
                     b[i, j] = aE; c[i, j] = aW
-                elif nt == 11:                      # pared izquierda (hueco al este)
+                elif nt == 11:                      # left wall (cavity to the east)
                     cc = cav_of[i, j]; hc = hh[cc]
                     a[i, j] = apo + aN + aS + hc * dy + aW
                     d[i, j] = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hc * dy * Th[cc] - Qleft[cc]
                     b[i, j] = 0.0; c[i, j] = aW
-                elif nt == 12:                      # pared derecha (hueco al oeste)
+                elif nt == 12:                      # right wall (cavity to the west)
                     cc = cav_of[i, j]; hc = hh[cc]
                     a[i, j] = apo + aN + aS + aE + hc * dy
                     d[i, j] = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hc * dy * Th[cc] - Qright[cc]
                     b[i, j] = aE; c[i, j] = 0.0
-                else:                               # estándar (1-8, 13)
+                else:                               # standard (1-8, 13)
                     aP = apo + aN + aS + aE + aW
                     dd = apo * To[i, j]
                     if j > 0:
@@ -959,7 +959,7 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                     if j == ny - 1:
                         aP += hi * dx; dd += hi * dx * Tint
                     a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
-        # --- TDMA en x por fila ---
+        # --- x TDMA per row ---
         for j in range(ny):
             P[0] = b[0, j] / a[0, j]
             Q[0] = d[0, j] / a[0, j]
@@ -970,7 +970,7 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
             Tnew[nx - 1, j] = Q[nx - 1]
             for i in range(nx - 2, -1, -1):
                 Tnew[i, j] = P[i] * Tnew[i + 1, j] + Q[i]
-        # --- error y commit ---
+        # --- error and commit ---
         error = 0.0
         for j in range(ny):
             for i in range(nx):
@@ -988,9 +988,9 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                         cavity_width, e22, E, beta,
                         Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                         tol_inner, tol_day, max_days):
-    """Día completo (convergencia día-a-día) de la losa de techo con N cavidades de
-    aire. Cada cavidad tiene su nodo lumped ``Th[c]``; convenciones de producción
-    (un solo dt, superficies /(nx-1)). Nusselt de muro/techo según ``beta``.
+    """Full day (day-to-day convergence) of the N-air-cavity roof slab. Each cavity
+    has its lumped node ``Th[c]``; production conventions (single dt, surfaces
+    /(nx-1)). Wall/roof Nusselt according to ``beta``.
 
     Returns:
         (Ti_series, Tso_series, Tsi_series, Th_mean_series, T_field, days, Qin, Qout)
@@ -1039,7 +1039,7 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                        _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                        a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol_inner)
-            # aire de cada hueco (un solo dt)
+            # air of each cavity (single dt)
             thsum = 0.0
             for cidx in range(n_cav):
                 ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]; hc = hh[cidx]
@@ -1053,7 +1053,7 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 Th[cidx] = Th[cidx] + dt * qh / Ch
                 thsum += Th[cidx]
             Th_s[s] = thsum / n_cav
-            # aire interior (un solo dt)
+            # indoor air (single dt)
             flux = 0.0
             for i in range(nx):
                 flux += hi * dx * (T[i, ny - 1] - Ti_old)
@@ -1080,7 +1080,7 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
 def solve_step_slab(NT, k, rhoc, To, Tsa, Tint, Th0, ho, hi, dt, dx, dy,
                     cav_of, cav_i1, cav_i2, cj1, cj2, cavity_width, e22, E, beta,
                     rhoair, cair, La, X, tol=1e-10):
-    """Un paso de la losa de techo (para prueba unitaria). Devuelve dict con
+    """One step of the roof slab (for unit testing). Returns a dict with
     ``T, Tint, Thueco (array), hh (array), iters``."""
     k = np.asarray(k, dtype=np.float64)
     rhoc = np.asarray(rhoc, dtype=np.float64)
@@ -1124,15 +1124,15 @@ def solve_step_slab(NT, k, rhoc, To, Tsa, Tint, Th0, ho, hi, dt, dx, dy,
 
 
 # =================================================================
-#  Variantes paralelas (numba prange) — motor por default
+#  Parallel variants (numba prange) — optional engine
 # =================================================================
 #
-# El barrido por líneas es Jacobi (las filas usan un único snapshot de T por
-# iteración interna y se resuelven a Tnew antes de T<-Tnew), así que las filas son
-# independientes: paralelizar el ensamble/TDMA/error sobre j con prange ejecuta el
-# MISMO algoritmo (mismo nº de iteraciones, resultado bit-a-bit, ver Fase 7). El
-# precómputo por cavidad (paredes, hh, radiación) es chico y se deja secuencial.
-# numba auto-detecta los núcleos en runtime (threading layer interno, portable).
+# The line-by-line sweep is Jacobi (rows use a single snapshot of T per inner
+# iteration and are solved into Tnew before T<-Tnew), so the rows are independent:
+# parallelising the assembly/TDMA/error over j with prange runs the SAME algorithm
+# (same number of iterations, bit-for-bit result, see Phase 7). The per-cavity
+# precompute (walls, hh, radiation) is small and left sequential.
+# numba auto-detects the cores at runtime (internal threading layer, portable).
 
 
 @njit(parallel=True, cache=True)
@@ -1240,7 +1240,7 @@ def solve_day_hueca_prod_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                              rhoair, cair, T0, i1, j1, i2, j2, a21, e22, E,
                              Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                              tol_inner, tol_day, max_days):
-    """Versión paralela de :func:`solve_day_hueca_prod` (usa ``_step_hueca_par``)."""
+    """Parallel version of :func:`solve_day_hueca_prod` (uses ``_step_hueca_par``)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
     T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
@@ -1421,7 +1421,7 @@ def solve_day_slab_prod_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                             cavity_width, e22, E, beta,
                             Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                             tol_inner, tol_day, max_days):
-    """Versión paralela de :func:`solve_day_slab_prod` (usa ``_step_slab_par``)."""
+    """Parallel version of :func:`solve_day_slab_prod` (uses ``_step_slab_par``)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
     n_cav = cav_i1.shape[0]
@@ -1500,20 +1500,20 @@ def solve_day_slab_prod_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
 
 
 # =================================================================
-#  Aire acondicionado (AC) — Fase 9
+#  Air conditioning (AC) — Phase 9
 # =================================================================
 #
-# Mantiene el aire interior FIJO en un setpoint `Tset` (no se integra) y acumula
-# la carga: por paso, el flujo neto en la superficie interior `e=(Σ hi·dx·(T−Tset))·dt/X`
-# se suma a `Qcool` si entra calor (e>0) o a `Qheat` si sale (e<0). En las variantes
-# con aire (hueca/slab) el aire del hueco `Th`/`Th[c]` SIGUE flotando (el AC solo
-# controla el recinto). Reúsan los mismos `_step_*` que la flotación libre.
+# Holds the indoor air FIXED at a setpoint `Tset` (not integrated) and accumulates
+# the load: per step, the net flux at the inner surface `e=(Σ hi·dx·(T−Tset))·dt/X`
+# is added to `Qcool` if heat comes in (e>0) or to `Qheat` if it goes out (e<0). In
+# the air variants (hueca/slab) the cavity air `Th`/`Th[c]` KEEPS floating (the AC
+# only controls the indoor air). They reuse the same `_step_*` as the free-running.
 
 
 @njit(cache=True)
 def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                     rhoair, cair, T0, Tset, tol_inner=1e-10, tol_day=5e-4, max_days=60):
-    """AC para conducción pura (RELLENA). Devuelve
+    """AC for pure conduction (RELLENA). Returns
     (Ti_series(=Tset), Tso, Tsi, T_field, days, Qcool, Qheat)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
@@ -1566,7 +1566,7 @@ def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
 @njit(cache=True)
 def solve_day_2d_ac_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                         rhoair, cair, T0, Tset, tol_inner=1e-10, tol_day=5e-4, max_days=60):
-    """Versión paralela de :func:`solve_day_2d_ac` (usa ``_step_inner_par``)."""
+    """Parallel version of :func:`solve_day_2d_ac` (uses ``_step_inner_par``)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
     T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
@@ -1619,7 +1619,7 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                        rhoair, cair, T0, Tset, i1, j1, i2, j2, a21, e22, E,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                        tol_inner, tol_day, max_days):
-    """AC para muro con cámara de aire (Thueco flota, Tint=Tset fijo). Devuelve
+    """AC for a wall with air cavity (Thueco floats, Tint=Tset fixed). Returns
     (Ti(=Tset), Tso, Tsi, Th, T_field, days, Qcool, Qheat)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
@@ -1688,7 +1688,7 @@ def solve_day_hueca_ac_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                            rhoair, cair, T0, Tset, i1, j1, i2, j2, a21, e22, E,
                            Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                            tol_inner, tol_day, max_days):
-    """Versión paralela de :func:`solve_day_hueca_ac` (usa ``_step_hueca_par``)."""
+    """Parallel version of :func:`solve_day_hueca_ac` (uses ``_step_hueca_par``)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
     T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
@@ -1756,7 +1756,7 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                       cavity_width, e22, E, beta,
                       Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                       tol_inner, tol_day, max_days):
-    """AC para techo de N cavidades (Thueco[c] flotan, Tint=Tset fijo). Devuelve
+    """AC for an N-cavity roof (Thueco[c] float, Tint=Tset fixed). Returns
     (Ti(=Tset), Tso, Tsi, Th_mean, T_field, days, Qcool, Qheat)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
@@ -1837,7 +1837,7 @@ def solve_day_slab_ac_par(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                           cavity_width, e22, E, beta,
                           Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                           tol_inner, tol_day, max_days):
-    """Versión paralela de :func:`solve_day_slab_ac` (usa ``_step_slab_par``)."""
+    """Parallel version of :func:`solve_day_slab_ac` (uses ``_step_slab_par``)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
     n_cav = cav_i1.shape[0]

@@ -47,7 +47,7 @@ def test_categories_include_air_and_materials():
     sec = w.section()
     _, cats = _categorize(sec, "materials", eh.config.materials)
     texts = [t for t, _ in cats]
-    assert any("Aire" in t for t in texts)
+    assert any("Air" in t for t in texts)
     assert any("Concreto" in t for t in texts)
 
 
