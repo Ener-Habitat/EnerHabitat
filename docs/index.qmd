@@ -1,0 +1,32 @@
+---
+title: "EnerHabitat"
+subtitle: "Thermal simulation of opaque constructive systems (walls and roofs) from EPW data — 1D and 2D"
+---
+
+::: {.callout-note}
+🚧 **Skeleton for structure review** — content lands in the documentation phases
+(see `PLAN-README.md` in the repository).
+:::
+
+## What is EnerHabitat?
+
+<!-- 2–3 lines: time-dependent heat transfer through walls/roofs, average day of a month,
+free-running and air-conditioned modes; 1D multilayer + 2D heterogeneous units.
+Cite the reference paper [@barrios2016]. -->
+
+## Installation
+
+<!-- pip / uv install; Python >= 3.10; optional [viz] extra. -->
+
+## Quickstart
+
+<!-- Minimal working example (same as README): materials.ini, Location, System,
+meanDay, Tsa, solve. Will become an executable chunk in a later phase. -->
+
+## Where to go next
+
+- [Usage](usage.qmd) — workflow and complete examples (1D/2D, with and without AC).
+- [Theory: 1D model](model-1d.qmd) — physical problem, equations and boundary conditions.
+- [Theory: 2D model](model-2d.qmd) — hollow-block walls and joist-and-block roofs.
+- [Numerical method](numerics.qmd) — discretisation, convergence and validation.
+- [API](api.qmd) — classes and configuration reference.

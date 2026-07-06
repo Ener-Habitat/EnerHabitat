@@ -1,0 +1,43 @@
+---
+title: "Numerical method"
+---
+
+::: {.callout-note}
+🚧 **Skeleton for structure review** — content lands in Phase 3 (discretisation,
+convergence, paper↔package differences, validation).
+:::
+
+## Discretisation
+
+<!-- Implicit control volumes [@patankar1980], harmonic-mean conductivity at faces,
+mesh (Nx in 1D; nx×ny in 2D). -->
+
+## Solution algorithm
+
+<!-- Direct TDMA (1D); line-by-line TDMA + inner iteration (2D) with tol_inner;
+nonlinear coupling (radiation/Nusselt re-evaluated per iteration). -->
+
+## Indoor-air coupling (free-running mode)
+
+<!-- Conduction is implicit (unconditionally stable). The wall↔air coupling is
+segregated: TDMA uses the old Tint, then the air node advances explicitly
+(forward Euler): Fo = hi·dt/(ρa·ca·La) ≲ 1 — the reason dt is fixed at 10 s
+(Fo ≈ 0.03). No criterion in AC mode (Tint constant). -->
+
+## Convergence to the periodic regime
+
+<!-- Day-to-day criterion with tol_day and max_days. -->
+
+## Differences with the 2016 paper
+
+<!-- Table: climate (EPW vs Meteonorm DB), dt, mesh, hi, tolerances, 2D geometries,
+materials DB. Each value verified against the code. -->
+
+## Validation
+
+<!-- 1D vs EnergyPlus; 2D filled = 1D; 2D hollow block vs hot-box experiment
+(max diff 6.5%) [@barrios2016]; package vs legacy C golden masters; 2D→1D reduction. -->
+
+## Performance
+
+<!-- Serial JIT (numba) solver; parallelise at the process level for sweeps. -->

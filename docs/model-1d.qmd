@@ -1,0 +1,37 @@
+---
+title: "1D model: physical problem"
+---
+
+::: {.callout-note}
+🚧 **Skeleton for structure review** — content lands in Phase 1 (equations, BCs, figure).
+:::
+
+## Physical problem
+
+<!-- Single opaque envelope component (wall or roof), no windows/ventilation/infiltration;
+average day of a month, periodic regime. Domain sketch: layers 1..N, x=0 outside → x=L
+inside, indoor air at La. -->
+
+## Governing equation
+
+<!-- Heat equation per layer (eq. 1) + flux continuity at layer joints (eq. 2).
+Numbered with {#eq-heat} etc., cross-referenced. -->
+
+## Outdoor boundary condition: sun–air temperature
+
+<!-- Eq. (3) with T_sa (eq. 4): absortance, ho, RF (−3.9 °C horizontal, 0 vertical);
+Is on the tilted surface via pvlib. -->
+
+## Indoor boundary condition and solution modes
+
+### Free-running
+
+<!-- Indoor air balance (eq. 7) with H = La = 2.5 m. -->
+
+### Air-conditioned
+
+<!-- Ti = Tn constant; Tn = 0.54·T̄o + 13.5 [@humphreys2000]; Morillón comfort amplitude. -->
+
+## Outputs and units
+
+<!-- Ti, energy_transfer, cooling/heating_energy in J/(m²·day); conversion note. -->

@@ -1,0 +1,32 @@
+---
+title: "About"
+---
+
+::: {.callout-note}
+🚧 **Skeleton for structure review.**
+:::
+
+## How to cite
+
+<!-- Preferred citation: the Solar Energy paper [@barrios2016]; the package with its
+version. Must match CITATION.cff at the repository root. -->
+
+## Changelog
+
+<!-- Summary of / link to CHANGELOG.md. -->
+
+## Authors
+
+Developed at the **Instituto de Energías Renovables, UNAM**.
+
+- Guillermo Barrios del Valle — <gbv@ier.unam.mx>
+- Fernando Rodríguez Calderón — <ferrodriguez2509@gmail.com>
+
+## License
+
+MIT — see the [LICENSE](https://github.com/Ener-Habitat/EnerHabitat/blob/main/LICENSE).
+
+## References
+
+::: {#refs}
+:::

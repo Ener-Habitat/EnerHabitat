@@ -1,0 +1,43 @@
+---
+title: "2D model: non-homogeneous systems"
+---
+
+::: {.callout-note}
+🚧 **Skeleton for structure review** — content lands in Phase 2 (equations, cavity
+physics, geometry figures).
+:::
+
+## Why 2D
+
+<!-- Layer heterogeneous across its width; repeating cell with adiabatic lateral
+symmetry. Axis convention (x = width, y = thickness). -->
+
+## Governing equations and boundary conditions
+
+<!-- 2D extension of the heat equation; outdoor/indoor BCs as in 1D; symmetry sides. -->
+
+## Cavity physics (`Fill.AIR`)
+
+<!-- (i) conduction in solids, (ii) natural convection via temperature-dependent Nusselt
+correlations — wall (vertical cavity) [@xaman2005] and roof (Rayleigh–Bénard)
+[@hollands1975]; (iii) radiation between the four grey-diffuse cavity surfaces (view
+factors); (iv) lumped cavity-air node. -->
+
+## Solid fill (`Fill.SOLID`)
+
+<!-- Conduction only; limit case = homogeneous 1D layer. -->
+
+## Geometries
+
+### Hollow-block wall (`HollowBlock`)
+
+<!-- Figure docs/img/hollow_block.png; cell measures; thickness formula. -->
+
+### Joist-and-block roof (`Slab`)
+
+<!-- Figure docs/img/slab.png; three solids, L-shaped rib, N cavities;
+width/thickness formulas. -->
+
+## Constraints
+
+<!-- Exactly one 2D element in the stack; tilt required by type (wall 90 / roof 0). -->

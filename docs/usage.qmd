@@ -1,0 +1,42 @@
+---
+title: "Usage"
+---
+
+::: {.callout-note}
+🚧 **Skeleton for structure review** — the four examples below will become executable
+chunks (code + plots run at render time).
+:::
+
+## Workflow
+
+<!-- The 6 steps: geolocate (EPW), orient (azimuth/tilt), color (absortance),
+layers, meanDay(month), Tsa() then solve()/solveAC(). -->
+
+## Materials file
+
+<!-- materials.ini format, required keys k/rho/c, example file covering all examples. -->
+
+## Examples
+
+### 1D wall, free-running
+
+<!-- Two-layer wall, solve(), energy_transfer; plot Ti vs Ta/Tsa/Tn. -->
+
+### 1D wall, air-conditioned
+
+<!-- Same wall, solveAC(), cooling_energy / heating_energy. -->
+
+### 2D hollow-block wall, free-running
+
+<!-- HollowBlock + System2D, section preview(), solve(). -->
+
+### 2D hollow-block wall, air-conditioned
+
+<!-- Same wall, solveAC(). -->
+
+<!-- Optional 5th example: Slab (joist-and-block roof). -->
+
+## Configuration
+
+<!-- config (global: file, La, Nx, ho, hi, dt) and config2d (nx, ny, tolerances).
+Link to numerics.qmd for why dt is fixed. -->

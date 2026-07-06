@@ -1,0 +1,42 @@
+---
+title: "API reference"
+---
+
+::: {.callout-note}
+🚧 **Skeleton for structure review** — manual reference (migrated and expanded from the
+README); `quartodoc` autodoc is a possible future step.
+:::
+
+## Location
+
+<!-- Constructor, attributes (file, city, latitude, longitude, altitude, timezone),
+methods (meanDay, copy, info, flag). -->
+
+## System (1D)
+
+<!-- Attributes (location, tilt, azimuth, absortance, layers, add/remove_layer),
+result attributes (energy_transfer, cooling_energy, heating_energy),
+methods (Tsa, solve, solveAC, copy, info, flag). -->
+
+## System2D
+
+<!-- Same interface as System; layers with exactly one 2D element; type-dispatched
+solve/solveAC; orientation validation. -->
+
+## HollowBlock
+
+<!-- material, emissivity, fill_type/fill_material, geometry keys. -->
+
+## Slab
+
+<!-- rib/block/topping materials, fill, emissivity, geometry keys (web, foot,
+shoulder, n_cavities, cavity_width, topping, topping_cap, covers). -->
+
+## Section inspector
+
+<!-- section_report(), preview(), section(); [viz] extra. -->
+
+## config and config2d
+
+<!-- Global parameters, defaults (NOM ho/hi), reset(), materials access;
+2D mesh and tolerances. -->

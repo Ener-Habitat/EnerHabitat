@@ -1,0 +1,32 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "EnerHabitat"
+  description: "Thermal simulation of opaque constructive systems (walls and roofs) from EPW data — 1D and 2D"
+  repo-url: https://github.com/Ener-Habitat/EnerHabitat
+  navbar:
+    left:
+      - {href: index.qmd, text: Home}
+      - {href: usage.qmd, text: Usage}
+      - text: Theory
+        menu:
+          - {href: model-1d.qmd, text: "1D model"}
+          - {href: model-2d.qmd, text: "2D model"}
+          - {href: numerics.qmd, text: "Numerical method"}
+      - {href: api.qmd, text: API}
+      - {href: about.qmd, text: About}
+    right:
+      - icon: github
+        href: https://github.com/Ener-Habitat/EnerHabitat
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+
+bibliography: references.bib
+
+execute:
+  freeze: auto
