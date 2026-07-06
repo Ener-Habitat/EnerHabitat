@@ -1,0 +1,317 @@
+[
+  {
+    "objectID": "usage.html",
+    "href": "usage.html",
+    "title": "Usage",
+    "section": "",
+    "text": "Note\n\n\n\n🚧 Skeleton for structure review — the four examples below will become executable chunks (code + plots run at render time)."
+  },
+  {
+    "objectID": "usage.html#workflow",
+    "href": "usage.html#workflow",
+    "title": "Usage",
+    "section": "Workflow",
+    "text": "Workflow"
+  },
+  {
+    "objectID": "usage.html#materials-file",
+    "href": "usage.html#materials-file",
+    "title": "Usage",
+    "section": "Materials file",
+    "text": "Materials file"
+  },
+  {
+    "objectID": "usage.html#examples",
+    "href": "usage.html#examples",
+    "title": "Usage",
+    "section": "Examples",
+    "text": "Examples\n\n1D wall, free-running\n\n\n\n1D wall, air-conditioned\n\n\n\n2D hollow-block wall, free-running\n\n\n\n2D hollow-block wall, air-conditioned"
+  },
+  {
+    "objectID": "usage.html#configuration",
+    "href": "usage.html#configuration",
+    "title": "Usage",
+    "section": "Configuration",
+    "text": "Configuration"
+  },
+  {
+    "objectID": "model-1d.html",
+    "href": "model-1d.html",
+    "title": "1D model: physical problem",
+    "section": "",
+    "text": "Note\n\n\n\n🚧 Skeleton for structure review — content lands in Phase 1 (equations, BCs, figure)."
+  },
+  {
+    "objectID": "model-1d.html#physical-problem",
+    "href": "model-1d.html#physical-problem",
+    "title": "1D model: physical problem",
+    "section": "Physical problem",
+    "text": "Physical problem"
+  },
+  {
+    "objectID": "model-1d.html#governing-equation",
+    "href": "model-1d.html#governing-equation",
+    "title": "1D model: physical problem",
+    "section": "Governing equation",
+    "text": "Governing equation"
+  },
+  {
+    "objectID": "model-1d.html#outdoor-boundary-condition-sunair-temperature",
+    "href": "model-1d.html#outdoor-boundary-condition-sunair-temperature",
+    "title": "1D model: physical problem",
+    "section": "Outdoor boundary condition: sun–air temperature",
+    "text": "Outdoor boundary condition: sun–air temperature"
+  },
+  {
+    "objectID": "model-1d.html#indoor-boundary-condition-and-solution-modes",
+    "href": "model-1d.html#indoor-boundary-condition-and-solution-modes",
+    "title": "1D model: physical problem",
+    "section": "Indoor boundary condition and solution modes",
+    "text": "Indoor boundary condition and solution modes\n\nFree-running\n\n\n\nAir-conditioned"
+  },
+  {
+    "objectID": "model-1d.html#outputs-and-units",
+    "href": "model-1d.html#outputs-and-units",
+    "title": "1D model: physical problem",
+    "section": "Outputs and units",
+    "text": "Outputs and units"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "Note\n\n\n\n🚧 Skeleton for structure review."
+  },
+  {
+    "objectID": "about.html#how-to-cite",
+    "href": "about.html#how-to-cite",
+    "title": "About",
+    "section": "How to cite",
+    "text": "How to cite"
+  },
+  {
+    "objectID": "about.html#changelog",
+    "href": "about.html#changelog",
+    "title": "About",
+    "section": "Changelog",
+    "text": "Changelog"
+  },
+  {
+    "objectID": "about.html#authors",
+    "href": "about.html#authors",
+    "title": "About",
+    "section": "Authors",
+    "text": "Authors\nDeveloped at the Instituto de Energías Renovables, UNAM.\n\nGuillermo Barrios del Valle — gbv@ier.unam.mx\nFernando Rodríguez Calderón — ferrodriguez2509@gmail.com"
+  },
+  {
+    "objectID": "about.html#license",
+    "href": "about.html#license",
+    "title": "About",
+    "section": "License",
+    "text": "License\nMIT — see the LICENSE."
+  },
+  {
+    "objectID": "about.html#references",
+    "href": "about.html#references",
+    "title": "About",
+    "section": "References",
+    "text": "References"
+  },
+  {
+    "objectID": "model-2d.html",
+    "href": "model-2d.html",
+    "title": "2D model: non-homogeneous systems",
+    "section": "",
+    "text": "Note\n\n\n\n🚧 Skeleton for structure review — content lands in Phase 2 (equations, cavity physics, geometry figures)."
+  },
+  {
+    "objectID": "model-2d.html#why-2d",
+    "href": "model-2d.html#why-2d",
+    "title": "2D model: non-homogeneous systems",
+    "section": "Why 2D",
+    "text": "Why 2D"
+  },
+  {
+    "objectID": "model-2d.html#governing-equations-and-boundary-conditions",
+    "href": "model-2d.html#governing-equations-and-boundary-conditions",
+    "title": "2D model: non-homogeneous systems",
+    "section": "Governing equations and boundary conditions",
+    "text": "Governing equations and boundary conditions"
+  },
+  {
+    "objectID": "model-2d.html#cavity-physics-fill.air",
+    "href": "model-2d.html#cavity-physics-fill.air",
+    "title": "2D model: non-homogeneous systems",
+    "section": "Cavity physics (Fill.AIR)",
+    "text": "Cavity physics (Fill.AIR)"
+  },
+  {
+    "objectID": "model-2d.html#solid-fill-fill.solid",
+    "href": "model-2d.html#solid-fill-fill.solid",
+    "title": "2D model: non-homogeneous systems",
+    "section": "Solid fill (Fill.SOLID)",
+    "text": "Solid fill (Fill.SOLID)"
+  },
+  {
+    "objectID": "model-2d.html#geometries",
+    "href": "model-2d.html#geometries",
+    "title": "2D model: non-homogeneous systems",
+    "section": "Geometries",
+    "text": "Geometries\n\nHollow-block wall (HollowBlock)\n\n\n\nJoist-and-block roof (Slab)"
+  },
+  {
+    "objectID": "model-2d.html#constraints",
+    "href": "model-2d.html#constraints",
+    "title": "2D model: non-homogeneous systems",
+    "section": "Constraints",
+    "text": "Constraints"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "EnerHabitat",
+    "section": "",
+    "text": "Note\n\n\n\n🚧 Skeleton for structure review — content lands in the documentation phases (see PLAN-README.md in the repository)."
+  },
+  {
+    "objectID": "index.html#what-is-enerhabitat",
+    "href": "index.html#what-is-enerhabitat",
+    "title": "EnerHabitat",
+    "section": "What is EnerHabitat?",
+    "text": "What is EnerHabitat?"
+  },
+  {
+    "objectID": "index.html#installation",
+    "href": "index.html#installation",
+    "title": "EnerHabitat",
+    "section": "Installation",
+    "text": "Installation"
+  },
+  {
+    "objectID": "index.html#quickstart",
+    "href": "index.html#quickstart",
+    "title": "EnerHabitat",
+    "section": "Quickstart",
+    "text": "Quickstart"
+  },
+  {
+    "objectID": "index.html#where-to-go-next",
+    "href": "index.html#where-to-go-next",
+    "title": "EnerHabitat",
+    "section": "Where to go next",
+    "text": "Where to go next\n\nUsage — workflow and complete examples (1D/2D, with and without AC).\nTheory: 1D model — physical problem, equations and boundary conditions.\nTheory: 2D model — hollow-block walls and joist-and-block roofs.\nNumerical method — discretisation, convergence and validation.\nAPI — classes and configuration reference."
+  },
+  {
+    "objectID": "api.html",
+    "href": "api.html",
+    "title": "API reference",
+    "section": "",
+    "text": "Note\n\n\n\n🚧 Skeleton for structure review — manual reference (migrated and expanded from the README); quartodoc autodoc is a possible future step."
+  },
+  {
+    "objectID": "api.html#location",
+    "href": "api.html#location",
+    "title": "API reference",
+    "section": "Location",
+    "text": "Location"
+  },
+  {
+    "objectID": "api.html#system-1d",
+    "href": "api.html#system-1d",
+    "title": "API reference",
+    "section": "System (1D)",
+    "text": "System (1D)"
+  },
+  {
+    "objectID": "api.html#system2d",
+    "href": "api.html#system2d",
+    "title": "API reference",
+    "section": "System2D",
+    "text": "System2D"
+  },
+  {
+    "objectID": "api.html#hollowblock",
+    "href": "api.html#hollowblock",
+    "title": "API reference",
+    "section": "HollowBlock",
+    "text": "HollowBlock"
+  },
+  {
+    "objectID": "api.html#slab",
+    "href": "api.html#slab",
+    "title": "API reference",
+    "section": "Slab",
+    "text": "Slab"
+  },
+  {
+    "objectID": "api.html#section-inspector",
+    "href": "api.html#section-inspector",
+    "title": "API reference",
+    "section": "Section inspector",
+    "text": "Section inspector"
+  },
+  {
+    "objectID": "api.html#config-and-config2d",
+    "href": "api.html#config-and-config2d",
+    "title": "API reference",
+    "section": "config and config2d",
+    "text": "config and config2d"
+  },
+  {
+    "objectID": "numerics.html",
+    "href": "numerics.html",
+    "title": "Numerical method",
+    "section": "",
+    "text": "Note\n\n\n\n🚧 Skeleton for structure review — content lands in Phase 3 (discretisation, convergence, paper↔︎package differences, validation)."
+  },
+  {
+    "objectID": "numerics.html#discretisation",
+    "href": "numerics.html#discretisation",
+    "title": "Numerical method",
+    "section": "Discretisation",
+    "text": "Discretisation"
+  },
+  {
+    "objectID": "numerics.html#solution-algorithm",
+    "href": "numerics.html#solution-algorithm",
+    "title": "Numerical method",
+    "section": "Solution algorithm",
+    "text": "Solution algorithm"
+  },
+  {
+    "objectID": "numerics.html#indoor-air-coupling-free-running-mode",
+    "href": "numerics.html#indoor-air-coupling-free-running-mode",
+    "title": "Numerical method",
+    "section": "Indoor-air coupling (free-running mode)",
+    "text": "Indoor-air coupling (free-running mode)"
+  },
+  {
+    "objectID": "numerics.html#convergence-to-the-periodic-regime",
+    "href": "numerics.html#convergence-to-the-periodic-regime",
+    "title": "Numerical method",
+    "section": "Convergence to the periodic regime",
+    "text": "Convergence to the periodic regime"
+  },
+  {
+    "objectID": "numerics.html#differences-with-the-2016-paper",
+    "href": "numerics.html#differences-with-the-2016-paper",
+    "title": "Numerical method",
+    "section": "Differences with the 2016 paper",
+    "text": "Differences with the 2016 paper"
+  },
+  {
+    "objectID": "numerics.html#validation",
+    "href": "numerics.html#validation",
+    "title": "Numerical method",
+    "section": "Validation",
+    "text": "Validation"
+  },
+  {
+    "objectID": "numerics.html#performance",
+    "href": "numerics.html#performance",
+    "title": "Numerical method",
+    "section": "Performance",
+    "text": "Performance"
+  }
+]
