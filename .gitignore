@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+#Papers directory to document 
+pdfs/
+
+# marimo session cache
+__marimo__/
+
+#Claude
+.claude
+
+# Test directory
+test/
+
+# Quarto (docs site — HTML lives only in the gh-pages branch)
+docs/_site/
+docs/.quarto/

@@ -1,0 +1,44 @@
+[project]
+name = "enerhabitat"
+version = "0.2.0"
+authors = [
+    {name="Guillermo Barrios del Valle", email="gbv@ier.unam.mx"},
+    {name="Fernando Rodriguez Calderon", email="ferrodriguez2509@gmail.com"}
+]
+description = "Thermal simulation of opaque constructive systems (walls and roofs) from EPW data — 1D and 2D"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Education :: Testing",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+dependencies = [
+    "numba>=0.62.1",
+    "pvlib>=0.13.1",
+]
+
+[project.optional-dependencies]
+viz = [
+    "matplotlib>=3.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/Ener-Habitat/EnerHabitat"
+Issues = "https://github.com/Ener-Habitat/EnerHabitat"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
