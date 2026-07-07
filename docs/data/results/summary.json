@@ -1,0 +1,18 @@
+{
+  "hollow_free": {
+    "runtime_s": 1265.5,
+    "days": 4,
+    "energy_transfer": 47704.88458071907
+  },
+  "hollow_ac": {
+    "runtime_s": 618.3,
+    "days": 2,
+    "cooling_energy": 1611252.461888619,
+    "heating_energy": 298478.53119505435
+  },
+  "slab_free": {
+    "runtime_s": 910.2,
+    "days": 5,
+    "energy_transfer": 27041.358200945502
+  }
+}

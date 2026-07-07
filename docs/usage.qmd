@@ -2,10 +2,13 @@
 title: "Usage"
 ---
 
-The 1D examples on this page are **executable**: the code runs when the site is
-rendered and the plots show real results for the average day of May in Cuernavaca,
-Mexico (the EPW and `materials.ini` used here live in `docs/data/` in the
-repository).
+All the examples on this page show **real results** for the average day of May in
+Cuernavaca, Mexico (the EPW and `materials.ini` used here live in `docs/data/` in the
+repository). The 1D examples are executed when the site is rendered; the 2D ones are
+**pre-computed** — a default-mesh 2D solve takes ~10–20 minutes — by
+[`docs/run_examples.py`](https://github.com/Ener-Habitat/EnerHabitat/blob/main/docs/run_examples.py),
+whose outputs (in `docs/data/results/`) the page reads and plots. Regenerate them with
+`uv run python docs/run_examples.py`.
 
 ## Workflow
 
@@ -232,11 +235,37 @@ ti = wall2d.solve()                   # free-running
 print(wall2d.energy_transfer)         # J/(m²·day), per unit indoor area
 ```
 
+Pre-computed result of that exact code:
+
+```{python}
+import json
+
+RES = "data/results"
+summary = json.load(open(f"{RES}/summary.json"))
+
+hollow = pd.read_csv(f"{RES}/hollow_free.csv", index_col=0, parse_dates=True)
+s = summary["hollow_free"]
+print(f"energy_transfer = {s['energy_transfer']:,.0f} J/(m²·day)"
+      f"  ·  converged in {s['days']} days"
+      f"  ·  solve time ≈ {s['runtime_s']/60:.0f} min")
+plot_day(hollow, title="Hollow-block wall (2D), east, free-running — May, Cuernavaca")
+```
+
 ### 2D hollow-block wall, air-conditioned
 
 ```python
 wall2d.solveAC()                      # Ti held at Tn
 print(wall2d.cooling_energy, wall2d.heating_energy)
+```
+
+```{python}
+hollowAC = pd.read_csv(f"{RES}/hollow_ac.csv", index_col=0, parse_dates=True)
+s = summary["hollow_ac"]
+print(f"cooling_energy = {s['cooling_energy']:,.0f} J/(m²·day)"
+      f"  = {s['cooling_energy']/3600:,.0f} Wh/(m²·day)")
+print(f"heating_energy = {s['heating_energy']:,.0f} J/(m²·day)"
+      f"  = {s['heating_energy']/3600:,.0f} Wh/(m²·day)")
+plot_day(hollowAC, title="Hollow-block wall (2D), air-conditioned — May, Cuernavaca")
 ```
 
 ### Joist-and-block roof (`Slab`)
@@ -274,6 +303,18 @@ roof.Tsa()
 
 roof.solve()                             # or roof.solveAC()
 ```
+
+```{python}
+slab_df = pd.read_csv(f"{RES}/slab_free.csv", index_col=0, parse_dates=True)
+s = summary["slab_free"]
+print(f"energy_transfer = {s['energy_transfer']:,.0f} J/(m²·day)"
+      f"  ·  converged in {s['days']} days")
+plot_day(slab_df, title="Joist-and-block roof (2D), free-running — May, Cuernavaca")
+```
+
+Note how the roof's `Tsa` drops **below** `Ta` at night: that is the long-wave
+radiation factor ($RF = 3.9$ °C for horizontal surfaces) at work — the roof sees the
+cold sky (see [the 1D model](model-1d.qmd#outdoor-boundary-condition-the-sunair-temperature)).
 
 ### Filled cavities (`Fill.SOLID`)
 

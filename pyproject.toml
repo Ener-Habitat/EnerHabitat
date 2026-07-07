@@ -42,3 +42,9 @@ Issues = "https://github.com/Ener-Habitat/EnerHabitat"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+docs = [
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.9",
+]

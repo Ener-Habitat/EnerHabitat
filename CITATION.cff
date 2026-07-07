@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: >-
+  If you use EnerHabitat, please cite the reference article
+  (preferred) and, if relevant, the software itself.
+type: software
+title: "EnerHabitat"
+abstract: >-
+  Thermal simulation of opaque constructive systems (walls and roofs)
+  from EPW data — 1D multilayer and 2D non-homogeneous units (concrete
+  hollow-block walls, joist-and-block roofs) with air cavities.
+authors:
+  - family-names: "Barrios del Valle"
+    given-names: "Guillermo"
+    email: gbv@ier.unam.mx
+    affiliation: "Instituto de Energías Renovables, UNAM"
+  - family-names: "Rodríguez Calderón"
+    given-names: "Fernando"
+version: 0.2.0
+license: MIT
+repository-code: "https://github.com/Ener-Habitat/EnerHabitat"
+url: "https://ener-habitat.github.io/EnerHabitat/"
+preferred-citation:
+  type: article
+  title: >-
+    Ener-Habitat: An online numerical tool to evaluate the thermal
+    performance of homogeneous and non-homogeneous envelope walls/roofs
+  authors:
+    - family-names: "Barrios"
+      given-names: "G."
+    - family-names: "Casas"
+      given-names: "J.M."
+    - family-names: "Huelsz"
+      given-names: "G."
+    - family-names: "Rojas"
+      given-names: "J."
+  journal: "Solar Energy"
+  volume: 131
+  start: 296
+  end: 304
+  year: 2016
+  doi: "10.1016/j.solener.2015.12.017"
