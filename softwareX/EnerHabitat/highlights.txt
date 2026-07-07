@@ -1,0 +1,7 @@
+Highlights
+
+- Open-source Python package and web app to evaluate building envelope components
+- Time-dependent 1D solver for multilayer walls and roofs driven by EPW weather data
+- 2D solver for hollow-block walls and joist-and-block roofs with air cavities
+- Validated against EnergyPlus and guarded hot-plate experimental measurements
+- The web application makes the validated model usable without writing any code
