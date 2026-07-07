@@ -39,42 +39,56 @@
     "href": "model-1d.html",
     "title": "1D model: physical problem",
     "section": "",
-    "text": "Note\n\n\n\n🚧 Skeleton for structure review — content lands in Phase 1 (equations, BCs, figure)."
+    "text": "EnerHabitat evaluates the thermal performance of a single opaque component of the building envelope — a wall or a roof. It considers that the only heat path into the indoor space is through the component under evaluation: there are no windows, no ventilation, no infiltration and no internal heat gains (Barrios et al. 2016). This makes results directly comparable across constructive systems: whatever difference appears in the indoor temperature or in the energy demand is caused by the constructive system alone.\nThe simulation runs over the average day of a chosen month, built from the EPW weather file (see The average day), and is iterated day after day until the solution becomes periodic — the daily cycle repeats itself. All reported results correspond to that converged, periodic day."
   },
   {
-    "objectID": "model-1d.html#physical-problem",
-    "href": "model-1d.html#physical-problem",
+    "objectID": "model-1d.html#domain-and-assumptions",
+    "href": "model-1d.html#domain-and-assumptions",
     "title": "1D model: physical problem",
-    "section": "Physical problem",
-    "text": "Physical problem"
+    "section": "Domain and assumptions",
+    "text": "Domain and assumptions\nThe constructive system is a stack of \\(N\\) homogeneous layers, ordered from outside (\\(x = 0\\)) to inside (\\(x = L\\)). Each layer \\(j\\) is described by three constant properties: thermal conductivity \\(k_j\\) (W/m·K), density \\(\\rho_j\\) (kg/m³) and specific heat \\(c_j\\) (J/kg·K).\n\n\n\n\n\n\nFigure 1: 1D domain: multilayer wall/roof with its boundary conditions and the indoor-air node.\n\n\n\nThe model assumes:\n\n1D conduction perpendicular to the surface (the \\(x\\) direction); layers are homogeneous, so there is no in-plane heat flow.\nConstant thermal properties per layer (no temperature dependence, no moisture).\nConvective boundary conditions with fixed film coefficients \\(h_o\\) (outdoor) and \\(h_i\\) (indoor). The defaults, \\(h_o = 13\\) and \\(h_i = 8.6\\) W/m²·K, are the values prescribed by the Mexican standards NOM-020-ENER and NOM-008-ENER; both are configurable.\nSolar and long-wave radiation on the outdoor surface enter through the sun–air temperature (Equation 4).\nThe indoor space is a lumped air node of depth \\(L_a\\) (2.5 m by default) in the free-running mode, or a fixed setpoint in the air-conditioned mode."
   },
   {
-    "objectID": "model-1d.html#governing-equation",
-    "href": "model-1d.html#governing-equation",
+    "objectID": "model-1d.html#governing-equations",
+    "href": "model-1d.html#governing-equations",
     "title": "1D model: physical problem",
-    "section": "Governing equation",
-    "text": "Governing equation"
+    "section": "Governing equations",
+    "text": "Governing equations\nWithin each layer \\(j\\) the temperature field obeys the one-dimensional, time-dependent heat conduction equation (Incropera et al. 2007):\n\\[\n\\rho_j\\, c_j\\, \\frac{\\partial T_j}{\\partial t} \\;=\\; k_j\\, \\frac{\\partial^2 T_j}{\\partial x^2},\n\\qquad j = 1, \\dots, N,\n\\tag{1}\\]\nwhere \\(t\\) is time and \\(x\\) the coordinate perpendicular to the surface. At the joint between consecutive layers the temperature is continuous and the conductive flux is conserved:\n\\[\nk_j \\left.\\frac{\\partial T}{\\partial x}\\right|_{j,\\,j+1}\n\\;=\\;\nk_{j+1} \\left.\\frac{\\partial T}{\\partial x}\\right|_{j,\\,j+1}.\n\\tag{2}\\]"
   },
   {
-    "objectID": "model-1d.html#outdoor-boundary-condition-sunair-temperature",
-    "href": "model-1d.html#outdoor-boundary-condition-sunair-temperature",
+    "objectID": "model-1d.html#outdoor-boundary-condition-the-sunair-temperature",
+    "href": "model-1d.html#outdoor-boundary-condition-the-sunair-temperature",
     "title": "1D model: physical problem",
-    "section": "Outdoor boundary condition: sun–air temperature",
-    "text": "Outdoor boundary condition: sun–air temperature"
+    "section": "Outdoor boundary condition: the sun–air temperature",
+    "text": "Outdoor boundary condition: the sun–air temperature\nAt the outdoor surface, \\(x = 0\\), convection against the sun–air temperature \\(T_{sa}\\) balances the conducted flux:\n\\[\nh_o \\left( T_{sa} - T_{x=0} \\right)\n\\;=\\;\n-\\,k_1 \\left.\\frac{\\partial T_1}{\\partial x}\\right|_{x=0}.\n\\tag{3}\\]\n\\(T_{sa}\\) is a fictitious temperature that lumps together the three thermal loads on the exterior surface — convection with outdoor air, absorbed short-wave solar radiation, and the long-wave radiative exchange with the sky (ASHRAE 1997):\n\\[\nT_{sa} \\;=\\; T_a \\;+\\; \\frac{a\\, I_s}{h_o} \\;-\\; RF,\n\\tag{4}\\]\nwhere:\n\n\\(T_a\\) — outdoor air temperature of the average day;\n\\(I_s\\) — solar irradiance on the (tilted, oriented) surface, W/m²;\n\\(a\\) — solar absorptance of the outdoor surface (the color of the wall/roof);\n\\(h_o\\) — outdoor film coefficient;\n\\(RF\\) — long-wave radiation factor: EnerHabitat uses \\(RF = 3.9\\ °\\mathrm{C}\\) for horizontal surfaces (tilt = 0, a roof facing the cold sky) and \\(RF = 0\\) for any other tilt (e.g. vertical walls, tilt = 90).\n\n\\(I_s\\) is computed with pvlib (Holmgren et al. 2018) from the average-day beam, diffuse and global horizontal irradiances, the solar position at the site, and the surface tilt and azimuth. This is why Tsa() must be recomputed whenever the color, the orientation, the month or the location change."
   },
   {
     "objectID": "model-1d.html#indoor-boundary-condition-and-solution-modes",
     "href": "model-1d.html#indoor-boundary-condition-and-solution-modes",
     "title": "1D model: physical problem",
     "section": "Indoor boundary condition and solution modes",
-    "text": "Indoor boundary condition and solution modes\n\nFree-running\n\n\n\nAir-conditioned"
+    "text": "Indoor boundary condition and solution modes\nAt the indoor surface, \\(x = L\\), the conducted flux is released by convection to the indoor air at temperature \\(T_i\\):\n\\[\n-\\,k_N \\left.\\frac{\\partial T_N}{\\partial x}\\right|_{x=L}\n\\;=\\;\nh_i \\left( T_{x=L} - T_i \\right).\n\\tag{5}\\]\nWhat happens to \\(T_i\\) defines the two solution modes.\n\nFree-running mode — solve()\nThe indoor air is a lumped thermal mass — density \\(\\rho_a\\), specific heat \\(c_a\\), depth \\(L_a\\) — whose temperature evolves with the heat received from the indoor surface:\n\\[\nL_a\\, \\rho_a\\, c_a\\, \\frac{dT_i}{dt} \\;=\\; h_i \\left( T_{x=L} - T_i \\right),\n\\tag{6}\\]\nwith \\(L_a = 2.5\\) m by default (config.La). The air properties are \\(\\rho_a \\approx 1.18\\) kg/m³ and \\(c_a \\approx 1005\\) J/kg·K (config.AIR_DENSITY, config.AIR_HEAT_CAPACITY). Because Equation 6 is integrated in time alongside the wall, the time step is constrained by this coupling — see the numerical method for why config.dt is fixed at 10 s.\nThe reported energy_transfer is the heat delivered by the indoor surface to the air, accumulated over the converged day:\n\\[\nE \\;=\\; \\int_{24\\,\\mathrm{h}} h_i \\left( T_{x=L} - T_i \\right)^{+} dt\n\\qquad \\left[\\mathrm{J/(m^2\\,day)}\\right],\n\\tag{7}\\]\nwhere \\((\\,\\cdot\\,)^{+}\\) keeps the positive part (heat entering the room). In the periodic regime the daily energy entering equals the energy leaving, so either one represents the transfer through the system.\n\n\nAir-conditioned mode — solveAC()\nThe indoor air temperature is held constant at the neutrality temperature of the adaptive comfort model of Humphreys & Nicol (2000):\n\\[\nT_i \\;=\\; T_n \\;=\\; 0.54\\, \\overline{T_a} \\;+\\; 13.5\\ °\\mathrm{C},\n\\tag{8}\\]\nwhere \\(\\overline{T_a}\\) is the mean outdoor air temperature of the average day. The cooling and heating demands are the fluxes the air-conditioning system must remove or supply to keep \\(T_i = T_n\\):\n\\[\nE_c \\;=\\; \\int_{24\\,\\mathrm{h}} h_i \\left( T_{x=L} - T_n \\right)^{+} dt,\n\\qquad\nE_h \\;=\\; \\int_{24\\,\\mathrm{h}} h_i \\left( T_n - T_{x=L} \\right)^{+} dt,\n\\tag{9}\\]\nreported as cooling_energy and heating_energy in J/(m²·day).\n\n\n\n\n\n\nNote\n\n\n\nThe average-day DataFrame also carries DeltaTn, the half-width of the comfort zone around \\(T_n\\) as a function of the daily outdoor temperature swing, following the bioclimatic proposal of Morillón (Morillón-Gálvez et al. 2004) (from ±1.25 °C for swings below 13 °C up to ±3.5 °C for swings above 52 °C). It is provided as data for comfort analyses — e.g. checking how long the free-running \\(T_i\\) stays inside \\(T_n \\pm \\Delta T_n\\) — but solveAC() holds the setpoint at \\(T_n\\) itself."
+  },
+  {
+    "objectID": "model-1d.html#the-average-day",
+    "href": "model-1d.html#the-average-day",
+    "title": "1D model: physical problem",
+    "section": "The average day",
+    "text": "The average day\nThe climate forcing is built from the EPW file for the selected month (Location.meanDay(month, year)), at 1-second resolution:\n\nOutdoor temperature \\(T_a\\) — the monthly means of the daily minimum and maximum, \\(T_{min}\\) and \\(T_{max}\\), are interpolated with the cosine model of Chow & Levermore (2007): the minimum is assumed at sunrise and the maximum at the month’s mean time of daily maximum, both extracted from the EPW.\nIrradiances \\(I_g\\), \\(I_b\\), \\(I_d\\) — the month’s hour-by-hour means of global, beam and diffuse horizontal irradiance, interpolated in time to the simulation grid.\nSolar position and sunrise — computed with pvlib for the site’s latitude, longitude, altitude and timezone (read from the EPW header).\nComfort quantities — \\(T_n\\) (Equation 8) and DeltaTn (constant columns).\n\nTsa() then evaluates Equation 4 on this average day for the system’s tilt, azimuth and absortance, and returns it on the same time grid used by the solvers."
   },
   {
     "objectID": "model-1d.html#outputs-and-units",
     "href": "model-1d.html#outputs-and-units",
     "title": "1D model: physical problem",
     "section": "Outputs and units",
-    "text": "Outputs and units"
+    "text": "Outputs and units\n\n\n\n\n\n\n\n\n\nResult\nMode\nMeaning\nUnits\n\n\n\n\nTi (DataFrame)\nboth\nIndoor air temperature over the converged day\n°C\n\n\nenergy_transfer\nsolve()\nEnergy delivered to the indoor air (Equation 7)\nJ/(m²·day)\n\n\ncooling_energy\nsolveAC()\nCooling demand to hold \\(T_n\\) (Equation 9)\nJ/(m²·day)\n\n\nheating_energy\nsolveAC()\nHeating demand to hold \\(T_n\\) (Equation 9)\nJ/(m²·day)\n\n\n\nEnergies are per unit of component surface area, accumulated over one day: divide by \\(3600\\) for Wh/(m²·day) or by \\(3.6\\times10^6\\) for kWh/(m²·day)."
+  },
+  {
+    "objectID": "model-1d.html#references",
+    "href": "model-1d.html#references",
+    "title": "1D model: physical problem",
+    "section": "References",
+    "text": "References\n\n\nASHRAE. 1997. ASHRAE Handbook — Fundamentals. SI. American Society of Heating, Refrigerating; Air-Conditioning Engineers.\n\n\nBarrios, G., J. M. Casas, G. Huelsz, and J. Rojas. 2016. “Ener-Habitat: An Online Numerical Tool to Evaluate the Thermal Performance of Homogeneous and Non-Homogeneous Envelope Walls/Roofs.” Solar Energy 131: 296–304. https://doi.org/10.1016/j.solener.2015.12.017.\n\n\nChow, D. H. C., and G. J. Levermore. 2007. “New Algorithm for Generating Hourly Temperature Values Using Daily Maximum, Minimum and Average Values from Climate Models.” Building Services Engineering Research and Technology 28: 237–48.\n\n\nHolmgren, W. F., C. W. Hansen, and M. A. Mikofski. 2018. “Pvlib Python: A Python Package for Modeling Solar Energy Systems.” Journal of Open Source Software 3 (29): 884. https://doi.org/10.21105/joss.00884.\n\n\nHumphreys, M. A., and F. J. Nicol. 2000. “Outdoor Temperature and Indoor Thermal Comfort: Raising the Precision of the Relationship for the 1998 ASHRAE Database of Field Studies.” ASHRAE Transactions 106: 485–92.\n\n\nIncropera, F., D. DeWitt, T. Bergman, and A. Lavine. 2007. Fundamentals of Heat and Mass Transfer. 6th ed. John Wiley; Sons.\n\n\nMorillón-Gálvez, D., R. Saldaña-Flores, and A. Tejeda-Martínez. 2004. “Human Bioclimatic Atlas for Mexico.” Solar Energy 76: 781–92."
   },
   {
     "objectID": "about.html",
@@ -123,49 +137,49 @@
     "href": "model-2d.html",
     "title": "2D model: non-homogeneous systems",
     "section": "",
-    "text": "Note\n\n\n\n🚧 Skeleton for structure review — content lands in Phase 2 (equations, cavity physics, geometry figures)."
+    "text": "Real masonry units are not homogeneous across their width: a concrete hollow block has air cavities between webs, and a joist-and-block (vigueta y bovedilla) roof alternates concrete ribs, filler blocks and cavities. Averaging their properties into an equivalent homogeneous layer misses the physics that matters — heat bridging through the solid webs and the convective/radiative exchange inside the cavities. For these systems EnerHabitat solves the heat transfer on a 2D cross-section of the unit (Barrios et al. 2016)."
   },
   {
-    "objectID": "model-2d.html#why-2d",
-    "href": "model-2d.html#why-2d",
+    "objectID": "model-2d.html#domain-the-repeating-cell",
+    "href": "model-2d.html#domain-the-repeating-cell",
     "title": "2D model: non-homogeneous systems",
-    "section": "Why 2D",
-    "text": "Why 2D"
+    "section": "Domain: the repeating cell",
+    "text": "Domain: the repeating cell\nConstructive units repeat periodically along the wall or roof, so the domain is a single repeating cell — the block (or the rib-to-rib module) cut across its width and thickness. By periodicity, no heat flows between neighbouring cells: the lateral sides of the cell are adiabatic (symmetry planes).\nAxis convention (used by the package and throughout these pages): \\(x\\) runs across the width of the cell and \\(y\\) through the thickness, from the outside (\\(y = 0\\)) to the inside (\\(y = e\\)), as in the cross-section figures below. Note that the reference paper (Barrios et al. 2016) uses the transposed convention (\\(x\\) through the thickness).\nThe cell is a stack in \\(y\\) — exterior finishes, the non-homogeneous unit, interior finishes — where the unit itself is a 2D patchwork of materials and, possibly, cavities."
   },
   {
     "objectID": "model-2d.html#governing-equations-and-boundary-conditions",
     "href": "model-2d.html#governing-equations-and-boundary-conditions",
     "title": "2D model: non-homogeneous systems",
     "section": "Governing equations and boundary conditions",
-    "text": "Governing equations and boundary conditions"
+    "text": "Governing equations and boundary conditions\nConduction in the solids obeys the two-dimensional extension of the 1D heat equation, with position-dependent properties:\n\\[\n\\rho\\, c\\, \\frac{\\partial T}{\\partial t}\n\\;=\\;\n\\frac{\\partial}{\\partial x}\\!\\left( k\\, \\frac{\\partial T}{\\partial x} \\right)\n+\n\\frac{\\partial}{\\partial y}\\!\\left( k\\, \\frac{\\partial T}{\\partial y} \\right),\n\\tag{1}\\]\nwhere \\(k(x,y)\\), \\(\\rho(x,y)\\) and \\(c(x,y)\\) take the value of the material occupying each point (rib, filler block, topping, solid fill…). Continuity of temperature and flux at material joints is as in the 1D case.\nThe boundary conditions close the problem:\n\\[\n\\begin{aligned}\ny = 0:&\\quad h_o \\left( T_{sa} - T \\right) = -k\\, \\frac{\\partial T}{\\partial y}\n  && \\text{(outdoor, sun–air temperature)}\\\\[4pt]\ny = e:&\\quad -k\\, \\frac{\\partial T}{\\partial y} = h_i \\left( T - T_i \\right)\n  && \\text{(indoor air)}\\\\[4pt]\nx = 0,\\ x = W:&\\quad \\frac{\\partial T}{\\partial x} = 0\n  && \\text{(adiabatic sides, periodicity)}\n\\end{aligned}\n\\tag{2}\\]\n\\(T_{sa}\\), \\(h_o\\) and \\(h_i\\) are exactly those of the 1D model — same average day, same Tsa(). The indoor air \\(T_i\\) follows the same two solution modes: free-running (lumped air node, now fed by the width-averaged flux from the indoor surface) or air-conditioned (\\(T_i = T_n\\) constant)."
   },
   {
     "objectID": "model-2d.html#cavity-physics-fill.air",
     "href": "model-2d.html#cavity-physics-fill.air",
     "title": "2D model: non-homogeneous systems",
     "section": "Cavity physics (Fill.AIR)",
-    "text": "Cavity physics (Fill.AIR)"
-  },
-  {
-    "objectID": "model-2d.html#solid-fill-fill.solid",
-    "href": "model-2d.html#solid-fill-fill.solid",
-    "title": "2D model: non-homogeneous systems",
-    "section": "Solid fill (Fill.SOLID)",
-    "text": "Solid fill (Fill.SOLID)"
+    "text": "Cavity physics (Fill.AIR)\nWhen a cell is an air cavity, three heat-transfer mechanisms act together (Barrios et al. 2016): conduction through the surrounding solids, natural convection of the cavity air, and radiation between the cavity surfaces.\n\nThe cavity-air node\nThe air inside each cavity is modelled as a single lumped node at temperature \\(T_h\\), exchanging heat by convection with the four cavity walls:\n\\[\n\\rho_a\\, c_a\\, A_{cav}\\, \\frac{dT_h}{dt}\n\\;=\\;\n\\oint_{\\partial cav} h_c \\left( T_w(s) - T_h \\right) ds,\n\\tag{3}\\]\nwhere \\(A_{cav} = w \\cdot d\\) is the cavity cross-section (width × depth), the integral runs along the cavity perimeter with \\(T_w(s)\\) the local wall temperature, and all quantities are per unit length in the out-of-plane direction. In the discrete form the perimeter element \\(ds\\) becomes the face length (\\(\\Delta x\\) or \\(\\Delta y\\)) of each wall node. The convective coefficient \\(h_c\\) depends on the cavity orientation.\n\n\nConvective coefficient: walls vs roofs\nFor a wall (tilt = 90, vertical cavity) EnerHabitat uses the correlation of Xamán et al. (2005) for cavities of façade elements, as a function of the temperature difference between the two faces across the thickness and the cavity depth \\(d\\) (m):\n\\[\nh_c \\;=\\; 0.4005\\; \\frac{\\left| T_{out} - T_{in} \\right|^{0.3033}}{d^{\\,0.0901}}\n\\qquad \\left[\\mathrm{W/m^2\\,K}\\right].\n\\tag{4}\\]\nFor a roof (tilt = 0, horizontal cavity) the regime is Rayleigh–Bénard. If the lower face is not hotter than the upper one the air stratifies stably and only conducts, \\(h_c = k_{air}/d\\). Otherwise convection sets in, described by the correlation of Hollands et al. (1975) for horizontal layers heated from below:\n\\[\nh_c \\;=\\; \\frac{k_{air}}{d}\n\\left(\n1 + 1.44 \\left[ 1 - \\frac{1708}{Ra} \\right]^{+}\n  + \\left[ \\left( \\frac{Ra}{5830} \\right)^{1/3} - 1 \\right]^{+}\n\\right),\n\\qquad\nRa = \\frac{g\\, \\beta\\, \\Delta T\\, d^3}{\\nu\\, \\alpha},\n\\tag{5}\\]\nwhere \\([\\,\\cdot\\,]^{+}\\) keeps the positive part and the air properties are evaluated at ambient conditions (\\(k_{air} = 0.0262\\) W/m·K, \\(\\nu = 1.11\\times10^{-5}\\) m²/s, \\(\\beta = 1/300\\) K⁻¹). Because \\(h_c\\) depends on the wall temperatures, it is re-evaluated inside the iteration of every time step (see the numerical method).\n\n\nRadiation between cavity surfaces\nThe four cavity walls exchange long-wave radiation. The air is non-participating, the surfaces are grey and diffuse with emissivity \\(\\varepsilon\\) (the emissivity parameter, 0.9 by default), and each surface emits at its mean temperature (Incropera et al. 2007). The net exchange between surfaces \\(m\\) and \\(n\\) is\n\\[\nq_{m \\to n} \\;=\\; \\varepsilon\\, \\sigma\\, F_{mn} \\left( T_m^4 - T_n^4 \\right),\n\\tag{6}\\]\nwith \\(\\sigma\\) the Stefan–Boltzmann constant and \\(F_{mn}\\) the view factor between them. For a rectangular cavity of width \\(w\\) and depth \\(d\\) the view factors follow from the crossed-strings method; e.g. between the top wall and one lateral wall, and between the two opposite walls:\n\\[\nF_{u \\to r} = \\tfrac{1}{2}\\left( 1 + \\tfrac{d}{w} - \\sqrt{1 + \\tfrac{d^2}{w^2}} \\right),\n\\qquad\nF_{u \\to d} = 1 - 2 F_{u \\to r}.\n\\tag{7}\\]\n\n\nSolid fill (Fill.SOLID)\nThe cavity can instead be filled with a solid material (e.g. an insulating core): the cavity physics switches off and the fill behaves as one more conducting material in Equation 1. Filling with the same material as the shell makes the unit homogeneous — in that limit the 2D solution reduces to the 1D one, which is one of the package’s validation checks (see Validation)."
   },
   {
     "objectID": "model-2d.html#geometries",
     "href": "model-2d.html#geometries",
     "title": "2D model: non-homogeneous systems",
     "section": "Geometries",
-    "text": "Geometries\n\nHollow-block wall (HollowBlock)\n\n\n\nJoist-and-block roof (Slab)"
+    "text": "Geometries\n\nHollow-block wall — HollowBlock\nA shell of a single material with one cavity per cell; walls only (tilt = 90). The repeating cell takes half a web on each side, so the full web between two cavities is 2·web.\n\n\n\n\n\n\nFigure 1: Hollow-block wall cross-section (to scale).\n\n\n\n\ncell width \\(W = 2 \\cdot \\texttt{web} + \\texttt{block\\_width}\\)\nthickness \\(e = \\texttt{cover\\_top} + \\texttt{cavity} + \\texttt{cover\\_bottom}\\)\n\n\n\nJoist-and-block roof — Slab\nRoofs only (tilt = 0). Three solid materials — the compression topping, an L-shaped concrete rib (web + foot) at each edge of the cell, and the filler block — plus \\(n\\) equal cavities, each one with its own lumped air node (Equation 3) and its own \\(h_c\\).\n\n\n\n\n\n\nFigure 2: Joist-and-block roof cross-section (to scale, 3 cavities).\n\n\n\n\ncell width \\(W = 2(\\texttt{web} + \\texttt{foot}) + (n+1)\\cdot\\texttt{shoulder} + n\\cdot\\texttt{cavity\\_width}\\)\nthickness \\(e = \\texttt{topping} + \\texttt{cover\\_top} + \\texttt{cavity} + \\texttt{cover\\_bottom}\\)\n\nThe rib’s web rises through the whole section except the top topping_cap of the topping, reproducing the real joist profile."
   },
   {
-    "objectID": "model-2d.html#constraints",
-    "href": "model-2d.html#constraints",
+    "objectID": "model-2d.html#constraints-and-outputs",
+    "href": "model-2d.html#constraints-and-outputs",
     "title": "2D model: non-homogeneous systems",
-    "section": "Constraints",
-    "text": "Constraints"
+    "section": "Constraints and outputs",
+    "text": "Constraints and outputs\n\nThe layers list of a System2D contains exactly one 2D element (HollowBlock or Slab); any other entries are ordinary homogeneous layers (finishes), handled as 1D bands of the cross-section.\nThe element’s thickness is derived from its geometry, so it is not repeated as a layer thickness.\nOrientation is validated: HollowBlock requires tilt = 90, Slab requires tilt = 0.\nOutputs are those of the 1D model — Ti, energy_transfer, cooling_energy, heating_energy — expressed per unit of indoor surface area (the width-averaged flux at \\(y = e\\)), so 1D and 2D results are directly comparable."
+  },
+  {
+    "objectID": "model-2d.html#references",
+    "href": "model-2d.html#references",
+    "title": "2D model: non-homogeneous systems",
+    "section": "References",
+    "text": "References\n\n\nBarrios, G., J. M. Casas, G. Huelsz, and J. Rojas. 2016. “Ener-Habitat: An Online Numerical Tool to Evaluate the Thermal Performance of Homogeneous and Non-Homogeneous Envelope Walls/Roofs.” Solar Energy 131: 296–304. https://doi.org/10.1016/j.solener.2015.12.017.\n\n\nHollands, K. G. T., G. D. Raithby, and L. Konicek. 1975. “Correlation Equations for Free Convection Heat Transfer in Horizontal Layers of Air and Water.” International Journal of Heat and Mass Transfer 18: 879–84.\n\n\nIncropera, F., D. DeWitt, T. Bergman, and A. Lavine. 2007. Fundamentals of Heat and Mass Transfer. 6th ed. John Wiley; Sons.\n\n\nXamán, J., G. Álvarez, L. Lira, and C. Estrada. 2005. “Numerical Study of Heat Transfer by Laminar and Turbulent Natural Convection in Tall Cavities of Façade Elements.” Energy and Buildings 37: 787–94."
   },
   {
     "objectID": "index.html",
@@ -263,55 +277,62 @@
     "href": "numerics.html",
     "title": "Numerical method",
     "section": "",
-    "text": "Note\n\n\n\n🚧 Skeleton for structure review — content lands in Phase 3 (discretisation, convergence, paper↔︎package differences, validation)."
+    "text": "Both the 1D and the 2D models are solved with the same strategy: an implicit control-volume discretisation of the heat equation (Patankar 1980), advanced in time until the daily solution becomes periodic. This page documents the discretisation, the solution algorithm, the convergence criteria, the differences with the reference paper (Barrios et al. 2016), and the validation record."
   },
   {
     "objectID": "numerics.html#discretisation",
     "href": "numerics.html#discretisation",
     "title": "Numerical method",
     "section": "Discretisation",
-    "text": "Discretisation"
+    "text": "Discretisation\nThe domain is divided into control volumes — \\(N_x = 200\\) through the thickness in 1D (config.Nx); an \\(n_x \\times n_y = 80 \\times 160\\) grid (width × thickness) in 2D (config2d). Integrating the heat equation over each volume with a fully implicit (backward-Euler) time scheme gives, per node, an algebraic equation of the form\n\\[\na_P\\, T_P \\;=\\; a_E\\, T_E + a_W\\, T_W + a_N\\, T_N + a_S\\, T_S + b,\n\\qquad\na_P = \\frac{\\rho c\\, \\Delta x \\Delta y}{\\Delta t} + \\sum a_{nb} \\;(+\\,h\\,\\Delta s),\n\\tag{1}\\]\nwhere the neighbour coefficients \\(a_{nb}\\) are the face conductances (only \\(E\\)/\\(W\\) exist in 1D), \\(b\\) carries the previous-time-step term and the boundary sources, and the film coefficients \\(h_o\\), \\(h_i\\) enter \\(a_P\\) and \\(b\\) at the boundary nodes exactly as the boundary conditions prescribe.\nAt the face between two control volumes of different materials the conductance uses the harmonic mean of the conductivities — the physically consistent choice for layered media, since it preserves the flux across the interface (Patankar 1980):\n\\[\nk_f \\;=\\; \\frac{2\\, k_L\\, k_R}{k_L + k_R}.\n\\tag{2}\\]"
   },
   {
     "objectID": "numerics.html#solution-algorithm",
     "href": "numerics.html#solution-algorithm",
     "title": "Numerical method",
     "section": "Solution algorithm",
-    "text": "Solution algorithm"
+    "text": "Solution algorithm\n1D. The discrete system is tridiagonal, and each time step is solved exactly in one pass of the Tridiagonal Matrix Algorithm (TDMA / Thomas algorithm). No inner iteration is needed.\n2D. Each time step is solved line by line: for every row \\(j\\) (a line across the width) a TDMA solves the \\(x\\)-direction implicitly, while the \\(y\\)-neighbour terms use the latest available values (Gauss–Seidel lagging). Sweeps repeat until the mean relative change of the field is below config2d.tol_inner (\\(10^{-10}\\) by default). The non-linear cavity physics — the convective coefficient \\(h_c(\\Delta T)\\) and the \\(T^4\\) radiation exchange — is re-evaluated at the start of every sweep, so the converged step is consistent with the cavity state."
   },
   {
     "objectID": "numerics.html#indoor-air-coupling-free-running-mode",
     "href": "numerics.html#indoor-air-coupling-free-running-mode",
     "title": "Numerical method",
     "section": "Indoor-air coupling (free-running mode)",
-    "text": "Indoor-air coupling (free-running mode)"
+    "text": "Indoor-air coupling (free-running mode)\nThe conduction solver is implicit and therefore unconditionally stable — no time-step restriction comes from the wall itself. The coupling with the indoor air is, however, segregated: each step solves the wall using the indoor temperature of the previous step, and then advances the air node explicitly (forward Euler over the air balance):\n\\[\nT_i^{new} \\;=\\; T_i \\;+\\; \\mathrm{Fo}_a \\left( \\overline{T}_{surf} - T_i \\right),\n\\qquad\n\\mathrm{Fo}_a = \\frac{h_i\\, \\Delta t}{\\rho_a\\, c_a\\, L_a}.\n\\tag{3}\\]\nThat scalar explicit step is the one piece of the scheme with a stability constraint: \\(\\mathrm{Fo}_a &lt; 2\\) for stability and \\(\\mathrm{Fo}_a \\lesssim 1\\) to avoid oscillations. With the fixed \\(\\Delta t = 10\\) s, \\(\\mathrm{Fo}_a \\approx 0.03\\) — far inside the stable region. This is why config.dt is locked: a user-enlarged \\(\\Delta t\\) would push the air node toward non-physical behaviour while buying almost no speed (the inner iterations grow to compensate). In the 2D solver the cavity-air nodes \\(T_h\\) are advanced the same way, with equally small effective Fourier numbers.\nIn the air-conditioned mode none of this applies: \\(T_i\\) is a constant setpoint, the scheme is purely implicit, and no stability criterion exists."
   },
   {
     "objectID": "numerics.html#convergence-to-the-periodic-regime",
     "href": "numerics.html#convergence-to-the-periodic-regime",
     "title": "Numerical method",
     "section": "Convergence to the periodic regime",
-    "text": "Convergence to the periodic regime"
+    "text": "Convergence to the periodic regime\nThe boundary forcing (\\(T_{sa}\\)) is periodic with a 24 h period, so the physical solution of interest is the periodic one. Starting from a uniform field at the neutrality temperature \\(\\overline{T_n}\\), the day is simulated repeatedly — each day starting from the previous day’s final state — until the field stops changing between consecutive days:\n\\[\nC \\;=\\; \\frac{1}{N}\\sum_{\\text{nodes}} \\left| T^{day+1} - T^{day} \\right| \\;\\le\\; C_s.\n\\tag{4}\\]\nThe tolerance is \\(C_s = 5\\times10^{-4}\\) °C in both solvers (hard-coded in 1D; config2d.tol_day in 2D). The 2D solver additionally caps the iteration at config2d.max_days (60 by default) and reports the number of days actually used in System2D.days — if it equals max_days, the returned solution may not be fully periodic and the tolerance/cap should be revisited."
   },
   {
     "objectID": "numerics.html#differences-with-the-2016-paper",
     "href": "numerics.html#differences-with-the-2016-paper",
     "title": "Numerical method",
     "section": "Differences with the 2016 paper",
-    "text": "Differences with the 2016 paper"
+    "text": "Differences with the 2016 paper\nThe reference paper describes the online tool Ener-Habitat (v2.2). This package solves the same physical problem but is not a copy of that implementation; the table lists the deliberate differences (each entry verified against the code).\n\n\n\n\n\n\n\n\nAspect\nOnline tool (Barrios et al. 2016)\nThis package\n\n\n\n\nClimate source\nBuilt-in database, 80 Mexican cities (Meteonorm)\nUser-provided EPW file, any location\n\n\nAverage-day irradiance\nPositive half-sine, amplitude = monthly max; diffuse varies linearly with tilt\nMonthly hour-by-hour means interpolated in time; tilted-surface \\(I_s\\) by pvlib transposition\n\n\nLong-wave factor \\(RF\\)\n3.9 °C horizontal → 0 vertical, linear in tilt\nBinary: 3.9 °C only for tilt = 0, else 0\n\n\nTime step\n1 s\n10 s, fixed (explicit air-node coupling, Equation 3)\n\n\nMesh\n1D \\(N_x = 100\\); 2D \\(160 \\times 160\\)\n1D \\(N_x = 200\\); 2D \\(80 \\times 160\\) (config2d)\n\n\nIndoor film coefficient \\(h_i\\)\n8.1 (wall); 9.4 / 6.6 (roof, by flux direction)\n8.6 W/m²·K (NOM-020/008-ENER), configurable\n\n\nPeriodic tolerance\n\\(C_s = 10^{-5}\\) °C\n\\(C_s = 5\\times10^{-4}\\) °C (+ max_days cap in 2D)\n\n\n2D geometries\nFilled or hollow block (one cavity)\nHollowBlock (walls) and Slab (roofs: N cavities, L-shaped rib), fill AIR/SOLID\n\n\nAC setpoint\nNeutrality temperature \\(T_n\\)\nSame (\\(T_n\\) constant); DeltaTn provided as data only\n\n\nMaterials\nBuilt-in + user database\nUser materials.ini only (no bundled data)"
   },
   {
     "objectID": "numerics.html#validation",
     "href": "numerics.html#validation",
     "title": "Numerical method",
     "section": "Validation",
-    "text": "Validation"
+    "text": "Validation\nThe validation record combines the published validation of the method with the package’s own regression tests:\n\n1D vs EnergyPlus (Barrios et al. 2016): six constructive systems (massive, insulated and mixed), non air-conditioned and air-conditioned, hot month. Maximum differences: indoor temperature 0.5 °C, decrement factor 0.03, lag time 0.4 h, cooling energy 3%, heating energy 4%; both programs rank the systems identically.\n2D, filled block: setting the same material everywhere, the 2D solution equals the 1D one (Barrios et al. 2016). The package reproduces this 2D → 1D reduction as a test.\n2D, hollow block vs experiment: steady-state heat flux through a concrete hollow-block wall compared with hot-box measurements (Borbón et al. 2010); maximum difference 6.5% (experimental uncertainty ±3.8%) (Barrios et al. 2016).\nPackage vs legacy code: the 2D solver was ported from the C code of the online tool; tests/golden/ holds golden master dumps of the C solver and the suite (tests/test_eh2d_*.py) checks the port reproduces them, plus geometry, coefficient, single-step, full-day and AC tests."
   },
   {
     "objectID": "numerics.html#performance",
     "href": "numerics.html#performance",
     "title": "Numerical method",
     "section": "Performance",
-    "text": "Performance"
+    "text": "Performance\nEach solve is single-threaded, JIT-compiled with numba (the first call in a session pays the compilation cost). In-solver thread parallelism was measured (~1.06× on realistic meshes) and removed as not worthwhile. For parameter sweeps — many independent configurations — parallelise at the process level (multiprocessing, joblib): measured speed-ups are near-linear, ≈6× with 8 processes and ≈10× with 16 on an 18-core machine."
+  },
+  {
+    "objectID": "numerics.html#references",
+    "href": "numerics.html#references",
+    "title": "Numerical method",
+    "section": "References",
+    "text": "References\n\n\nBarrios, G., J. M. Casas, G. Huelsz, and J. Rojas. 2016. “Ener-Habitat: An Online Numerical Tool to Evaluate the Thermal Performance of Homogeneous and Non-Homogeneous Envelope Walls/Roofs.” Solar Energy 131: 296–304. https://doi.org/10.1016/j.solener.2015.12.017.\n\n\nBorbón, A. C., R. E. Cabanillas, and J. B. Pérez. 2010. “Determinación Experimental y Contraste Numérico de La Resistencia térmica de Un Muro de Bloques de Concreto Hueco.” Información Tecnológica 21: 163–76.\n\n\nPatankar, S. V. 1980. Numerical Heat Transfer and Fluid Flow. Taylor & Francis."
   }
 ]
