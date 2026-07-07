@@ -25,7 +25,7 @@ en [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md).
 | — | Rename API español→inglés: `Bovedilla`/`AIRE`/`RELLENA` → `Fill`/`AIR`/`SOLID` | ✅ |
 | — | Extras: `dt` en API · barrido por procesos · `tipo 4` · unidades índices | ⏳ |
 | — | `README.md` integra la API 2D (System2D, HollowBlock, Slab, config2d, AC) | ✅ |
-| — | Docs: cambio de versión del paquete | ⏳ |
+| — | Docs: cambio de versión del paquete (0.2.1, ver `PLAN-README.md`) | ✅ |
 
 > **Lo hecho** vive en las Fases 0–8b (en [`PLAN-2D-hecho.md`](PLAN-2D-hecho.md), cada una con
 > su prueba). **Lo pendiente** y sus esquemas/propuestas de integración están agrupados en la
@@ -57,5 +57,5 @@ del paquete usa celda completa).
 
 **4. Unidades de los índices** — revisión menor pendiente.
 
-**5. Cambio de versión** — bump de la versión del paquete que refleje la API 2D (8a/8b/9) y
-actualizar el changelog si aplica.
+**5. Cambio de versión** — ✅ hecho: la API 2D salió en **0.2.0** y la documentación
+(sitio Quarto, README, CITATION.cff) en **0.2.1** — ver [`PLAN-README.md`](PLAN-README.md).

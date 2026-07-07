@@ -1,6 +1,6 @@
 [project]
 name = "enerhabitat"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
     {name="Guillermo Barrios del Valle", email="gbv@ier.unam.mx"},
     {name="Fernando Rodriguez Calderon", email="ferrodriguez2509@gmail.com"}
@@ -37,7 +37,8 @@ viz = [
 
 [project.urls]
 Homepage = "https://github.com/Ener-Habitat/EnerHabitat"
-Issues = "https://github.com/Ener-Habitat/EnerHabitat"
+Documentation = "https://ener-habitat.github.io/EnerHabitat/"
+Issues = "https://github.com/Ener-Habitat/EnerHabitat/issues"
 
 [build-system]
 requires = ["hatchling"]

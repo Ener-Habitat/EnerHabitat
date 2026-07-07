@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.1
+
+**Documentation release** — no changes to the solvers or the API.
+
+- **Documentation site**: <https://ener-habitat.github.io/EnerHabitat/> (Quarto on
+  GitHub Pages). Theory pages with numbered equations and bibliography — 1D model
+  (physical problem, boundary conditions), 2D model (cavity physics: radiation, Nusselt
+  correlations, lumped cavity air) and numerical method (implicit control volumes,
+  TDMA, convergence criteria, differences with the 2016 *Solar Energy* paper,
+  validation record).
+- **Executable examples**: the 1D examples run at render time; the 2D ones (hollow
+  block free/AC, joist-and-block roof) are pre-computed by `docs/run_examples.py` with
+  the default mesh and shown with their plots, energies and compute times.
+- **README** restructured as a landing page (usage summary + links to the site);
+  fixed the sign convention of `RF` in the sun–air temperature and the description of
+  the AC setpoint (`Tn`; `DeltaTn` is data only).
+- **`CITATION.cff`** (GitHub *Cite this repository*) and a *How to cite* section.
+- `Documentation` URL in the PyPI sidebar (`[project.urls]`).
+
 ## 0.2.0
 
 **2D constructive systems** — cross-sections that are heterogeneous across their width

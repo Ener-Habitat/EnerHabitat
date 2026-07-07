@@ -143,7 +143,9 @@ For a wall with air conditioning, call `wall.solveAC()` and read
 
 `System2D` is used exactly like `System`; its `layers` list contains
 **exactly one** 2D element — a `HollowBlock` (walls, `tilt = 90`) or a `Slab`
-(joist-and-block roofs, `tilt = 0`):
+(joist-and-block roofs, `tilt = 0`). The materials named below (`Concreto`,
+`Mortero`, `Yeso`) must also be defined in your `materials.ini` (see the
+[full example set](https://ener-habitat.github.io/EnerHabitat/usage.html#materials-file)):
 
 ```python
 block = eh.HollowBlock(

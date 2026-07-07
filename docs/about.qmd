@@ -35,6 +35,8 @@ from it).
 See the full
 [CHANGELOG](https://github.com/Ener-Habitat/EnerHabitat/blob/main/CHANGELOG.md).
 
+- **0.2.1** — documentation release: this site (theory, executable examples, API),
+  restructured README, `CITATION.cff`; no changes to the solvers or the API.
 - **0.2.0** — 2D constructive systems: `System2D`, `HollowBlock` (walls), `Slab`
   (joist-and-block roofs) with air or solid-filled cavities, 2D `solveAC()`,
   to-scale section inspector, `config2d`.

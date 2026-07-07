@@ -358,30 +358,42 @@ windrose). Los `.qmd` de las Fases 1–3 son las páginas.
 - [ ] **Guillermo**: revisar, commit + push de fuentes (incluir `docs/_freeze/` y
       `docs/data/`) y `quarto publish gh-pages` cuando los ejemplos 2D estén integrados.
 
-### Fase 6 — Figuras y citabilidad ⏳
+### Fase 6 — Figuras y citabilidad ✅ (publicar release: Guillermo)
 
 - [x] `docs/make_figures.py`: figura del **dominio 1D con BCs** añadida (Fase 1).
       (Opcional pendiente: celda 2D con BCs/simetría anotadas sobre las figuras existentes.)
 - [x] **`CITATION.cff`** (paper como `preferred-citation`, autores, DOI, versión 0.2.0,
       URL del sitio) — creado en Fase 4 para respaldar la sección *How to cite* del README.
-- [ ] **`pyproject.toml`**: añadir `Documentation = "https://ener-habitat.github.io/EnerHabitat/"`
-      a `[project.urls]` → enlace *Documentation* en el sidebar de PyPI (visible en el
-      siguiente release).
+- [x] **`pyproject.toml`**: `Documentation = "https://ener-habitat.github.io/EnerHabitat/"`
+      en `[project.urls]` (+ corregida la URL de `Issues` que apuntaba al repo) → enlaces
+      en el sidebar de PyPI, visibles al publicar el release.
+- [x] **Versión 0.2.1** (release de documentación, sin cambios de API): bump en
+      `pyproject.toml` y `CITATION.cff`, entrada en `CHANGELOG.md` y en `about.qmd`.
+      Cierra también el pendiente de versión de `PLAN-2D.md`. **Publicar en PyPI:
+      Guillermo** (`uv build` + `uv publish` o el flujo que uses).
 - [ ] `CHANGELOG.md`: entrada de documentación; evaluar aquí el **bump de versión** pendiente
       de [`PLAN-2D.md`](PLAN-2D.md) (0.2.x con docs, o dejarlo para el siguiente release).
 
-### Fase 7 — Verificación cruzada (control de calidad) ⏳
+### Fase 7 — Verificación cruzada (control de calidad) ✅ (2026-07-07)
 
-- [ ] **Ecuaciones vs código**: cada constante y ecuación documentada se contrasta con el
-      código (`RF`, `Tn`, `ho/hi`, `dt`, `La`, tolerancias, correlaciones de Nusselt,
-      emisividad). Ninguna cifra entra a docs solo por venir del paper.
-- [ ] **Snippets ejecutables**: los del sitio los verifica el propio `quarto render`
-      (chunks ejecutables — si un ejemplo se rompe, el build falla); los del README (pocos,
-      quickstart) se corren a mano con el `materials.ini` de ejemplo.
-- [ ] **Render**: revisar el sitio con `quarto preview` (ecuaciones numeradas, citas,
-      figuras) y que el README siga legible en GitHub **y** en PyPI (donde el math no
-      renderiza — por eso lleva solo las ecuaciones esenciales).
-- [ ] Enlaces internos (README ↔ docs ↔ figuras) sin rotos.
+- [x] **Ecuaciones vs código** (2026-07-07): verificación incremental en cada fase +
+      barrido final — defaults de `config.reset()` (`La=2.5`, `Nx=200`, `ho=13`,
+      `hi=8.6`, `dt=10`, aire 1.18/1005), setter de `dt` que ignora asignaciones (con
+      el criterio `Fo` en el comentario del código), fórmulas de geometría
+      (`eh2d.py:251` Slab, `a12=2·web` HollowBlock), correlaciones de Nusselt,
+      factores de vista, tolerancias, `Tn`, `RF`, tabla de Morillón. Todo coincide.
+- [x] **Snippets**: los del sitio los verifica el propio `quarto render` (chunks); los
+      del README corrieron **verbatim** (1D `solve`+`solveAC`, 2D construcción + `Tsa`
+      + `section_report`; el `solve()` 2D es idéntico al `hollow_free` pre-computado).
+      Hallazgo corregido: el snippet 2D del README usa materiales que no están en el
+      `materials.ini` mínimo del quickstart → nota añadida con enlace al set completo.
+- [x] **Render**: sin warnings, sin citas sin resolver (auditadas las 7 páginas:
+      21 citas, 20 ecuaciones ancladas). Pendiente de gusto: ver el README en PyPI al
+      publicar 0.2.1 (las 3 ecuaciones `$$` se ven como texto plano — decisión
+      aceptada, revisable).
+- [x] **Enlaces**: internos del sitio (páginas + anclas) todos OK (script); los 8
+      enlaces del README al sitio verificados contra el render local (anclas
+      incluidas); los 9 externos responden 200 (DOI, GitHub, PyPI, badges).
 
 ## Criterio de terminado
 
