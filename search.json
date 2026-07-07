@@ -4,35 +4,42 @@
     "href": "usage.html",
     "title": "Usage",
     "section": "",
-    "text": "Note\n\n\n\n🚧 Skeleton for structure review — the four examples below will become executable chunks (code + plots run at render time)."
+    "text": "The 1D examples on this page are executable: the code runs when the site is rendered and the plots show real results for the average day of May in Cuernavaca, Mexico (the EPW and materials.ini used here live in docs/data/ in the repository)."
   },
   {
     "objectID": "usage.html#workflow",
     "href": "usage.html#workflow",
     "title": "Usage",
     "section": "Workflow",
-    "text": "Workflow"
+    "text": "Workflow\nTo simulate a wall (or roof) you need to:\n\nGeolocate it — pass an EPW file to Location.\nOrient it — set azimuth (and tilt if needed: 90 = wall, 0 = roof).\nDefine its color — set absortance.\nDefine its layers — set layers from outside to inside.\nChoose the period — call location.meanDay(month, year).\nCompute Tsa(), then choose one solver:\n\nsolve() — free-running: the indoor temperature Ti evolves with the dynamics of the constructive system.\nsolveAC() — air-conditioned: Ti is held at the comfort setpoint and the cooling/heating energies are reported.\n\n\nBoth solvers return pandas DataFrames indexed by time of day, on the same time grid as Tsa() — so results concatenate directly (pd.concat([data, wall.Tsa()], axis=1), no resampling, no NaN).\n\nTsa depends on absortance, tilt, azimuth, the month (meanDay) and the Location — it must be recomputed whenever any of these change."
+  },
+  {
+    "objectID": "usage.html#recommended-folder-structure",
+    "href": "usage.html#recommended-folder-structure",
+    "title": "Usage",
+    "section": "Recommended folder structure",
+    "text": "Recommended folder structure\nmaterials.ini is required — EnerHabitat ships with no default materials.\nproject/\n├── main.py\n├── materials.ini      # Material properties (REQUIRED — user-provided)\n└── epw/\n    ├── ...\n    └── example.epw"
   },
   {
     "objectID": "usage.html#materials-file",
     "href": "usage.html#materials-file",
     "title": "Usage",
     "section": "Materials file",
-    "text": "Materials file"
+    "text": "Materials file\nMaterial properties are declared in an .ini file: the material name is the section header and k, rho, c the keys (case-sensitive, no Greek letters). Inline comments (# or ;) are allowed. By default the package looks for materials.ini in the working directory; otherwise set eh.config.file.\nThe file below defines every material used in these docs, so you can run all the snippets as-is (values are typical/illustrative — replace with your own data):\n[Adobe]\nk   = 0.58    # Thermal conductivity, W/m·K\nrho = 1500    # Density, kg/m³\nc   = 1480    # Specific heat, J/kg·K\n\n[Mortero]     ; cement mortar / render\nk   = 0.70\nrho = 1800\nc   = 1000\n\n[Ladrillo]    ; fired-clay brick\nk   = 0.85\nrho = 1600\nc   = 840\n\n[Concreto]    ; structural concrete (ribs, topping, hollow block)\nk   = 1.80\nrho = 2200\nc   = 880\n\n[Bovedilla]   ; lightweight filler block\nk   = 0.50\nrho = 1200\nc   = 900\n\n[Yeso]        ; gypsum plaster\nk   = 0.37\nrho = 900\nc   = 1000\n\n[EPS]         ; expanded polystyrene\nk   = 0.04\nrho = 15\nc   = 1400\n\n[Impermeabilizante]   ; asphaltic waterproofing membrane\nk   = 0.17\nrho = 1100\nc   = 1000\nIf config.file points at a missing file, EnerHabitat reports Error: &lt;path&gt; not found and materials will be empty — solving then fails because the layer materials cannot be resolved."
   },
   {
     "objectID": "usage.html#examples",
     "href": "usage.html#examples",
     "title": "Usage",
     "section": "Examples",
-    "text": "Examples\n\n1D wall, free-running\n\n\n\n1D wall, air-conditioned\n\n\n\n2D hollow-block wall, free-running\n\n\n\n2D hollow-block wall, air-conditioned"
+    "text": "Examples\nThe examples form the system × mode matrix: 1D/2D, free-running and air-conditioned. Setup shared by all of them:\n\nimport enerhabitat as eh\nimport pandas as pd\n\neh.config.file = \"data/materials.ini\"\nepw_file = \"data/MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-2018.epw\"\n\nError: materials.ini not found\n\n\n\n\nPlot helper used by the examples (click to show)\nimport matplotlib.pyplot as plt\n\nEH_COLORS = {\"Ti\": \"#2a78d6\", \"Tsa\": \"#eb6834\", \"Ta\": \"#008300\", \"Tn\": \"#6b7280\"}\nINK = \"#374151\"\n\ndef plot_day(df, cols=(\"Ta\", \"Tsa\", \"Ti\"), title=\"\"):\n    \"\"\"Temperatures of the average day, with the comfort zone Tn ± DeltaTn.\"\"\"\n    fig, ax = plt.subplots(figsize=(7.2, 3.6))\n    hours = (df.index - df.index[0]).total_seconds() / 3600\n    if \"Tn\" in df and \"DeltaTn\" in df:\n        tn, dtn = float(df[\"Tn\"].iloc[0]), float(df[\"DeltaTn\"].iloc[0])\n        ax.axhspan(tn - dtn, tn + dtn, color=EH_COLORS[\"Tn\"], alpha=0.12, lw=0)\n        ax.axhline(tn, color=EH_COLORS[\"Tn\"], ls=\"--\", lw=1)\n        ax.annotate(\"comfort  Tn ± ΔTn\", xy=(0.4, tn + dtn), va=\"bottom\",\n                    fontsize=8, color=INK)\n    # end-of-line labels, dodged vertically if two lines end too close\n    ends = {c: float(df[c].iloc[-1]) for c in cols}\n    span = df[list(cols)].to_numpy()\n    min_sep = 0.06 * (span.max() - span.min())\n    ypos = dict(ends)\n    order = sorted(cols, key=ends.get)\n    for a, b in zip(order, order[1:]):\n        if ypos[b] - ypos[a] &lt; min_sep:\n            ypos[b] = ypos[a] + min_sep\n    for c in cols:\n        ax.plot(hours, df[c], color=EH_COLORS[c], lw=2, label=c)\n        ax.annotate(c, xy=(hours[-1] + 0.4, ypos[c]),\n                    va=\"center\", fontsize=9, color=INK)\n    ax.set_xlim(0, 26)\n    ax.set_xticks([0, 6, 12, 18, 24])\n    ax.set_xlabel(\"hour of the average day\")\n    ax.set_ylabel(\"temperature (°C)\")\n    if title:\n        ax.set_title(title, fontsize=10)\n    ax.legend(frameon=False, fontsize=9, loc=\"upper left\")\n    ax.grid(alpha=0.25, lw=0.5)\n    for s in (\"top\", \"right\"):\n        ax.spines[s].set_visible(False)\n    fig.tight_layout()\n    plt.show()\n\n\n\n1D wall, free-running\n\nwall = eh.System(eh.Location(epw_file))\nwall.azimuth = 90                    # east-facing\nwall.absortance = 0.3\nwall.layers = [(\"Mortero\", 0.025), (\"Ladrillo\", 0.10)]\nwall.location.meanDay(month=5, year=2025)\nwall.Tsa()\n\ndata = wall.solve()                  # free-running Ti\ndata = pd.concat([data, wall.Tsa()], axis=1)\n\nprint(f\"energy_transfer = {wall.energy_transfer:,.0f} J/(m²·day)\"\n      f\"  = {wall.energy_transfer/3600:,.0f} Wh/(m²·day)\")\n\nenergy_transfer = 31,929 J/(m²·day)  = 9 Wh/(m²·day)\n\n\n\nplot_day(data, title=\"Mortero + Ladrillo wall, east, free-running — May, Cuernavaca\")\n\n\n\n\n\n\n\n\nThe indoor temperature Ti oscillates with a smaller amplitude than the sun–air temperature Tsa and lags behind it — the damping and the delay are the thermal mass at work.\n\n\n1D wall, air-conditioned\nSame wall; solveAC() holds Ti at the neutrality temperature Tn and reports the energy needed to do so:\n\ndataAC = wall.solveAC()\ndataAC = pd.concat([dataAC, wall.Tsa()], axis=1)\n\nprint(f\"cooling_energy = {wall.cooling_energy:,.0f} J/(m²·day)\"\n      f\"  = {wall.cooling_energy/3600:,.0f} Wh/(m²·day)\")\nprint(f\"heating_energy = {wall.heating_energy:,.0f} J/(m²·day)\"\n      f\"  = {wall.heating_energy/3600:,.0f} Wh/(m²·day)\")\n\ncooling_energy = 968,152 J/(m²·day)  = 269 Wh/(m²·day)\nheating_energy = 399,814 J/(m²·day)  = 111 Wh/(m²·day)\n\n\n\nplot_day(dataAC, title=\"Same wall, air-conditioned (Ti = Tn) — May, Cuernavaca\")\n\n\n\n\n\n\n\n\n\n\n2D hollow-block wall, free-running\nA concrete block with one air cavity per cell. The 2D element goes inside the layer stack; finishes are ordinary 1D layers around it.\nblock = eh.HollowBlock(\n    material   = \"Concreto\",          # single material of the block\n    emissivity = 0.9,                 # cavity-wall emissivity (radiation)\n    geometry   = {                    # cell measures, in metres\n        \"web\":          0.02,         # half web (rib) thickness\n        \"block_width\":  0.16,         # cavity width\n        \"cover_top\":    0.02,         # outer shell\n        \"cavity\":       0.08,         # cavity height\n        \"cover_bottom\": 0.02,         # inner shell\n    },\n)\n\nwall2d = eh.System2D(eh.Location(epw_file))\nwall2d.tilt = 90                      # walls only (required for HollowBlock)\nwall2d.azimuth = 90\nwall2d.absortance = 0.6\nwall2d.layers = [(\"Mortero\", 0.02), block, (\"Yeso\", 0.01)]\n\nwall2d.location.meanDay(month=5, year=2025)\nwall2d.Tsa()\n\nti = wall2d.solve()                   # free-running\nprint(wall2d.energy_transfer)         # J/(m²·day), per unit indoor area\n\n\n2D hollow-block wall, air-conditioned\nwall2d.solveAC()                      # Ti held at Tn\nprint(wall2d.cooling_energy, wall2d.heating_energy)\n\n\nJoist-and-block roof (Slab)\nThree solids (compression topping, L-shaped rib, filler block) plus N equal cavities that can be air (Fill.AIR) or a solid fill (Fill.SOLID).\nslab = eh.Slab(\n    rib_material     = \"Concreto\",       # joist/rib (L-shaped: web + foot)\n    block_material   = \"Bovedilla\",      # filler block around the cavities\n    topping_material = \"Concreto\",       # compression topping\n    fill_type        = eh.Fill.AIR,      # or eh.Fill.SOLID (+ fill_material)\n    emissivity       = 0.9,              # required if AIR\n    geometry = {\n        \"web\":          0.025,   # rib web\n        \"foot\":         0.025,   # rib foot\n        \"shoulder\":     0.050,   # block between rib and cavities\n        \"n_cavities\":   3,\n        \"cavity_width\": 0.103,\n        \"topping\":      0.100,   # compression topping\n        \"topping_cap\":  0.050,   # topping above the rib web\n        \"cover_top\":    0.030,   # block above the cavity\n        \"cavity\":       0.040,   # cavity height\n        \"cover_bottom\": 0.030,   # block below the cavity\n    },\n)\n\nroof = eh.System2D(eh.Location(epw_file))\nroof.tilt = 0                            # roofs only (required for Slab)\nroof.absortance = 0.3\nroof.layers = [(\"Impermeabilizante\", 0.003), slab, (\"Yeso\", 0.015)]\nroof.location.meanDay(month=5, year=2025)\nroof.Tsa()\n\nroof.solve()                             # or roof.solveAC()\n\n\nFilled cavities (Fill.SOLID)\nThe cavity of a HollowBlock (or the cavities of a Slab) can be filled with a solid material instead of air — e.g. an insulating core:\nblock = eh.HollowBlock(\n    material      = \"Concreto\",\n    fill_type     = eh.Fill.SOLID,\n    fill_material = \"EPS\",\n    geometry      = {\"web\": 0.02, \"block_width\": 0.16,\n                     \"cover_top\": 0.02, \"cavity\": 0.08, \"cover_bottom\": 0.02},\n)\nFilling with the same material as the shell makes the unit homogeneous — equivalent to a 1D layer (this is one of the package’s validation checks).\n\n\nInspecting the section\nBefore solving you can inspect, to scale, how materials and node types are laid out on the 2D mesh:\nwall2d.section_report()            # table: node types + materials (k, ρc, y-range)\nwall2d.preview()                   # to-scale panels (node type, k, ρc)\nwall2d.preview(field=\"materials\", backend=\"ascii\")   # terminal fallback\nsec = wall2d.section()             # NT / k / rhoc arrays + mesh\nmatplotlib is an optional extra (pip install enerhabitat[viz]); without it the inspector falls back to a to-scale ASCII drawing."
   },
   {
     "objectID": "usage.html#configuration",
     "href": "usage.html#configuration",
     "title": "Usage",
     "section": "Configuration",
-    "text": "Configuration"
+    "text": "Configuration\n\nconfig (global)\nconfig is a global singleton shared by every Location and System. Changing it affects all subsequent computations.\n\n\n\n\n\n\n\n\nAttribute\nDefault\nDescription\n\n\n\n\nfile\n\"materials.ini\"\nPath to the .ini file with material properties\n\n\nLa\n2.5 m\nDepth of the indoor air volume\n\n\nNx\n200\nControl volumes across the system thickness\n\n\nho\n13 W/(m²·K)\nOutdoor film coefficient\n\n\nhi\n8.6 W/(m²·K)\nIndoor film coefficient\n\n\ndt\n10 s (fixed)\nTime step — not configurable (assignments are ignored)\n\n\n\nThe ho/hi defaults are the values prescribed by the Mexican standards NOM-020-ENER and NOM-008-ENER; they can be overridden at any time. dt is locked because of the explicit indoor-air coupling — see the numerical method.\neh.config.file = \"./materials.ini\"\neh.config.La = 2.0\neh.config.ho = 12          # override the NOM defaults if needed\neh.config.reset()          # restore all defaults\nconfig.materials is a read-only dict keyed by material name (eh.config.materials[\"Adobe\"].k, .rho, .c).\n\n\nconfig2d (2D mesh and convergence)\nThe physics (La, ho, hi, dt, air properties) is shared with config; config2d holds the 2D-only parameters:\n\n\n\n\n\n\n\n\nAttribute\nDefault\nDescription\n\n\n\n\nnx\n80\nmesh nodes across the cell width (adiabatic sides)\n\n\nny\n160\nmesh nodes through the thickness (outside → inside)\n\n\ntol_inner\n1e-10\ninner (line-by-line) loop tolerance\n\n\ntol_day\n5e-4\nday-to-day convergence tolerance\n\n\nmax_days\n60\ncap on the day-to-day iterations\n\n\n\nfrom enerhabitat import config2d\nconfig2d.nx, config2d.ny = 120, 160\n\nEach solve is single-threaded. For volume (many configurations), parallelise at the process level — run independent solve() calls in separate processes (multiprocessing, joblib); this scales near-linearly (≈6× at 8 processes). See Performance."
   },
   {
     "objectID": "model-1d.html",
@@ -95,42 +102,42 @@
     "href": "about.html",
     "title": "About",
     "section": "",
-    "text": "Note\n\n\n\n🚧 Skeleton for structure review."
+    "text": "If you use EnerHabitat in academic work, please cite the reference paper (Barrios et al. 2016):\n\nBarrios, G., Casas, J.M., Huelsz, G., Rojas, J. (2016). Ener-Habitat: An online numerical tool to evaluate the thermal performance of homogeneous and non-homogeneous envelope walls/roofs. Solar Energy 131, 296–304. https://doi.org/10.1016/j.solener.2015.12.017\n\n@article{Barrios2016,\n  author  = {Barrios, G. and Casas, J.M. and Huelsz, G. and Rojas, J.},\n  title   = {Ener-Habitat: An online numerical tool to evaluate the thermal\n             performance of homogeneous and non-homogeneous envelope walls/roofs},\n  journal = {Solar Energy},\n  volume  = {131},\n  pages   = {296--304},\n  year    = {2016},\n  doi     = {10.1016/j.solener.2015.12.017}\n}\nTo cite the software itself, use the CITATION.cff at the repository root (GitHub’s Cite this repository button generates BibTeX/APA from it)."
   },
   {
     "objectID": "about.html#how-to-cite",
     "href": "about.html#how-to-cite",
     "title": "About",
-    "section": "How to cite",
-    "text": "How to cite"
+    "section": "",
+    "text": "If you use EnerHabitat in academic work, please cite the reference paper (Barrios et al. 2016):\n\nBarrios, G., Casas, J.M., Huelsz, G., Rojas, J. (2016). Ener-Habitat: An online numerical tool to evaluate the thermal performance of homogeneous and non-homogeneous envelope walls/roofs. Solar Energy 131, 296–304. https://doi.org/10.1016/j.solener.2015.12.017\n\n@article{Barrios2016,\n  author  = {Barrios, G. and Casas, J.M. and Huelsz, G. and Rojas, J.},\n  title   = {Ener-Habitat: An online numerical tool to evaluate the thermal\n             performance of homogeneous and non-homogeneous envelope walls/roofs},\n  journal = {Solar Energy},\n  volume  = {131},\n  pages   = {296--304},\n  year    = {2016},\n  doi     = {10.1016/j.solener.2015.12.017}\n}\nTo cite the software itself, use the CITATION.cff at the repository root (GitHub’s Cite this repository button generates BibTeX/APA from it)."
   },
   {
     "objectID": "about.html#changelog",
     "href": "about.html#changelog",
     "title": "About",
     "section": "Changelog",
-    "text": "Changelog"
+    "text": "Changelog\nSee the full CHANGELOG.\n\n0.2.0 — 2D constructive systems: System2D, HollowBlock (walls), Slab (joist-and-block roofs) with air or solid-filled cavities, 2D solveAC(), to-scale section inspector, config2d.\n0.1.x — 1D multilayer systems: Location, System (free-running and air-conditioned), global config, EPW + pvlib sun–air temperature, finite-volume TDMA solver over an average day."
   },
   {
     "objectID": "about.html#authors",
     "href": "about.html#authors",
     "title": "About",
     "section": "Authors",
-    "text": "Authors\nDeveloped at the Instituto de Energías Renovables, UNAM.\n\nGuillermo Barrios del Valle — gbv@ier.unam.mx\nFernando Rodríguez Calderón — ferrodriguez2509@gmail.com"
+    "text": "Authors\nDeveloped at the Instituto de Energías Renovables, UNAM.\n\nGuillermo Barrios del Valle — gbv@ier.unam.mx\nFernando Rodríguez Calderón — ferrodriguez2509@gmail.com\n\nSource code: https://github.com/Ener-Habitat/EnerHabitat · Issues: https://github.com/Ener-Habitat/EnerHabitat/issues"
   },
   {
     "objectID": "about.html#license",
     "href": "about.html#license",
     "title": "About",
     "section": "License",
-    "text": "License\nMIT — see the LICENSE."
+    "text": "License\nReleased under the MIT License."
   },
   {
     "objectID": "about.html#references",
     "href": "about.html#references",
     "title": "About",
     "section": "References",
-    "text": "References"
+    "text": "References\n\n\nBarrios, G., J. M. Casas, G. Huelsz, and J. Rojas. 2016. “Ener-Habitat: An Online Numerical Tool to Evaluate the Thermal Performance of Homogeneous and Non-Homogeneous Envelope Walls/Roofs.” Solar Energy 131: 296–304. https://doi.org/10.1016/j.solener.2015.12.017."
   },
   {
     "objectID": "model-2d.html",
@@ -186,91 +193,98 @@
     "href": "index.html",
     "title": "EnerHabitat",
     "section": "",
-    "text": "Note\n\n\n\n🚧 Skeleton for structure review — content lands in the documentation phases (see PLAN-README.md in the repository)."
-  },
-  {
-    "objectID": "index.html#what-is-enerhabitat",
-    "href": "index.html#what-is-enerhabitat",
-    "title": "EnerHabitat",
-    "section": "What is EnerHabitat?",
-    "text": "What is EnerHabitat?"
+    "text": "EnerHabitat is a Python package for the thermal simulation of opaque constructive systems (walls and roofs) driven by EPW weather data. It solves the time-dependent heat conduction equation across multi-layer systems — in 1D for homogeneous layers (System) and in 2D for units that are heterogeneous across their width, such as concrete hollow-block walls and joist-and-block (vigueta y bovedilla) roofs (System2D) — and produces indoor temperatures and air-conditioning energy demands for an average day of a chosen month (Barrios et al. 2016).\nThe model considers a single opaque envelope component: no windows, no ventilation, no infiltration, no internal gains — so any difference in the results is caused by the constructive system alone. Two solution modes are available: free-running (the indoor temperature evolves with the system’s dynamics) and air-conditioned (the indoor temperature is held at a comfort setpoint and the energy demands are reported)."
   },
   {
     "objectID": "index.html#installation",
     "href": "index.html#installation",
     "title": "EnerHabitat",
     "section": "Installation",
-    "text": "Installation"
+    "text": "Installation\npip install enerhabitat        # or: uv add enerhabitat\nRequires Python ≥ 3.10. The section inspector plots are an optional extra: pip install enerhabitat[viz]."
   },
   {
     "objectID": "index.html#quickstart",
     "href": "index.html#quickstart",
     "title": "EnerHabitat",
     "section": "Quickstart",
-    "text": "Quickstart"
+    "text": "Quickstart\nEnerHabitat ships no materials: create a materials.ini in your working directory (or point eh.config.file to one) before running anything:\n[Adobe]\nk   = 0.58    # W/m·K\nrho = 1500    # kg/m³\nc   = 1480    # J/kg·K\nimport enerhabitat as eh\n\neh.config.file = \"./materials.ini\"           # 1) materials (required)\nloc = eh.Location(\"./epw/example.epw\")       # 2) location from an EPW\n\nwall = eh.System(location=loc)               # 3) constructive system\nwall.azimuth = 90                            #    east-facing wall\nwall.absortance = 0.3\nwall.layers = [(\"Adobe\", 0.20)]              #    outside → inside\n\nloc.meanDay(month=5, year=2025)              # 4) average day of May\nwall.Tsa()                                   #    sun–air temperature\n\nti = wall.solve()                            # 5) free-running indoor temperature\nprint(wall.energy_transfer)                  #    J/(m²·day)"
   },
   {
     "objectID": "index.html#where-to-go-next",
     "href": "index.html#where-to-go-next",
     "title": "EnerHabitat",
     "section": "Where to go next",
-    "text": "Where to go next\n\nUsage — workflow and complete examples (1D/2D, with and without AC).\nTheory: 1D model — physical problem, equations and boundary conditions.\nTheory: 2D model — hollow-block walls and joist-and-block roofs.\nNumerical method — discretisation, convergence and validation.\nAPI — classes and configuration reference."
+    "text": "Where to go next\n\nUsage — the full workflow, executable examples (1D and 2D, free-running and air-conditioned), materials and configuration.\nTheory — 1D model (physical problem, equations, boundary conditions), 2D model (cavities, hollow blocks, slabs) and numerical method (discretisation, convergence, validation).\nAPI reference — every class and parameter.\nAbout — how to cite, changelog, authors."
+  },
+  {
+    "objectID": "index.html#references",
+    "href": "index.html#references",
+    "title": "EnerHabitat",
+    "section": "References",
+    "text": "References\n\n\nBarrios, G., J. M. Casas, G. Huelsz, and J. Rojas. 2016. “Ener-Habitat: An Online Numerical Tool to Evaluate the Thermal Performance of Homogeneous and Non-Homogeneous Envelope Walls/Roofs.” Solar Energy 131: 296–304. https://doi.org/10.1016/j.solener.2015.12.017."
   },
   {
     "objectID": "api.html",
     "href": "api.html",
     "title": "API reference",
     "section": "",
-    "text": "Note\n\n\n\n🚧 Skeleton for structure review — manual reference (migrated and expanded from the README); quartodoc autodoc is a possible future step."
+    "text": "Manual reference for the public API. Everything is imported from the top level:"
   },
   {
     "objectID": "api.html#location",
     "href": "api.html#location",
     "title": "API reference",
     "section": "Location",
-    "text": "Location"
+    "text": "Location\nReads an EPW file and builds the average day of a month.\nloc = eh.Location(\"./epw/example.epw\")\nAttributes. The EPW path is stored in file; assigning a new path reloads the header. The rest are read-only, recovered from the EPW header:\n\n\n\nAttribute\nType\nDescription\n\n\n\n\nfile\nstr\nPath to the EPW file (writable)\n\n\ncity\nstr\nCity, from the EPW header\n\n\nlatitude, longitude\nfloat\nDegrees\n\n\naltitude\nfloat\nMetres\n\n\ntimezone\npytz.timezone\nBuilt from the EPW UTC offset\n\n\n\nMethods\n\nmeanDay(day=15, month, year) — average-day DataFrame (Ta, Ig, Ib, Id, Tn, DeltaTn, solar position), cached; see how it is built.\ncopy() — independent copy of the instance.\ninfo() — prints the attributes.\nflag() — dict with metadata of the last meanDay() call (e.g. flag()[\"date\"])."
   },
   {
     "objectID": "api.html#system-1d",
     "href": "api.html#system-1d",
     "title": "API reference",
     "section": "System (1D)",
-    "text": "System (1D)"
+    "text": "System (1D)\nA multilayer wall or roof tied to a Location.\nwall = eh.System(location=loc, tilt=90, azimuth=0, absortance=0.8, layers=[])\nAttributes\n\n\n\n\n\n\n\n\nAttribute\nType\nDescription\n\n\n\n\nlocation\nLocation\nClimate source\n\n\ntilt\nfloat\nDegrees from horizontal: 0 roof, 90 vertical wall\n\n\nazimuth\nfloat\nSurface azimuth, pvlib convention (N=0, E=90, S=180, W=270)\n\n\nabsortance\nfloat\nSolar absorptance of the outdoor surface, [0, 1]\n\n\nlayers\nlist[tuple[str, float]]\n(material, thickness_m), outside → inside\n\n\n\nRead-only results (energy per unit surface area over the converged day, J/(m²·day) — divide by 3600 for Wh or 3.6e6 for kWh):\n\n\n\nAttribute\nSet by\nMeaning\n\n\n\n\nenergy_transfer\nsolve()\nEnergy delivered to the indoor air\n\n\ncooling_energy\nsolveAC()\nCooling demand to hold \\(T_n\\)\n\n\nheating_energy\nsolveAC()\nHeating demand to hold \\(T_n\\)\n\n\n\nMethods\n\nTsa() — sun–air temperature and Is for the current color/orientation/month, on the solver’s time grid (results concatenate directly with solve() output).\nsolve() — free-running indoor temperature Ti (DataFrame).\nsolveAC() — Ti held at \\(T_n\\); sets cooling_energy/heating_energy.\nadd_layer(material, width) / remove_layer(index) — edit the stack (appends at the inside).\ncopy(), info(), flag().\n\n\nTsa depends on absortance, tilt, azimuth, meanDay (month) and Location; it is recomputed automatically when any of these change (results are cached otherwise)."
   },
   {
     "objectID": "api.html#system2d",
     "href": "api.html#system2d",
     "title": "API reference",
     "section": "System2D",
-    "text": "System2D"
+    "text": "System2D\nMirror of System for cross-sections that are heterogeneous across their width. Same Location, tilt, azimuth, absortance, Tsa(), solve(), solveAC() and result attributes. Differences:\n\nlayers contains, besides ordinary (material, thickness) tuples, exactly one 2D element: a HollowBlock or a Slab. The element’s thickness is derived from its geometry.\nOrientation is validated: HollowBlock requires tilt = 90, Slab tilt = 0.\nExtra attributes:\n\n\n\n\n\n\n\n\nAttribute\nDescription\n\n\n\n\nsetpoint\nAC setpoint override; None (default) → the neutrality temperature \\(T_n\\)\n\n\ndays\nDay-to-day iterations used by the last solve; if it equals config2d.max_days the solution may not be fully periodic\n\n\n\n\nSection inspector (before solving):\n\nwall.section_report()   # table: node types + materials (k, ρc, y-range)\nwall.preview()          # to-scale panels (matplotlib, extra `viz`; ASCII fallback)\nwall.section()          # NT / k / rhoc arrays + mesh"
   },
   {
     "objectID": "api.html#hollowblock",
     "href": "api.html#hollowblock",
     "title": "API reference",
     "section": "HollowBlock",
-    "text": "HollowBlock"
+    "text": "HollowBlock\nConcrete hollow block for walls (tilt = 90): a shell of one material with one cavity per repeating cell.\nblock = eh.HollowBlock(\n    material      = \"Concreto\",\n    fill_type     = eh.Fill.AIR,     # or eh.Fill.SOLID\n    fill_material = None,            # required if SOLID\n    emissivity    = 0.9,             # cavity-wall emissivity (used if AIR)\n    geometry      = {...},           # see below, metres\n)\n\n\n\n\n\n\n\ngeometry key\nMeaning\n\n\n\n\nweb\nHalf web (rib) thickness — the full web between cavities is 2·web\n\n\nblock_width\nCavity width\n\n\ncover_top\nOuter shell\n\n\ncavity\nCavity height (through the thickness)\n\n\ncover_bottom\nInner shell\n\n\n\nCell width = 2·web + block_width; thickness = cover_top + cavity + cover_bottom."
   },
   {
     "objectID": "api.html#slab",
     "href": "api.html#slab",
     "title": "API reference",
     "section": "Slab",
-    "text": "Slab"
+    "text": "Slab\nJoist-and-block (vigueta y bovedilla) unit for roofs (tilt = 0): compression topping, L-shaped rib (web + foot) at each cell edge, filler block, and n_cavities equal cavities.\nslab = eh.Slab(\n    rib_material     = \"Concreto\",\n    block_material   = \"Bovedilla\",\n    topping_material = \"Concreto\",\n    fill_type        = eh.Fill.AIR,   # or eh.Fill.SOLID (+ fill_material)\n    fill_material    = None,\n    emissivity       = 0.9,\n    geometry         = {...},\n)\n\n\n\n\n\n\n\ngeometry key\nMeaning\n\n\n\n\nweb, foot\nRib web and foot (the L profile)\n\n\nshoulder\nFiller block between rib and cavities\n\n\nn_cavities, cavity_width\nNumber and width of the equal cavities\n\n\ntopping\nCompression topping thickness\n\n\ntopping_cap\nTopping above the rib web (the web rises below this line)\n\n\ncover_top, cavity, cover_bottom\nFiller-block band through the thickness\n\n\n\nCell width = 2·(web+foot) + (n+1)·shoulder + n·cavity_width; thickness = topping + cover_top + cavity + cover_bottom."
   },
   {
-    "objectID": "api.html#section-inspector",
-    "href": "api.html#section-inspector",
+    "objectID": "api.html#fill",
+    "href": "api.html#fill",
     "title": "API reference",
-    "section": "Section inspector",
-    "text": "Section inspector"
+    "section": "Fill",
+    "text": "Fill\nEnum for the cavity content of HollowBlock/Slab: Fill.AIR (cavity physics: radiation + Nusselt convection, needs emissivity) or Fill.SOLID (conduction only, needs fill_material)."
   },
   {
-    "objectID": "api.html#config-and-config2d",
-    "href": "api.html#config-and-config2d",
+    "objectID": "api.html#config-global",
+    "href": "api.html#config-global",
     "title": "API reference",
-    "section": "config and config2d",
-    "text": "config and config2d"
+    "section": "config (global)",
+    "text": "config (global)\nGlobal singleton; changing it affects all subsequent computations.\n\n\n\nAttribute\nDefault\nDescription\n\n\n\n\nfile\n\"materials.ini\"\nMaterials file path\n\n\nLa\n2.5 m\nIndoor air depth\n\n\nNx\n200\n1D control volumes\n\n\nho\n13 W/(m²·K)\nOutdoor film coefficient (NOM)\n\n\nhi\n8.6 W/(m²·K)\nIndoor film coefficient (NOM)\n\n\ndt\n10 s\nFixed — assignments are ignored (why)\n\n\nAIR_DENSITY\n1.18 kg/m³\nIndoor/cavity air density\n\n\nAIR_HEAT_CAPACITY\n1005 J/(kg·K)\nIndoor/cavity air specific heat\n\n\n\nMethods: info(), to_dict(), reset(), materials_list(), materials_dict(); config.materials is a read-only dict of material properties (.k, .rho, .c)."
+  },
+  {
+    "objectID": "api.html#config2d-2d",
+    "href": "api.html#config2d-2d",
+    "title": "API reference",
+    "section": "config2d (2D)",
+    "text": "config2d (2D)\n\n\n\nAttribute\nDefault\nDescription\n\n\n\n\nnx\n80\nNodes across the cell width (adiabatic sides)\n\n\nny\n160\nNodes through the thickness (outside → inside)\n\n\ntol_inner\n1e-10\nInner line-by-line tolerance\n\n\ntol_day\n5e-4\nDay-to-day convergence tolerance\n\n\nmax_days\n60\nCap on day-to-day iterations\n\n\n\nMethods: info(), to_dict(), reset()."
   },
   {
     "objectID": "numerics.html",

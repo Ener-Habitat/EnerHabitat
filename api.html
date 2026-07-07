@@ -23,6 +23,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -71,6 +106,35 @@ ul.task-list li input[type="checkbox"] {
   }
 }</script>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -149,13 +213,14 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#location" id="toc-location" class="nav-link active" data-scroll-target="#location">Location</a></li>
-  <li><a href="#system-1d" id="toc-system-1d" class="nav-link" data-scroll-target="#system-1d">System (1D)</a></li>
-  <li><a href="#system2d" id="toc-system2d" class="nav-link" data-scroll-target="#system2d">System2D</a></li>
-  <li><a href="#hollowblock" id="toc-hollowblock" class="nav-link" data-scroll-target="#hollowblock">HollowBlock</a></li>
-  <li><a href="#slab" id="toc-slab" class="nav-link" data-scroll-target="#slab">Slab</a></li>
-  <li><a href="#section-inspector" id="toc-section-inspector" class="nav-link" data-scroll-target="#section-inspector">Section inspector</a></li>
-  <li><a href="#config-and-config2d" id="toc-config-and-config2d" class="nav-link" data-scroll-target="#config-and-config2d">config and config2d</a></li>
+  <li><a href="#location" id="toc-location" class="nav-link active" data-scroll-target="#location"><code>Location</code></a></li>
+  <li><a href="#system-1d" id="toc-system-1d" class="nav-link" data-scroll-target="#system-1d"><code>System</code> (1D)</a></li>
+  <li><a href="#system2d" id="toc-system2d" class="nav-link" data-scroll-target="#system2d"><code>System2D</code></a></li>
+  <li><a href="#hollowblock" id="toc-hollowblock" class="nav-link" data-scroll-target="#hollowblock"><code>HollowBlock</code></a></li>
+  <li><a href="#slab" id="toc-slab" class="nav-link" data-scroll-target="#slab"><code>Slab</code></a></li>
+  <li><a href="#fill" id="toc-fill" class="nav-link" data-scroll-target="#fill"><code>Fill</code></a></li>
+  <li><a href="#config-global" id="toc-config-global" class="nav-link" data-scroll-target="#config-global"><code>config</code> (global)</a></li>
+  <li><a href="#config2d-2d" id="toc-config2d-2d" class="nav-link" data-scroll-target="#config2d-2d"><code>config2d</code> (2D)</a></li>
   </ul>
 </nav>
     </div>
@@ -181,52 +246,378 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>🚧 <strong>Skeleton for structure review</strong> — manual reference (migrated and expanded from the README); <code>quartodoc</code> autodoc is a possible future step.</p>
-</div>
-</div>
+<p>Manual reference for the public API. Everything is imported from the top level:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> enerhabitat <span class="im">as</span> eh</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># eh.Location, eh.System, eh.System2D, eh.HollowBlock, eh.Slab, eh.Fill,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># eh.config, eh.config2d</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section id="location" class="level2">
-<h2 class="anchored" data-anchor-id="location">Location</h2>
-<!-- Constructor, attributes (file, city, latitude, longitude, altitude, timezone),
-methods (meanDay, copy, info, flag). -->
+<h2 class="anchored" data-anchor-id="location"><code>Location</code></h2>
+<p>Reads an EPW file and builds the average day of a month.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>loc <span class="op">=</span> eh.Location(<span class="st">"./epw/example.epw"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Attributes.</strong> The EPW path is stored in <code>file</code>; assigning a new path reloads the header. The rest are read-only, recovered from the EPW header:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>file</code></td>
+<td><code>str</code></td>
+<td>Path to the EPW file (writable)</td>
+</tr>
+<tr class="even">
+<td><code>city</code></td>
+<td><code>str</code></td>
+<td>City, from the EPW header</td>
+</tr>
+<tr class="odd">
+<td><code>latitude</code>, <code>longitude</code></td>
+<td><code>float</code></td>
+<td>Degrees</td>
+</tr>
+<tr class="even">
+<td><code>altitude</code></td>
+<td><code>float</code></td>
+<td>Metres</td>
+</tr>
+<tr class="odd">
+<td><code>timezone</code></td>
+<td><code>pytz.timezone</code></td>
+<td>Built from the EPW UTC offset</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<ul>
+<li><code>meanDay(day=15, month, year)</code> — average-day DataFrame (<code>Ta</code>, <code>Ig</code>, <code>Ib</code>, <code>Id</code>, <code>Tn</code>, <code>DeltaTn</code>, solar position), cached; see <a href="./model-1d.html#the-average-day">how it is built</a>.</li>
+<li><code>copy()</code> — independent copy of the instance.</li>
+<li><code>info()</code> — prints the attributes.</li>
+<li><code>flag()</code> — dict with metadata of the last <code>meanDay()</code> call (e.g.&nbsp;<code>flag()["date"]</code>).</li>
+</ul>
 </section>
 <section id="system-1d" class="level2">
-<h2 class="anchored" data-anchor-id="system-1d">System (1D)</h2>
-<!-- Attributes (location, tilt, azimuth, absortance, layers, add/remove_layer),
-result attributes (energy_transfer, cooling_energy, heating_energy),
-methods (Tsa, solve, solveAC, copy, info, flag). -->
+<h2 class="anchored" data-anchor-id="system-1d"><code>System</code> (1D)</h2>
+<p>A multilayer wall or roof tied to a <code>Location</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>wall <span class="op">=</span> eh.System(location<span class="op">=</span>loc, tilt<span class="op">=</span><span class="dv">90</span>, azimuth<span class="op">=</span><span class="dv">0</span>, absortance<span class="op">=</span><span class="fl">0.8</span>, layers<span class="op">=</span>[])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Attributes</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>location</code></td>
+<td><code>Location</code></td>
+<td>Climate source</td>
+</tr>
+<tr class="even">
+<td><code>tilt</code></td>
+<td><code>float</code></td>
+<td>Degrees from horizontal: <code>0</code> roof, <code>90</code> vertical wall</td>
+</tr>
+<tr class="odd">
+<td><code>azimuth</code></td>
+<td><code>float</code></td>
+<td>Surface azimuth, pvlib convention (N=0, E=90, S=180, W=270)</td>
+</tr>
+<tr class="even">
+<td><code>absortance</code></td>
+<td><code>float</code></td>
+<td>Solar absorptance of the outdoor surface, <code>[0, 1]</code></td>
+</tr>
+<tr class="odd">
+<td><code>layers</code></td>
+<td><code>list[tuple[str, float]]</code></td>
+<td><code>(material, thickness_m)</code>, <strong>outside → inside</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Read-only results (energy per unit surface area over the converged day, <strong>J/(m²·day)</strong> — divide by 3600 for Wh or 3.6e6 for kWh):</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Attribute</th>
+<th>Set by</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>energy_transfer</code></td>
+<td><code>solve()</code></td>
+<td>Energy delivered to the indoor air</td>
+</tr>
+<tr class="even">
+<td><code>cooling_energy</code></td>
+<td><code>solveAC()</code></td>
+<td>Cooling demand to hold <span class="math inline">\(T_n\)</span></td>
+</tr>
+<tr class="odd">
+<td><code>heating_energy</code></td>
+<td><code>solveAC()</code></td>
+<td>Heating demand to hold <span class="math inline">\(T_n\)</span></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong></p>
+<ul>
+<li><code>Tsa()</code> — sun–air temperature and <code>Is</code> for the current color/orientation/month, on the solver’s time grid (results concatenate directly with <code>solve()</code> output).</li>
+<li><code>solve()</code> — free-running indoor temperature <code>Ti</code> (DataFrame).</li>
+<li><code>solveAC()</code> — <code>Ti</code> held at <span class="math inline">\(T_n\)</span>; sets <code>cooling_energy</code>/<code>heating_energy</code>.</li>
+<li><code>add_layer(material, width)</code> / <code>remove_layer(index)</code> — edit the stack (appends at the inside).</li>
+<li><code>copy()</code>, <code>info()</code>, <code>flag()</code>.</li>
+</ul>
+<blockquote class="blockquote">
+<p><code>Tsa</code> depends on <code>absortance</code>, <code>tilt</code>, <code>azimuth</code>, <code>meanDay</code> (month) and <code>Location</code>; it is recomputed automatically when any of these change (results are cached otherwise).</p>
+</blockquote>
 </section>
 <section id="system2d" class="level2">
-<h2 class="anchored" data-anchor-id="system2d">System2D</h2>
-<!-- Same interface as System; layers with exactly one 2D element; type-dispatched
-solve/solveAC; orientation validation. -->
+<h2 class="anchored" data-anchor-id="system2d"><code>System2D</code></h2>
+<p>Mirror of <code>System</code> for cross-sections that are heterogeneous across their width. Same <code>Location</code>, <code>tilt</code>, <code>azimuth</code>, <code>absortance</code>, <code>Tsa()</code>, <code>solve()</code>, <code>solveAC()</code> and result attributes. Differences:</p>
+<ul>
+<li><code>layers</code> contains, besides ordinary <code>(material, thickness)</code> tuples, <strong>exactly one</strong> 2D element: a <a href="#hollowblock"><code>HollowBlock</code></a> or a <a href="#slab"><code>Slab</code></a>. The element’s thickness is derived from its <code>geometry</code>.</li>
+<li>Orientation is validated: <code>HollowBlock</code> requires <code>tilt = 90</code>, <code>Slab</code> <code>tilt = 0</code>.</li>
+<li>Extra attributes:</li>
+</ul>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Attribute</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>setpoint</code></td>
+<td>AC setpoint override; <code>None</code> (default) → the neutrality temperature <span class="math inline">\(T_n\)</span></td>
+</tr>
+<tr class="even">
+<td><code>days</code></td>
+<td>Day-to-day iterations used by the last solve; if it equals <code>config2d.max_days</code> the solution may not be fully periodic</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Section inspector (before solving):</li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>wall.section_report()   <span class="co"># table: node types + materials (k, ρc, y-range)</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>wall.preview()          <span class="co"># to-scale panels (matplotlib, extra `viz`; ASCII fallback)</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>wall.section()          <span class="co"># NT / k / rhoc arrays + mesh</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="hollowblock" class="level2">
-<h2 class="anchored" data-anchor-id="hollowblock">HollowBlock</h2>
-<!-- material, emissivity, fill_type/fill_material, geometry keys. -->
+<h2 class="anchored" data-anchor-id="hollowblock"><code>HollowBlock</code></h2>
+<p>Concrete hollow block for <strong>walls</strong> (<code>tilt = 90</code>): a shell of one material with one cavity per repeating cell.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>block <span class="op">=</span> eh.HollowBlock(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    material      <span class="op">=</span> <span class="st">"Concreto"</span>,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    fill_type     <span class="op">=</span> eh.Fill.AIR,     <span class="co"># or eh.Fill.SOLID</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    fill_material <span class="op">=</span> <span class="va">None</span>,            <span class="co"># required if SOLID</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    emissivity    <span class="op">=</span> <span class="fl">0.9</span>,             <span class="co"># cavity-wall emissivity (used if AIR)</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    geometry      <span class="op">=</span> {...},           <span class="co"># see below, metres</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th><code>geometry</code> key</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>web</code></td>
+<td>Half web (rib) thickness — the full web between cavities is <code>2·web</code></td>
+</tr>
+<tr class="even">
+<td><code>block_width</code></td>
+<td>Cavity width</td>
+</tr>
+<tr class="odd">
+<td><code>cover_top</code></td>
+<td>Outer shell</td>
+</tr>
+<tr class="even">
+<td><code>cavity</code></td>
+<td>Cavity height (through the thickness)</td>
+</tr>
+<tr class="odd">
+<td><code>cover_bottom</code></td>
+<td>Inner shell</td>
+</tr>
+</tbody>
+</table>
+<p>Cell width = <code>2·web + block_width</code>; thickness = <code>cover_top + cavity + cover_bottom</code>.</p>
 </section>
 <section id="slab" class="level2">
-<h2 class="anchored" data-anchor-id="slab">Slab</h2>
-<!-- rib/block/topping materials, fill, emissivity, geometry keys (web, foot,
-shoulder, n_cavities, cavity_width, topping, topping_cap, covers). -->
+<h2 class="anchored" data-anchor-id="slab"><code>Slab</code></h2>
+<p>Joist-and-block (<em>vigueta y bovedilla</em>) unit for <strong>roofs</strong> (<code>tilt = 0</code>): compression topping, L-shaped rib (web + foot) at each cell edge, filler block, and <code>n_cavities</code> equal cavities.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>slab <span class="op">=</span> eh.Slab(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    rib_material     <span class="op">=</span> <span class="st">"Concreto"</span>,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    block_material   <span class="op">=</span> <span class="st">"Bovedilla"</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    topping_material <span class="op">=</span> <span class="st">"Concreto"</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    fill_type        <span class="op">=</span> eh.Fill.AIR,   <span class="co"># or eh.Fill.SOLID (+ fill_material)</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    fill_material    <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    emissivity       <span class="op">=</span> <span class="fl">0.9</span>,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    geometry         <span class="op">=</span> {...},</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th><code>geometry</code> key</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>web</code>, <code>foot</code></td>
+<td>Rib web and foot (the L profile)</td>
+</tr>
+<tr class="even">
+<td><code>shoulder</code></td>
+<td>Filler block between rib and cavities</td>
+</tr>
+<tr class="odd">
+<td><code>n_cavities</code>, <code>cavity_width</code></td>
+<td>Number and width of the equal cavities</td>
+</tr>
+<tr class="even">
+<td><code>topping</code></td>
+<td>Compression topping thickness</td>
+</tr>
+<tr class="odd">
+<td><code>topping_cap</code></td>
+<td>Topping above the rib web (the web rises below this line)</td>
+</tr>
+<tr class="even">
+<td><code>cover_top</code>, <code>cavity</code>, <code>cover_bottom</code></td>
+<td>Filler-block band through the thickness</td>
+</tr>
+</tbody>
+</table>
+<p>Cell width = <code>2·(web+foot) + (n+1)·shoulder + n·cavity_width</code>; thickness = <code>topping + cover_top + cavity + cover_bottom</code>.</p>
 </section>
-<section id="section-inspector" class="level2">
-<h2 class="anchored" data-anchor-id="section-inspector">Section inspector</h2>
-<!-- section_report(), preview(), section(); [viz] extra. -->
+<section id="fill" class="level2">
+<h2 class="anchored" data-anchor-id="fill"><code>Fill</code></h2>
+<p>Enum for the cavity content of <code>HollowBlock</code>/<code>Slab</code>: <code>Fill.AIR</code> (cavity physics: radiation + Nusselt convection, needs <code>emissivity</code>) or <code>Fill.SOLID</code> (conduction only, needs <code>fill_material</code>).</p>
 </section>
-<section id="config-and-config2d" class="level2">
-<h2 class="anchored" data-anchor-id="config-and-config2d">config and config2d</h2>
-<!-- Global parameters, defaults (NOM ho/hi), reset(), materials access;
-2D mesh and tolerances. -->
+<section id="config-global" class="level2">
+<h2 class="anchored" data-anchor-id="config-global"><code>config</code> (global)</h2>
+<p>Global singleton; changing it affects all subsequent computations.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Attribute</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>file</code></td>
+<td><code>"materials.ini"</code></td>
+<td>Materials file path</td>
+</tr>
+<tr class="even">
+<td><code>La</code></td>
+<td><code>2.5</code> m</td>
+<td>Indoor air depth</td>
+</tr>
+<tr class="odd">
+<td><code>Nx</code></td>
+<td><code>200</code></td>
+<td>1D control volumes</td>
+</tr>
+<tr class="even">
+<td><code>ho</code></td>
+<td><code>13</code> W/(m²·K)</td>
+<td>Outdoor film coefficient (NOM)</td>
+</tr>
+<tr class="odd">
+<td><code>hi</code></td>
+<td><code>8.6</code> W/(m²·K)</td>
+<td>Indoor film coefficient (NOM)</td>
+</tr>
+<tr class="even">
+<td><code>dt</code></td>
+<td><code>10</code> s</td>
+<td><strong>Fixed</strong> — assignments are ignored (<a href="./numerics.html#indoor-air-coupling-free-running-mode">why</a>)</td>
+</tr>
+<tr class="odd">
+<td><code>AIR_DENSITY</code></td>
+<td><code>1.18</code> kg/m³</td>
+<td>Indoor/cavity air density</td>
+</tr>
+<tr class="even">
+<td><code>AIR_HEAT_CAPACITY</code></td>
+<td><code>1005</code> J/(kg·K)</td>
+<td>Indoor/cavity air specific heat</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong>: <code>info()</code>, <code>to_dict()</code>, <code>reset()</code>, <code>materials_list()</code>, <code>materials_dict()</code>; <code>config.materials</code> is a read-only dict of material properties (<code>.k</code>, <code>.rho</code>, <code>.c</code>).</p>
+</section>
+<section id="config2d-2d" class="level2">
+<h2 class="anchored" data-anchor-id="config2d-2d"><code>config2d</code> (2D)</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Attribute</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>nx</code></td>
+<td><code>80</code></td>
+<td>Nodes across the cell width (adiabatic sides)</td>
+</tr>
+<tr class="even">
+<td><code>ny</code></td>
+<td><code>160</code></td>
+<td>Nodes through the thickness (outside → inside)</td>
+</tr>
+<tr class="odd">
+<td><code>tol_inner</code></td>
+<td><code>1e-10</code></td>
+<td>Inner line-by-line tolerance</td>
+</tr>
+<tr class="even">
+<td><code>tol_day</code></td>
+<td><code>5e-4</code></td>
+<td>Day-to-day convergence tolerance</td>
+</tr>
+<tr class="odd">
+<td><code>max_days</code></td>
+<td><code>60</code></td>
+<td>Cap on day-to-day iterations</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Methods</strong>: <code>info()</code>, <code>to_dict()</code>, <code>reset()</code>.</p>
 
 
 </section>

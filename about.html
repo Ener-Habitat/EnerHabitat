@@ -23,6 +23,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 /* CSS for citations */
 div.csl-bib-body { }
 div.csl-entry {
@@ -198,44 +233,51 @@ div.csl-indent {
 </header>
 
 
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>🚧 <strong>Skeleton for structure review.</strong></p>
-</div>
-</div>
 <section id="how-to-cite" class="level2">
 <h2 class="anchored" data-anchor-id="how-to-cite">How to cite</h2>
-<!-- Preferred citation: the Solar Energy paper [@barrios2016]; the package with its
-version. Must match CITATION.cff at the repository root. -->
+<p>If you use EnerHabitat in academic work, please cite the reference paper <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>:</p>
+<blockquote class="blockquote">
+<p>Barrios, G., Casas, J.M., Huelsz, G., Rojas, J. (2016). <em>Ener-Habitat: An online numerical tool to evaluate the thermal performance of homogeneous and non-homogeneous envelope walls/roofs</em>. Solar Energy 131, 296–304. <a href="https://doi.org/10.1016/j.solener.2015.12.017" class="uri">https://doi.org/10.1016/j.solener.2015.12.017</a></p>
+</blockquote>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bibtex code-with-copy"><code class="sourceCode bibtex"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="va">@article</span>{<span class="ot">Barrios2016</span>,</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">author</span>  = {Barrios, G. and Casas, J.M. and Huelsz, G. and Rojas, J.},</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">title</span>   = {Ener-Habitat: An online numerical tool to evaluate the thermal</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>             performance of homogeneous and non-homogeneous envelope walls/roofs},</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">journal</span> = {Solar Energy},</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">volume</span>  = {131},</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">pages</span>   = {296--304},</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">year</span>    = {2016},</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="dt">doi</span>     = {10.1016/j.solener.2015.12.017}</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>To cite the software itself, use the <a href="https://github.com/Ener-Habitat/EnerHabitat/blob/main/CITATION.cff"><code>CITATION.cff</code></a> at the repository root (GitHub’s <em>Cite this repository</em> button generates BibTeX/APA from it).</p>
 </section>
 <section id="changelog" class="level2">
 <h2 class="anchored" data-anchor-id="changelog">Changelog</h2>
-<!-- Summary of / link to CHANGELOG.md. -->
+<p>See the full <a href="https://github.com/Ener-Habitat/EnerHabitat/blob/main/CHANGELOG.md">CHANGELOG</a>.</p>
+<ul>
+<li><strong>0.2.0</strong> — 2D constructive systems: <code>System2D</code>, <code>HollowBlock</code> (walls), <code>Slab</code> (joist-and-block roofs) with air or solid-filled cavities, 2D <code>solveAC()</code>, to-scale section inspector, <code>config2d</code>.</li>
+<li><strong>0.1.x</strong> — 1D multilayer systems: <code>Location</code>, <code>System</code> (free-running and air-conditioned), global <code>config</code>, EPW + pvlib sun–air temperature, finite-volume TDMA solver over an average day.</li>
+</ul>
 </section>
 <section id="authors" class="level2">
 <h2 class="anchored" data-anchor-id="authors">Authors</h2>
-<p>Developed at the <strong>Instituto de Energías Renovables, UNAM</strong>.</p>
+<p>Developed at the <strong>Instituto de Energías Renovables, <a href="https://www.unam.mx/">UNAM</a></strong>.</p>
 <ul>
 <li>Guillermo Barrios del Valle — <a href="mailto:gbv@ier.unam.mx" class="email">gbv@ier.unam.mx</a></li>
 <li>Fernando Rodríguez Calderón — <a href="mailto:ferrodriguez2509@gmail.com" class="email">ferrodriguez2509@gmail.com</a></li>
 </ul>
+<p>Source code: <a href="https://github.com/Ener-Habitat/EnerHabitat" class="uri">https://github.com/Ener-Habitat/EnerHabitat</a> · Issues: <a href="https://github.com/Ener-Habitat/EnerHabitat/issues" class="uri">https://github.com/Ener-Habitat/EnerHabitat/issues</a></p>
 </section>
 <section id="license" class="level2">
 <h2 class="anchored" data-anchor-id="license">License</h2>
-<p>MIT — see the <a href="https://github.com/Ener-Habitat/EnerHabitat/blob/main/LICENSE">LICENSE</a>.</p>
+<p>Released under the <a href="https://github.com/Ener-Habitat/EnerHabitat/blob/main/LICENSE">MIT License</a>.</p>
 </section>
 <section id="references" class="level2">
 <h2 class="anchored" data-anchor-id="references">References</h2>
-<div id="refs" role="list">
-
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-barrios2016" class="csl-entry" role="listitem">
+Barrios, G., J. M. Casas, G. Huelsz, and J. Rojas. 2016. <span>“Ener-Habitat: An Online Numerical Tool to Evaluate the Thermal Performance of Homogeneous and Non-Homogeneous Envelope Walls/Roofs.”</span> <em>Solar Energy</em> 131: 296–304. <a href="https://doi.org/10.1016/j.solener.2015.12.017">https://doi.org/10.1016/j.solener.2015.12.017</a>.
+</div>
 </div>
 
 
