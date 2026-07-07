@@ -2,36 +2,199 @@
 title: "1D model: physical problem"
 ---
 
-::: {.callout-note}
-🚧 **Skeleton for structure review** — content lands in Phase 1 (equations, BCs, figure).
-:::
+EnerHabitat evaluates the thermal performance of a **single opaque component of the
+building envelope** — a wall or a roof. It considers that the only heat path into the
+indoor space is through the component under evaluation: there are no windows, no
+ventilation, no infiltration and no internal heat gains [@barrios2016]. This makes
+results directly comparable
+across constructive systems: whatever difference appears in the indoor temperature or in
+the energy demand is caused by the constructive system alone.
 
-## Physical problem
+The simulation runs over the **average day** of a chosen month, built from the EPW weather
+file (see [The average day](#the-average-day)), and is iterated day after day until the
+solution becomes periodic — the daily cycle repeats itself. All reported results
+correspond to that converged, periodic day.
 
-<!-- Single opaque envelope component (wall or roof), no windows/ventilation/infiltration;
-average day of a month, periodic regime. Domain sketch: layers 1..N, x=0 outside → x=L
-inside, indoor air at La. -->
+## Domain and assumptions
 
-## Governing equation
+The constructive system is a stack of $N$ homogeneous layers, ordered from outside
+($x = 0$) to inside ($x = L$). Each layer $j$ is described by three constant properties:
+thermal conductivity $k_j$ (W/m·K), density $\rho_j$ (kg/m³) and specific heat $c_j$
+(J/kg·K).
 
-<!-- Heat equation per layer (eq. 1) + flux continuity at layer joints (eq. 2).
-Numbered with {#eq-heat} etc., cross-referenced. -->
+![1D domain: multilayer wall/roof with its boundary conditions and the indoor-air
+node.](img/domain_1d.png){#fig-domain}
 
-## Outdoor boundary condition: sun–air temperature
+The model assumes:
 
-<!-- Eq. (3) with T_sa (eq. 4): absortance, ho, RF (−3.9 °C horizontal, 0 vertical);
-Is on the tilted surface via pvlib. -->
+- **1D conduction** perpendicular to the surface (the $x$ direction); layers are
+  homogeneous, so there is no in-plane heat flow.
+- **Constant thermal properties** per layer (no temperature dependence, no moisture).
+- **Convective boundary conditions** with fixed film coefficients $h_o$ (outdoor) and
+  $h_i$ (indoor). The defaults, $h_o = 13$ and $h_i = 8.6$ W/m²·K, are the values
+  prescribed by the Mexican standards NOM-020-ENER and NOM-008-ENER; both are
+  configurable.
+- **Solar and long-wave radiation** on the outdoor surface enter through the sun–air
+  temperature (@eq-tsa).
+- The indoor space is a **lumped air node** of depth $L_a$ (2.5 m by default) in the
+  free-running mode, or a **fixed setpoint** in the air-conditioned mode.
+
+## Governing equations
+
+Within each layer $j$ the temperature field obeys the one-dimensional, time-dependent
+heat conduction equation [@incropera2007]:
+
+$$
+\rho_j\, c_j\, \frac{\partial T_j}{\partial t} \;=\; k_j\, \frac{\partial^2 T_j}{\partial x^2},
+\qquad j = 1, \dots, N,
+$$ {#eq-heat}
+
+where $t$ is time and $x$ the coordinate perpendicular to the surface. At the joint
+between consecutive layers the temperature is continuous and the conductive flux is
+conserved:
+
+$$
+k_j \left.\frac{\partial T}{\partial x}\right|_{j,\,j+1}
+\;=\;
+k_{j+1} \left.\frac{\partial T}{\partial x}\right|_{j,\,j+1}.
+$$ {#eq-continuity}
+
+## Outdoor boundary condition: the sun–air temperature
+
+At the outdoor surface, $x = 0$, convection against the **sun–air temperature** $T_{sa}$
+balances the conducted flux:
+
+$$
+h_o \left( T_{sa} - T_{x=0} \right)
+\;=\;
+-\,k_1 \left.\frac{\partial T_1}{\partial x}\right|_{x=0}.
+$$ {#eq-bc-out}
+
+$T_{sa}$ is a fictitious temperature that lumps together the three thermal loads on the
+exterior surface — convection with outdoor air, absorbed short-wave solar radiation, and
+the long-wave radiative exchange with the sky [@ashrae1997]:
+
+$$
+T_{sa} \;=\; T_a \;+\; \frac{a\, I_s}{h_o} \;-\; RF,
+$$ {#eq-tsa}
+
+where:
+
+- $T_a$ — outdoor air temperature of the average day;
+- $I_s$ — solar irradiance on the (tilted, oriented) surface, W/m²;
+- $a$ — solar absorptance of the outdoor surface (the *color* of the wall/roof);
+- $h_o$ — outdoor film coefficient;
+- $RF$ — long-wave radiation factor: EnerHabitat uses $RF = 3.9\ °\mathrm{C}$ for
+  horizontal surfaces (`tilt = 0`, a roof facing the cold sky) and $RF = 0$ for any
+  other tilt (e.g. vertical walls, `tilt = 90`).
+
+$I_s$ is computed with [pvlib](https://pvlib-python.readthedocs.io/) [@holmgren2018]
+from the average-day beam, diffuse and global horizontal irradiances, the solar position
+at the site, and the surface `tilt` and `azimuth`. This is why `Tsa()` must be recomputed
+whenever the color, the orientation, the month or the location change.
 
 ## Indoor boundary condition and solution modes
 
-### Free-running
+At the indoor surface, $x = L$, the conducted flux is released by convection to the
+indoor air at temperature $T_i$:
 
-<!-- Indoor air balance (eq. 7) with H = La = 2.5 m. -->
+$$
+-\,k_N \left.\frac{\partial T_N}{\partial x}\right|_{x=L}
+\;=\;
+h_i \left( T_{x=L} - T_i \right).
+$$ {#eq-bc-in}
 
-### Air-conditioned
+What happens to $T_i$ defines the two solution modes.
 
-<!-- Ti = Tn constant; Tn = 0.54·T̄o + 13.5 [@humphreys2000]; Morillón comfort amplitude. -->
+### Free-running mode — `solve()`
+
+The indoor air is a lumped thermal mass — density $\rho_a$, specific heat $c_a$, depth
+$L_a$ — whose temperature evolves with the heat received from the indoor surface:
+
+$$
+L_a\, \rho_a\, c_a\, \frac{dT_i}{dt} \;=\; h_i \left( T_{x=L} - T_i \right),
+$$ {#eq-air}
+
+with $L_a = 2.5$ m by default (`config.La`). The air properties are
+$\rho_a \approx 1.18$ kg/m³ and $c_a \approx 1005$ J/kg·K (`config.AIR_DENSITY`,
+`config.AIR_HEAT_CAPACITY`). Because @eq-air is integrated in time alongside the wall,
+the time step is constrained by this coupling — see the
+[numerical method](numerics.qmd#indoor-air-coupling-free-running-mode) for why
+`config.dt` is fixed at 10 s.
+
+The reported **`energy_transfer`** is the heat delivered by the indoor surface to the
+air, accumulated over the converged day:
+
+$$
+E \;=\; \int_{24\,\mathrm{h}} h_i \left( T_{x=L} - T_i \right)^{+} dt
+\qquad \left[\mathrm{J/(m^2\,day)}\right],
+$$ {#eq-energy-transfer}
+
+where $(\,\cdot\,)^{+}$ keeps the positive part (heat entering the room). In the
+periodic regime the daily energy entering equals the energy leaving, so either one
+represents the transfer through the system.
+
+### Air-conditioned mode — `solveAC()`
+
+The indoor air temperature is held constant at the **neutrality temperature** of the
+adaptive comfort model of Humphreys & Nicol [-@humphreys2000]:
+
+$$
+T_i \;=\; T_n \;=\; 0.54\, \overline{T_a} \;+\; 13.5\ °\mathrm{C},
+$$ {#eq-tn}
+
+where $\overline{T_a}$ is the mean outdoor air temperature of the average day. The
+cooling and heating demands are the fluxes the air-conditioning system must remove or
+supply to keep $T_i = T_n$:
+
+$$
+E_c \;=\; \int_{24\,\mathrm{h}} h_i \left( T_{x=L} - T_n \right)^{+} dt,
+\qquad
+E_h \;=\; \int_{24\,\mathrm{h}} h_i \left( T_n - T_{x=L} \right)^{+} dt,
+$$ {#eq-energies-ac}
+
+reported as **`cooling_energy`** and **`heating_energy`** in J/(m²·day).
+
+::: {.callout-note}
+The average-day DataFrame also carries **`DeltaTn`**, the half-width of the comfort zone
+around $T_n$ as a function of the daily outdoor temperature swing, following the
+bioclimatic proposal of Morillón [@morillon2004] (from ±1.25 °C for swings below 13 °C up
+to ±3.5 °C for swings above 52 °C). It is provided as data for comfort analyses — e.g.
+checking how long the free-running $T_i$ stays inside $T_n \pm \Delta T_n$ — but
+`solveAC()` holds the setpoint at $T_n$ itself.
+:::
+
+## The average day
+
+The climate forcing is built from the EPW file for the selected month
+(`Location.meanDay(month, year)`), at 1-second resolution:
+
+- **Outdoor temperature $T_a$** — the monthly means of the daily minimum and maximum,
+  $T_{min}$ and $T_{max}$, are interpolated with the cosine model of Chow & Levermore
+  [-@chow2007]: the minimum is assumed at sunrise and the maximum at the month's mean
+  time of daily maximum, both extracted from the EPW.
+- **Irradiances $I_g$, $I_b$, $I_d$** — the month's hour-by-hour means of global,
+  beam and diffuse horizontal irradiance, interpolated in time to the simulation grid.
+- **Solar position and sunrise** — computed with pvlib for the site's latitude,
+  longitude, altitude and timezone (read from the EPW header).
+- **Comfort quantities** — $T_n$ (@eq-tn) and `DeltaTn` (constant columns).
+
+`Tsa()` then evaluates @eq-tsa on this average day for the system's `tilt`, `azimuth`
+and `absortance`, and returns it on the same time grid used by the solvers.
 
 ## Outputs and units
 
-<!-- Ti, energy_transfer, cooling/heating_energy in J/(m²·day); conversion note. -->
+| Result | Mode | Meaning | Units |
+|---|---|---|---|
+| `Ti` (DataFrame) | both | Indoor air temperature over the converged day | °C |
+| `energy_transfer` | `solve()` | Energy delivered to the indoor air (@eq-energy-transfer) | J/(m²·day) |
+| `cooling_energy` | `solveAC()` | Cooling demand to hold $T_n$ (@eq-energies-ac) | J/(m²·day) |
+| `heating_energy` | `solveAC()` | Heating demand to hold $T_n$ (@eq-energies-ac) | J/(m²·day) |
+
+Energies are per unit of component surface area, accumulated over one day: divide by
+$3600$ for Wh/(m²·day) or by $3.6\times10^6$ for kWh/(m²·day).
+
+## References
+
+::: {#refs}
+:::

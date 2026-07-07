@@ -2,41 +2,195 @@
 title: "API reference"
 ---
 
-::: {.callout-note}
-🚧 **Skeleton for structure review** — manual reference (migrated and expanded from the
-README); `quartodoc` autodoc is a possible future step.
-:::
+Manual reference for the public API. Everything is imported from the top level:
 
-## Location
+```python
+import enerhabitat as eh
+# eh.Location, eh.System, eh.System2D, eh.HollowBlock, eh.Slab, eh.Fill,
+# eh.config, eh.config2d
+```
 
-<!-- Constructor, attributes (file, city, latitude, longitude, altitude, timezone),
-methods (meanDay, copy, info, flag). -->
+## `Location`
 
-## System (1D)
+Reads an EPW file and builds the average day of a month.
 
-<!-- Attributes (location, tilt, azimuth, absortance, layers, add/remove_layer),
-result attributes (energy_transfer, cooling_energy, heating_energy),
-methods (Tsa, solve, solveAC, copy, info, flag). -->
+```python
+loc = eh.Location("./epw/example.epw")
+```
 
-## System2D
+**Attributes.** The EPW path is stored in `file`; assigning a new path reloads the
+header. The rest are read-only, recovered from the EPW header:
 
-<!-- Same interface as System; layers with exactly one 2D element; type-dispatched
-solve/solveAC; orientation validation. -->
+| Attribute | Type | Description |
+|---|---|---|
+| `file` | `str` | Path to the EPW file (writable) |
+| `city` | `str` | City, from the EPW header |
+| `latitude`, `longitude` | `float` | Degrees |
+| `altitude` | `float` | Metres |
+| `timezone` | `pytz.timezone` | Built from the EPW UTC offset |
 
-## HollowBlock
+**Methods**
 
-<!-- material, emissivity, fill_type/fill_material, geometry keys. -->
+- `meanDay(day=15, month, year)` — average-day DataFrame (`Ta`, `Ig`, `Ib`, `Id`,
+  `Tn`, `DeltaTn`, solar position), cached; see
+  [how it is built](model-1d.qmd#the-average-day).
+- `copy()` — independent copy of the instance.
+- `info()` — prints the attributes.
+- `flag()` — dict with metadata of the last `meanDay()` call (e.g. `flag()["date"]`).
 
-## Slab
+## `System` (1D)
 
-<!-- rib/block/topping materials, fill, emissivity, geometry keys (web, foot,
-shoulder, n_cavities, cavity_width, topping, topping_cap, covers). -->
+A multilayer wall or roof tied to a `Location`.
 
-## Section inspector
+```python
+wall = eh.System(location=loc, tilt=90, azimuth=0, absortance=0.8, layers=[])
+```
 
-<!-- section_report(), preview(), section(); [viz] extra. -->
+**Attributes**
 
-## config and config2d
+| Attribute | Type | Description |
+|---|---|---|
+| `location` | `Location` | Climate source |
+| `tilt` | `float` | Degrees from horizontal: `0` roof, `90` vertical wall |
+| `azimuth` | `float` | Surface azimuth, pvlib convention (N=0, E=90, S=180, W=270) |
+| `absortance` | `float` | Solar absorptance of the outdoor surface, `[0, 1]` |
+| `layers` | `list[tuple[str, float]]` | `(material, thickness_m)`, **outside → inside** |
 
-<!-- Global parameters, defaults (NOM ho/hi), reset(), materials access;
-2D mesh and tolerances. -->
+Read-only results (energy per unit surface area over the converged day, **J/(m²·day)**
+— divide by 3600 for Wh or 3.6e6 for kWh):
+
+| Attribute | Set by | Meaning |
+|---|---|---|
+| `energy_transfer` | `solve()` | Energy delivered to the indoor air |
+| `cooling_energy` | `solveAC()` | Cooling demand to hold $T_n$ |
+| `heating_energy` | `solveAC()` | Heating demand to hold $T_n$ |
+
+**Methods**
+
+- `Tsa()` — sun–air temperature and `Is` for the current color/orientation/month, on
+  the solver's time grid (results concatenate directly with `solve()` output).
+- `solve()` — free-running indoor temperature `Ti` (DataFrame).
+- `solveAC()` — `Ti` held at $T_n$; sets `cooling_energy`/`heating_energy`.
+- `add_layer(material, width)` / `remove_layer(index)` — edit the stack (appends at
+  the inside).
+- `copy()`, `info()`, `flag()`.
+
+> `Tsa` depends on `absortance`, `tilt`, `azimuth`, `meanDay` (month) and `Location`;
+> it is recomputed automatically when any of these change (results are cached
+> otherwise).
+
+## `System2D`
+
+Mirror of `System` for cross-sections that are heterogeneous across their width. Same
+`Location`, `tilt`, `azimuth`, `absortance`, `Tsa()`, `solve()`, `solveAC()` and
+result attributes. Differences:
+
+- `layers` contains, besides ordinary `(material, thickness)` tuples, **exactly one**
+  2D element: a [`HollowBlock`](#hollowblock) or a [`Slab`](#slab). The element's
+  thickness is derived from its `geometry`.
+- Orientation is validated: `HollowBlock` requires `tilt = 90`, `Slab` `tilt = 0`.
+- Extra attributes:
+
+| Attribute | Description |
+|---|---|
+| `setpoint` | AC setpoint override; `None` (default) → the neutrality temperature $T_n$ |
+| `days` | Day-to-day iterations used by the last solve; if it equals `config2d.max_days` the solution may not be fully periodic |
+
+- Section inspector (before solving):
+
+```python
+wall.section_report()   # table: node types + materials (k, ρc, y-range)
+wall.preview()          # to-scale panels (matplotlib, extra `viz`; ASCII fallback)
+wall.section()          # NT / k / rhoc arrays + mesh
+```
+
+## `HollowBlock`
+
+Concrete hollow block for **walls** (`tilt = 90`): a shell of one material with one
+cavity per repeating cell.
+
+```python
+block = eh.HollowBlock(
+    material      = "Concreto",
+    fill_type     = eh.Fill.AIR,     # or eh.Fill.SOLID
+    fill_material = None,            # required if SOLID
+    emissivity    = 0.9,             # cavity-wall emissivity (used if AIR)
+    geometry      = {...},           # see below, metres
+)
+```
+
+| `geometry` key | Meaning |
+|---|---|
+| `web` | Half web (rib) thickness — the full web between cavities is `2·web` |
+| `block_width` | Cavity width |
+| `cover_top` | Outer shell |
+| `cavity` | Cavity height (through the thickness) |
+| `cover_bottom` | Inner shell |
+
+Cell width = `2·web + block_width`; thickness = `cover_top + cavity + cover_bottom`.
+
+## `Slab`
+
+Joist-and-block (*vigueta y bovedilla*) unit for **roofs** (`tilt = 0`): compression
+topping, L-shaped rib (web + foot) at each cell edge, filler block, and `n_cavities`
+equal cavities.
+
+```python
+slab = eh.Slab(
+    rib_material     = "Concreto",
+    block_material   = "Bovedilla",
+    topping_material = "Concreto",
+    fill_type        = eh.Fill.AIR,   # or eh.Fill.SOLID (+ fill_material)
+    fill_material    = None,
+    emissivity       = 0.9,
+    geometry         = {...},
+)
+```
+
+| `geometry` key | Meaning |
+|---|---|
+| `web`, `foot` | Rib web and foot (the L profile) |
+| `shoulder` | Filler block between rib and cavities |
+| `n_cavities`, `cavity_width` | Number and width of the equal cavities |
+| `topping` | Compression topping thickness |
+| `topping_cap` | Topping above the rib web (the web rises below this line) |
+| `cover_top`, `cavity`, `cover_bottom` | Filler-block band through the thickness |
+
+Cell width = `2·(web+foot) + (n+1)·shoulder + n·cavity_width`;
+thickness = `topping + cover_top + cavity + cover_bottom`.
+
+## `Fill`
+
+Enum for the cavity content of `HollowBlock`/`Slab`: `Fill.AIR` (cavity physics:
+radiation + Nusselt convection, needs `emissivity`) or `Fill.SOLID` (conduction only,
+needs `fill_material`).
+
+## `config` (global)
+
+Global singleton; changing it affects all subsequent computations.
+
+| Attribute | Default | Description |
+|---|---|---|
+| `file` | `"materials.ini"` | Materials file path |
+| `La` | `2.5` m | Indoor air depth |
+| `Nx` | `200` | 1D control volumes |
+| `ho` | `13` W/(m²·K) | Outdoor film coefficient (NOM) |
+| `hi` | `8.6` W/(m²·K) | Indoor film coefficient (NOM) |
+| `dt` | `10` s | **Fixed** — assignments are ignored ([why](numerics.qmd#indoor-air-coupling-free-running-mode)) |
+| `AIR_DENSITY` | `1.18` kg/m³ | Indoor/cavity air density |
+| `AIR_HEAT_CAPACITY` | `1005` J/(kg·K) | Indoor/cavity air specific heat |
+
+**Methods**: `info()`, `to_dict()`, `reset()`, `materials_list()`, `materials_dict()`;
+`config.materials` is a read-only dict of material properties (`.k`, `.rho`, `.c`).
+
+## `config2d` (2D)
+
+| Attribute | Default | Description |
+|---|---|---|
+| `nx` | `80` | Nodes across the cell width (adiabatic sides) |
+| `ny` | `160` | Nodes through the thickness (outside → inside) |
+| `tol_inner` | `1e-10` | Inner line-by-line tolerance |
+| `tol_day` | `5e-4` | Day-to-day convergence tolerance |
+| `max_days` | `60` | Cap on day-to-day iterations |
+
+**Methods**: `info()`, `to_dict()`, `reset()`.

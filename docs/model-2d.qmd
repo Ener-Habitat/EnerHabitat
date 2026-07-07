@@ -2,42 +2,191 @@
 title: "2D model: non-homogeneous systems"
 ---
 
-::: {.callout-note}
-🚧 **Skeleton for structure review** — content lands in Phase 2 (equations, cavity
-physics, geometry figures).
-:::
+Real masonry units are not homogeneous across their width: a concrete hollow block has
+air cavities between webs, and a joist-and-block (*vigueta y bovedilla*) roof alternates
+concrete ribs, filler blocks and cavities. Averaging their properties into an equivalent
+homogeneous layer misses the physics that matters — heat bridging through the solid webs
+and the convective/radiative exchange inside the cavities. For these systems EnerHabitat
+solves the heat transfer on a **2D cross-section** of the unit [@barrios2016].
 
-## Why 2D
+## Domain: the repeating cell
 
-<!-- Layer heterogeneous across its width; repeating cell with adiabatic lateral
-symmetry. Axis convention (x = width, y = thickness). -->
+Constructive units repeat periodically along the wall or roof, so the domain is a single
+**repeating cell** — the block (or the rib-to-rib module) cut across its width and
+thickness. By periodicity, no heat flows between neighbouring cells: the lateral sides of
+the cell are **adiabatic** (symmetry planes).
+
+Axis convention (used by the package and throughout these pages): $x$ runs across the
+**width** of the cell and $y$ through the **thickness**, from the outside ($y = 0$) to
+the inside ($y = e$), as in the cross-section figures below. Note that the reference
+paper [@barrios2016] uses the transposed convention ($x$ through the thickness).
+
+The cell is a stack in $y$ — exterior finishes, the non-homogeneous unit, interior
+finishes — where the unit itself is a 2D patchwork of materials and, possibly, cavities.
 
 ## Governing equations and boundary conditions
 
-<!-- 2D extension of the heat equation; outdoor/indoor BCs as in 1D; symmetry sides. -->
+Conduction in the solids obeys the two-dimensional extension of the
+[1D heat equation](model-1d.qmd#eq-heat), with position-dependent properties:
+
+$$
+\rho\, c\, \frac{\partial T}{\partial t}
+\;=\;
+\frac{\partial}{\partial x}\!\left( k\, \frac{\partial T}{\partial x} \right)
++
+\frac{\partial}{\partial y}\!\left( k\, \frac{\partial T}{\partial y} \right),
+$$ {#eq-heat2d}
+
+where $k(x,y)$, $\rho(x,y)$ and $c(x,y)$ take the value of the material occupying each
+point (rib, filler block, topping, solid fill…). Continuity of temperature and flux at
+material joints is as in the 1D case.
+
+The boundary conditions close the problem:
+
+$$
+\begin{aligned}
+y = 0:&\quad h_o \left( T_{sa} - T \right) = -k\, \frac{\partial T}{\partial y}
+  && \text{(outdoor, sun–air temperature)}\\[4pt]
+y = e:&\quad -k\, \frac{\partial T}{\partial y} = h_i \left( T - T_i \right)
+  && \text{(indoor air)}\\[4pt]
+x = 0,\ x = W:&\quad \frac{\partial T}{\partial x} = 0
+  && \text{(adiabatic sides, periodicity)}
+\end{aligned}
+$$ {#eq-bc2d}
+
+$T_{sa}$, $h_o$ and $h_i$ are exactly those of the [1D model](model-1d.qmd) — same
+average day, same `Tsa()`. The indoor air $T_i$ follows the same two solution modes:
+free-running (lumped air node, now fed by the width-averaged flux from the indoor
+surface) or air-conditioned ($T_i = T_n$ constant).
 
 ## Cavity physics (`Fill.AIR`)
 
-<!-- (i) conduction in solids, (ii) natural convection via temperature-dependent Nusselt
-correlations — wall (vertical cavity) [@xaman2005] and roof (Rayleigh–Bénard)
-[@hollands1975]; (iii) radiation between the four grey-diffuse cavity surfaces (view
-factors); (iv) lumped cavity-air node. -->
+When a cell is an air cavity, three heat-transfer mechanisms act together
+[@barrios2016]: conduction through the surrounding solids, **natural convection** of the
+cavity air, and **radiation** between the cavity surfaces.
 
-## Solid fill (`Fill.SOLID`)
+### The cavity-air node
 
-<!-- Conduction only; limit case = homogeneous 1D layer. -->
+The air inside each cavity is modelled as a single lumped node at temperature $T_h$,
+exchanging heat by convection with the four cavity walls:
+
+$$
+\rho_a\, c_a\, A_{cav}\, \frac{dT_h}{dt}
+\;=\;
+\oint_{\partial cav} h_c \left( T_w(s) - T_h \right) ds,
+$$ {#eq-cavity-air}
+
+where $A_{cav} = w \cdot d$ is the cavity cross-section (width × depth), the integral
+runs along the cavity perimeter with $T_w(s)$ the local wall temperature, and all
+quantities are per unit length in the out-of-plane direction. In the discrete form the
+perimeter element $ds$ becomes the face length ($\Delta x$ or $\Delta y$) of each wall
+node. The convective coefficient $h_c$ depends on the cavity orientation.
+
+### Convective coefficient: walls vs roofs
+
+For a **wall** (`tilt = 90`, vertical cavity) EnerHabitat uses the correlation of
+Xamán et al. [-@xaman2005] for cavities of façade elements, as a function of the
+temperature difference between the two faces across the thickness and the cavity depth
+$d$ (m):
+
+$$
+h_c \;=\; 0.4005\; \frac{\left| T_{out} - T_{in} \right|^{0.3033}}{d^{\,0.0901}}
+\qquad \left[\mathrm{W/m^2\,K}\right].
+$$ {#eq-nu-wall}
+
+For a **roof** (`tilt = 0`, horizontal cavity) the regime is Rayleigh–Bénard. If the
+lower face is not hotter than the upper one the air stratifies stably and only conducts,
+$h_c = k_{air}/d$. Otherwise convection sets in, described by the correlation of
+Hollands et al. [-@hollands1975] for horizontal layers heated from below:
+
+$$
+h_c \;=\; \frac{k_{air}}{d}
+\left(
+1 + 1.44 \left[ 1 - \frac{1708}{Ra} \right]^{+}
+  + \left[ \left( \frac{Ra}{5830} \right)^{1/3} - 1 \right]^{+}
+\right),
+\qquad
+Ra = \frac{g\, \beta\, \Delta T\, d^3}{\nu\, \alpha},
+$$ {#eq-nu-roof}
+
+where $[\,\cdot\,]^{+}$ keeps the positive part and the air properties are evaluated at
+ambient conditions ($k_{air} = 0.0262$ W/m·K, $\nu = 1.11\times10^{-5}$ m²/s,
+$\beta = 1/300$ K⁻¹). Because $h_c$ depends on the wall temperatures, it is re-evaluated
+inside the iteration of every time step (see the
+[numerical method](numerics.qmd#solution-algorithm)).
+
+### Radiation between cavity surfaces
+
+The four cavity walls exchange long-wave radiation. The air is non-participating, the
+surfaces are grey and diffuse with emissivity $\varepsilon$ (the `emissivity` parameter,
+0.9 by default), and each surface emits at its mean temperature [@incropera2007]. The
+net exchange between surfaces $m$ and $n$ is
+
+$$
+q_{m \to n} \;=\; \varepsilon\, \sigma\, F_{mn} \left( T_m^4 - T_n^4 \right),
+$$ {#eq-rad}
+
+with $\sigma$ the Stefan–Boltzmann constant and $F_{mn}$ the view factor between them.
+For a rectangular cavity of width $w$ and depth $d$ the view factors follow from the
+crossed-strings method; e.g. between the top wall and one lateral wall, and between
+the two opposite walls:
+
+$$
+F_{u \to r} = \tfrac{1}{2}\left( 1 + \tfrac{d}{w} - \sqrt{1 + \tfrac{d^2}{w^2}} \right),
+\qquad
+F_{u \to d} = 1 - 2 F_{u \to r}.
+$$ {#eq-vf}
+
+### Solid fill (`Fill.SOLID`)
+
+The cavity can instead be filled with a solid material (e.g. an insulating core): the
+cavity physics switches off and the fill behaves as one more conducting material in
+@eq-heat2d. Filling with the *same* material as the shell makes the unit homogeneous —
+in that limit the 2D solution reduces to the 1D one, which is one of the package's
+validation checks (see [Validation](numerics.qmd#validation)).
 
 ## Geometries
 
-### Hollow-block wall (`HollowBlock`)
+### Hollow-block wall — `HollowBlock`
 
-<!-- Figure docs/img/hollow_block.png; cell measures; thickness formula. -->
+A shell of a single material with one cavity per cell; walls only (`tilt = 90`). The
+repeating cell takes half a web on each side, so the full web between two cavities is
+`2·web`.
 
-### Joist-and-block roof (`Slab`)
+![Hollow-block wall cross-section (to scale).](img/hollow_block.png){#fig-hollow}
 
-<!-- Figure docs/img/slab.png; three solids, L-shaped rib, N cavities;
-width/thickness formulas. -->
+- cell width $W = 2 \cdot \texttt{web} + \texttt{block\_width}$
+- thickness $e = \texttt{cover\_top} + \texttt{cavity} + \texttt{cover\_bottom}$
 
-## Constraints
+### Joist-and-block roof — `Slab`
 
-<!-- Exactly one 2D element in the stack; tilt required by type (wall 90 / roof 0). -->
+Roofs only (`tilt = 0`). Three solid materials — the compression topping, an L-shaped
+concrete rib (web + foot) at each edge of the cell, and the filler block — plus $n$
+equal cavities, each one with its own lumped air node (@eq-cavity-air) and its own
+$h_c$.
+
+![Joist-and-block roof cross-section (to scale, 3 cavities).](img/slab.png){#fig-slab}
+
+- cell width $W = 2(\texttt{web} + \texttt{foot}) + (n+1)\cdot\texttt{shoulder} + n\cdot\texttt{cavity\_width}$
+- thickness $e = \texttt{topping} + \texttt{cover\_top} + \texttt{cavity} + \texttt{cover\_bottom}$
+
+The rib's web rises through the whole section except the top `topping_cap` of the
+topping, reproducing the real joist profile.
+
+## Constraints and outputs
+
+- The `layers` list of a `System2D` contains **exactly one** 2D element (`HollowBlock`
+  or `Slab`); any other entries are ordinary homogeneous layers (finishes), handled as
+  1D bands of the cross-section.
+- The element's thickness is derived from its `geometry`, so it is not repeated as a
+  layer thickness.
+- Orientation is validated: `HollowBlock` requires `tilt = 90`, `Slab` requires
+  `tilt = 0`.
+- Outputs are those of the 1D model — `Ti`, `energy_transfer`, `cooling_energy`,
+  `heating_energy` — expressed **per unit of indoor surface area** (the width-averaged
+  flux at $y = e$), so 1D and 2D results are directly comparable.
+
+## References
+
+::: {#refs}
+:::

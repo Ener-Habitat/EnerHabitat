@@ -2,29 +2,61 @@
 title: "About"
 ---
 
-::: {.callout-note}
-🚧 **Skeleton for structure review.**
-:::
-
 ## How to cite
 
-<!-- Preferred citation: the Solar Energy paper [@barrios2016]; the package with its
-version. Must match CITATION.cff at the repository root. -->
+If you use EnerHabitat in academic work, please cite the reference paper
+[@barrios2016]:
+
+> Barrios, G., Casas, J.M., Huelsz, G., Rojas, J. (2016). *Ener-Habitat: An online
+> numerical tool to evaluate the thermal performance of homogeneous and
+> non-homogeneous envelope walls/roofs*. Solar Energy 131, 296–304.
+> <https://doi.org/10.1016/j.solener.2015.12.017>
+
+```bibtex
+@article{Barrios2016,
+  author  = {Barrios, G. and Casas, J.M. and Huelsz, G. and Rojas, J.},
+  title   = {Ener-Habitat: An online numerical tool to evaluate the thermal
+             performance of homogeneous and non-homogeneous envelope walls/roofs},
+  journal = {Solar Energy},
+  volume  = {131},
+  pages   = {296--304},
+  year    = {2016},
+  doi     = {10.1016/j.solener.2015.12.017}
+}
+```
+
+To cite the software itself, use the
+[`CITATION.cff`](https://github.com/Ener-Habitat/EnerHabitat/blob/main/CITATION.cff)
+at the repository root (GitHub's *Cite this repository* button generates BibTeX/APA
+from it).
 
 ## Changelog
 
-<!-- Summary of / link to CHANGELOG.md. -->
+See the full
+[CHANGELOG](https://github.com/Ener-Habitat/EnerHabitat/blob/main/CHANGELOG.md).
+
+- **0.2.0** — 2D constructive systems: `System2D`, `HollowBlock` (walls), `Slab`
+  (joist-and-block roofs) with air or solid-filled cavities, 2D `solveAC()`,
+  to-scale section inspector, `config2d`.
+- **0.1.x** — 1D multilayer systems: `Location`, `System` (free-running and
+  air-conditioned), global `config`, EPW + pvlib sun–air temperature,
+  finite-volume TDMA solver over an average day.
 
 ## Authors
 
-Developed at the **Instituto de Energías Renovables, UNAM**.
+Developed at the **Instituto de Energías Renovables,
+[UNAM](https://www.unam.mx/)**.
 
 - Guillermo Barrios del Valle — <gbv@ier.unam.mx>
 - Fernando Rodríguez Calderón — <ferrodriguez2509@gmail.com>
 
+Source code: <https://github.com/Ener-Habitat/EnerHabitat> ·
+Issues: <https://github.com/Ener-Habitat/EnerHabitat/issues>
+
 ## License
 
-MIT — see the [LICENSE](https://github.com/Ener-Habitat/EnerHabitat/blob/main/LICENSE).
+Released under the
+[MIT License](https://github.com/Ener-Habitat/EnerHabitat/blob/main/LICENSE).
 
 ## References
 

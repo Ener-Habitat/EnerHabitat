@@ -1,7 +1,8 @@
 """
-Genera las figuras a escala del README (corte transversal de los elementos 2D):
-  docs/img/hollow_block.png  — bloque hueco de concreto (muro)
-  docs/img/slab.png          — vigueta y bovedilla (techo, 3 cavidades, vigueta en L)
+Genera las figuras del README y del sitio de documentación:
+  docs/img/hollow_block.png  — bloque hueco de concreto (muro, a escala)
+  docs/img/slab.png          — vigueta y bovedilla (techo, 3 cavidades, vigueta en L, a escala)
+  docs/img/domain_1d.png     — dominio 1D multicapa con condiciones de frontera
 
 Uso:  .venv/bin/python docs/make_figures.py
 Requiere matplotlib (extra `viz`).
@@ -164,6 +165,63 @@ def slab():
     print("saved", out)
 
 
+# =================================================================
+#  Dominio 1D multicapa con condiciones de frontera (model-1d.qmd)
+# =================================================================
+def domain_1d():
+    widths = [22, 110, 18]                 # capas de ejemplo (solo esquema)
+    labels = ["layer 1", "layer 2", "layer N"]
+    colors = ["#b9b9b9", "#8f8f8f", "#d4d4d4"]
+    H = 100
+    X = sum(widths)
+    AIRW = 85                              # aire interior (esquemático, no a escala)
+
+    fig, ax = plt.subplots(figsize=(8.8, 3.9))
+    x0 = 0
+    for w, lab, col in zip(widths, labels, colors):
+        _rect(ax, x0, x0 + w, 0, H, col)
+        ax.text(x0 + w / 2, H / 2, f"{lab}\n$k_j,\\ \\rho_j,\\ c_j$",
+                ha="center", va="center", fontsize=8.5)
+        x0 += w
+
+    # aire interior (nodo agrupado, punteado)
+    ax.add_patch(Rectangle((X, 0), AIRW, H, facecolor="#eef4fb",
+                           edgecolor="#1f5fb3", ls="--", lw=1.1))
+    ax.text(X + AIRW / 2, H / 2, "indoor air\n$\\rho_a,\\ c_a,\\ L_a$\n$T_i(t)$",
+            ha="center", va="center", fontsize=8.5, color="#1f5fb3")
+
+    # condiciones de frontera
+    ax.annotate("$T_{sa}(t)$,  $h_o$", xy=(0, H * 0.5), xytext=(-46, H * 0.5),
+                ha="center", va="center", fontsize=9, color="#b3471f",
+                arrowprops=dict(arrowstyle="->", color="#b3471f"))
+    ax.annotate("$h_i$", xy=(X, H * 0.5), xytext=(X + 16, H * 0.72),
+                ha="center", va="center", fontsize=9, color="#1f5fb3",
+                arrowprops=dict(arrowstyle="->", color="#1f5fb3"))
+    # continuidad de flujo en las juntas
+    ax.annotate("flux continuity\nat layer joints", xy=(widths[0], H * 0.82),
+                xytext=(widths[0] + 34, H * 1.16), ha="left", va="center",
+                fontsize=7.5, color="#444",
+                arrowprops=dict(arrowstyle="->", color="#444", lw=0.8))
+
+    # ejes x=0, x=L
+    ax.annotate("", xy=(X + AIRW + 12, H + 18), xytext=(-12, H + 18),
+                arrowprops=dict(arrowstyle="->", color="#333", lw=0.9))
+    ax.text(X + AIRW + 14, H + 18, "$x$", ha="left", va="center", fontsize=9)
+    for xpos, lab in [(0, "$x=0$\n(outside)"), (X, "$x=L$\n(inside)")]:
+        ax.plot([xpos, xpos], [H + 14, H + 22], color="#333", lw=0.9)
+        ax.text(xpos, H + 26, lab, ha="center", va="top", fontsize=8)
+
+    ax.set_xlim(-70, X + AIRW + 30)
+    ax.set_ylim(H + 46, -22)               # y invertido para dejar cotas abajo
+    ax.set_aspect("equal"); ax.axis("off")
+    ax.set_title("1D domain — multilayer wall/roof (outside → inside)", fontsize=10)
+    fig.tight_layout()
+    out = os.path.join(IMG, "domain_1d.png")
+    fig.savefig(out, dpi=140, bbox_inches="tight"); plt.close(fig)
+    print("saved", out)
+
+
 if __name__ == "__main__":
     hollow_block()
     slab()
+    domain_1d()
