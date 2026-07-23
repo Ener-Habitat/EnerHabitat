@@ -83,7 +83,10 @@ Read-only results (energy per unit surface area over the converged day, **J/(m²
 
 > `Tsa` depends on `absortance`, `tilt`, `azimuth`, `meanDay` (month) and `Location`;
 > it is recomputed automatically when any of these change (results are cached
-> otherwise).
+> otherwise) — a prior manual `Tsa()` call is optional, for inspection. `layers` does
+> not affect `Tsa`, but mutating it in place (`.append(...)`) bypasses the cache
+> invalidation of the **solvers**: assign the list or use
+> `add_layer()`/`remove_layer()`.
 
 ## `System2D`
 

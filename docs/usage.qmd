@@ -32,7 +32,15 @@ resampling, no NaN). When a `DataFrame` is required, convert with
 `wall.solve().to_frame("Ti")`.
 
 > `Tsa` depends on `absortance`, `tilt`, `azimuth`, the month (`meanDay`) and the
-> `Location` — it must be recomputed whenever any of these change.
+> `Location` — the layer stack does **not** affect it. The setters invalidate the
+> cache and the next call to `Tsa()` or to a solver recomputes automatically; a
+> prior manual `Tsa()` call is optional (useful to inspect the forcing before
+> solving).
+>
+> One caveat: mutating the stack in place (`wall.layers.append(...)`) bypasses the
+> setters, so a later `solve()` can return the cached result of the *previous*
+> stack. Assign the full list (`wall.layers = [...]`) or use
+> `add_layer()`/`remove_layer()`, which invalidate correctly.
 
 ## Recommended folder structure
 

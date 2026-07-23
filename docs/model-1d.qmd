@@ -91,8 +91,9 @@ where:
 
 $I_s$ is computed with [pvlib](https://pvlib-python.readthedocs.io/) [@holmgren2018]
 from the average-day beam, diffuse and global horizontal irradiances, the solar position
-at the site, and the surface `tilt` and `azimuth`. This is why `Tsa()` must be recomputed
-whenever the color, the orientation, the month or the location change.
+at the site, and the surface `tilt` and `azimuth`. This is why `Tsa()` is recomputed —
+automatically, on the next call — whenever the color, the orientation, the month or the
+location change.
 
 ## Indoor boundary condition and solution modes
 

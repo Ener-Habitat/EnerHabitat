@@ -7,6 +7,11 @@
   model-1d pages, 1D docstrings and type annotations (which also promised a
   nonexistent `energy` argument and `Qcool, Qheat` return values; the energies
   are instance attributes). Use `.to_frame("Ti")` when a DataFrame is needed.
+  The `Tsa()` cache description was unified across pages (setters invalidate,
+  the next `Tsa()`/solver call recomputes; a prior manual call is optional and
+  `layers` does not affect `Tsa`), with a new warning: mutating `layers` in
+  place bypasses the **solver** cache invalidation — assign the list or use
+  `add_layer()`/`remove_layer()`.
 
 - **Cavity radiation solved with radiosity** (P0-02): the grey diffuse
   enclosure of each cavity is now solved exactly via Gebhart transfer factors
