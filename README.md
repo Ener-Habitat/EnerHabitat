@@ -38,8 +38,8 @@ conductivity `k` (W/(m·K)), density `rho` (kg/m³) and specific heat `c`
 
 Given an EPW file and a constructive system, EnerHabitat computes the outdoor
 (`Ta`), sun–air (`Tsa`), indoor (`Ti`) and neutrality (`Tn`) temperatures,
-the solar irradiances (`Ig`, `Ib`, `Id`, `Is`) and the energy demands over
-the average day of the selected month.
+the solar irradiances (`Ig` GHI, `Ib` DNI, `Id` DHI and the plane-of-array
+`Is`) and the energy demands over the average day of the selected month.
 
 ## Theoretical background (summary)
 

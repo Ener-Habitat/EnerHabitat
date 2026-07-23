@@ -31,9 +31,12 @@ header. The rest are read-only, recovered from the EPW header:
 
 **Methods**
 
-- `meanDay(day=15, month, year)` — average-day DataFrame (`Ta`, `Ig`, `Ib`, `Id`,
-  `Tn`, `DeltaTn`, solar position), cached; see
-  [how it is built](model-1d.qmd#the-average-day).
+- `meanDay(day="15", month="current", year="current")` — average-day DataFrame
+  (`Ta`; `Ig` GHI, `Ib` **DNI**, `Id` DHI; `Tn`, `DeltaTn`; solar position), cached;
+  see [how it is built](model-1d.qmd#the-average-day). `month` selects which EPW rows
+  are averaged; `day` and `year` only set the **synthetic date** used for the solar
+  geometry and the index — in a TMY, `year=2025` does **not** select observations
+  from 2025.
 - `copy()` — independent copy of the instance.
 - `info()` — prints the attributes.
 - `flag()` — dict with metadata of the last `meanDay()` call (e.g. `flag()["date"]`).

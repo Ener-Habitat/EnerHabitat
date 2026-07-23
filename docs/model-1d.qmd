@@ -95,9 +95,12 @@ where:
   same rule as the 2016 online tool [@barrios2016]. It is an empirical sun–air
   correction, not an explicit sky/surroundings radiative balance.
 
-$I_s$ is computed with [pvlib](https://pvlib-python.readthedocs.io/) [@holmgren2018]
-from the average-day beam, diffuse and global horizontal irradiances, the solar position
-at the site, and the surface `tilt` and `azimuth`. This is why `Tsa()` is recomputed —
+$I_s$ is computed with [pvlib](https://pvlib-python.readthedocs.io/)'s
+`get_total_irradiance` [@holmgren2018] from the average-day DNI ($I_b$), DHI ($I_d$)
+and GHI ($I_g$) and the solar position at the site, for the surface `tilt` and
+`azimuth`, using the **isotropic-sky** transposition model and ground **albedo 0.25**
+(the pvlib defaults); $I_s$ (`poa_global`) includes the beam, sky-diffuse and
+ground-reflected components. This is why `Tsa()` is recomputed —
 automatically, on the next call — whenever the absorptance, the orientation, the month
 or the location change.
 
@@ -181,8 +184,12 @@ The climate forcing is built from the EPW file for the selected month
   $T_{min}$ and $T_{max}$, are interpolated with the cosine model of Chow & Levermore
   [-@chow2007]: the minimum is assumed at sunrise and the maximum at the month's mean
   time of daily maximum, both extracted from the EPW.
-- **Irradiances $I_g$, $I_b$, $I_d$** — the month's hour-by-hour means of global,
-  beam and diffuse horizontal irradiance, interpolated in time to the simulation grid.
+- **Irradiances** — the month's hour-by-hour means of the EPW solar fields:
+  $I_g$ = global **horizontal** irradiance (GHI), $I_b$ = direct **normal**
+  irradiance (DNI) and $I_d$ = diffuse **horizontal** irradiance (DHI), linearly
+  interpolated in time to the simulation grid. (The EPW records each value as the
+  energy accumulated over the preceding hour; the hourly means are treated as
+  mean-power samples, in W/m², placed on the hour.)
 - **Solar position and sunrise** — computed with pvlib for the site's latitude,
   longitude, altitude and timezone (read from the EPW header).
 - **Comfort quantities** — $T_n$ (@eq-tn) and `DeltaTn` (constant columns).

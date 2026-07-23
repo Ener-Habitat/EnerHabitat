@@ -22,6 +22,13 @@
   now silent and leaves `config.materials == {}`; the `file` getter no longer
   performs I/O nor returns `None`.
 
+- **Average-day factual fixes**: `Ib` is the EPW's **Direct Normal**
+  Irradiance (DNI) — it was documented as "beam horizontal"; the GHI/DNI/DHI
+  mapping is now stated everywhere, along with the EPW hourly-accumulation
+  semantics, the pvlib transposition model and albedo actually used
+  (isotropic sky, 0.25 — the defaults), the real `meanDay()` signature and
+  the meaning of `day`/`year` on a TMY (synthetic solar date, not a data
+  filter).
 - **Theory pages homogenized**: `model-1d` and `model-2d` now share the same
   skeleton (Domain and assumptions → Governing equations → Boundary
   conditions → solution modes → shared *average day* → Outputs and units).
