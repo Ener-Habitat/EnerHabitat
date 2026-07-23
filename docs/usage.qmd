@@ -107,9 +107,11 @@ rho = 1100
 c   = 1000
 ```
 
-If `config.file` points at a missing file, EnerHabitat reports
-`Error: <path> not found` and `materials` will be empty — solving then fails because
-the layer materials cannot be resolved.
+Assigning a missing path to `config.file` raises `FileNotFoundError` immediately, and
+the previously loaded materials (and path) are kept untouched. If the default
+`materials.ini` is not present in the working directory when EnerHabitat is imported,
+`materials` starts empty (`{}`) — solving then fails because the layer materials
+cannot be resolved — so set `config.file` before building systems.
 
 ## Examples
 

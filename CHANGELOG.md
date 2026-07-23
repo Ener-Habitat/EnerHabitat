@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Explicit errors for the materials file (P1)**: assigning a missing path to
+  `config.file` now raises `FileNotFoundError` (it used to print and continue,
+  leaving internal attributes unset and crashing later with a cryptic
+  `AttributeError`); the previously loaded materials are kept on failure.
+  Importing EnerHabitat without a `materials.ini` in the working directory is
+  now silent and leaves `config.materials == {}`; the `file` getter no longer
+  performs I/O nor returns `None`.
+
 - **API-accuracy doc fixes (P1 series)**: `solve()`/`solveAC()` return a
   `pandas.Series` named `"Ti"`, not a DataFrame — corrected in usage/api/
   model-1d pages, 1D docstrings and type annotations (which also promised a

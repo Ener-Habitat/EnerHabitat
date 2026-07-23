@@ -57,8 +57,15 @@ class Config:
     """
     def __init__(self):
         self.reset()
-        self.file = "materials.ini"   # Default configuration file path    
-        
+        # Default materials file: loaded silently if present in the working
+        # directory; otherwise `materials` starts empty ({}) and `config.file`
+        # must be set explicitly before solving.
+        self.__materials_file = "materials.ini"
+        self.__materials_class = {}
+        if os.path.isfile(self.__materials_file):
+            self.file = self.__materials_file
+
+
     def reset(self):
         self.__La = 2.5
         self.__Nx = 200
@@ -110,39 +117,37 @@ class Config:
     
     @property
     def file(self):
-        try:
-            # Check whether the file exists
-            if not os.path.isfile(self.__materials_file):
-                raise FileNotFoundError()
-            return self.__materials_file
-        except FileNotFoundError:
-            print(f"Error: {self.__materials_file} not found")
+        """Path of the configured materials file (no I/O; may not exist if the
+        default was never loaded)."""
+        return self.__materials_file
 
     @file.setter
     def file(self, new_file):
-        try:
-            # Check whether the file exists
-            if not os.path.isfile(new_file):
-                raise FileNotFoundError()
+        """Load the materials from ``new_file``.
 
-            # Update the global configuration with the new path
-            self.__materials_file = new_file
+        Raises:
+            FileNotFoundError: if ``new_file`` does not exist. The previously
+                loaded materials (and path) are kept untouched.
+        """
+        if not os.path.isfile(new_file):
+            raise FileNotFoundError(
+                f"materials file not found: {new_file!r} "
+                f"(previously loaded materials are kept)")
 
-            # Read the .ini and load the new materials
-            new_materials_dict = {}
-            materials_data = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
-            materials_data.read(self.file)
+        # Read the .ini and load the new materials
+        new_materials_dict = {}
+        materials_data = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
+        materials_data.read(new_file)
 
-            for material_i in materials_data.sections():
-                k = float(materials_data[material_i]['k'])
-                rho = float(materials_data[material_i]['rho'])
-                c = float(materials_data[material_i]['c'])
-                new_materials_dict[material_i] = Material(k, rho, c) 
-            
-            self.__materials_class = new_materials_dict
-            
-        except FileNotFoundError:
-            print(f"Error: {new_file} not found")    
+        for material_i in materials_data.sections():
+            k = float(materials_data[material_i]['k'])
+            rho = float(materials_data[material_i]['rho'])
+            c = float(materials_data[material_i]['c'])
+            new_materials_dict[material_i] = Material(k, rho, c)
+
+        # Commit only after a successful parse (rollback semantics)
+        self.__materials_file = new_file
+        self.__materials_class = new_materials_dict
     
     @property
     def materials(self):
