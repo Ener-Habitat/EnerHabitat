@@ -246,6 +246,8 @@ wall2d.location.meanDay(month=5, year=2025)
 wall2d.Tsa()
 
 ti = wall2d.solve()                   # free-running
+# Full results: wall2d.solve_dataframe (Ti, Tso, Tsi, Thueco, °C, on the Tsa grid),
+# wall2d.Tfield ((nx, ny) °C field of the last day), wall2d.Qout (J/(m²·day)).
 print(wall2d.energy_transfer)         # J/(m²·day), per unit indoor area
 ```
 

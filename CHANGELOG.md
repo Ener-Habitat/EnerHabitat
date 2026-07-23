@@ -39,7 +39,10 @@
   caches, extra 2D outputs); README no longer claims the interfaces are
   identical. The 2D 7-layer limit (fixed `L1…L7` slots inherited from the C
   engine; already enforced with a clear `ValueError`) is now documented in
-  api/usage.
+  api/usage. The 2D outputs `solve_dataframe` (columns, units, `Thueco`
+  semantics per element, and the C-inherited sampling convention: `Tso` at the
+  start of each step, `Ti`/`Tsi` at the end), `Tfield` and `Qout` are now
+  documented as public API.
 
 - **Cavity radiation solved with radiosity** (P0-02): the grey diffuse
   enclosure of each cavity is now solved exactly via Gebhart transfer factors

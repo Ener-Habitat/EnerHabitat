@@ -115,7 +115,7 @@ result attributes. Differences:
   is free; the 1D `System` keeps one cache tagged by the last mode and recomputes
   when alternating.
 - Additional outputs beyond the 1D set: `Qout`, `Tfield`, `solve_dataframe`
-  (columns `Ti, Tso, Tsi, Thueco`) and the inspectors `preview()` /
+  (see the attribute table below) and the inspectors `preview()` /
   `section_report()`.
 - Extra attributes:
 
@@ -127,6 +127,9 @@ result attributes. Differences:
 | `day_error` | Final day-to-day error (°C) of the last solve: max over the solid field, $\|\Delta T_i\|$ and each cavity $\|\Delta T_h\|$ |
 | `inner_iterations` | Largest inner sweep count observed in the last solve |
 | `energy_imbalance` | Energy-closure check $\|Q_{in}-Q_{out}\|/\max(Q_{in},Q_{out})$ of the last free-running solve (≈ 0 when periodic); `None` after `solveAC()` |
+| `Qout` | Gross energy **leaving** the indoor air over the converged day, J/(m²·day) — counterpart of `energy_transfer` (= $Q_{in}$); in the periodic regime `Qout ≈ energy_transfer` |
+| `solve_dataframe` | Full result `DataFrame` on the `Tsa()` time grid: the forcing columns plus `Ti`, `Tso` (outer-surface mean), `Tsi` (inner-surface mean) and `Thueco` (cavity-air temperature; the mean over the N cavities in `Slab`, `NaN` with `Fill.SOLID`), all in °C. Sampling convention inherited from the C: `Tso` is recorded at the **start** of each time step, `Ti`/`Tsi` at the **end** |
+| `Tfield` | Temperature field `(nx, ny)` in °C at the end of the last simulated day (outside → inside along the second axis) — useful for cross-section plots |
 
 - Section inspector (before solving):
 
