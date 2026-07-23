@@ -15,7 +15,8 @@ whose outputs (in `docs/data/results/`) the page reads and plots. Regenerate the
 To simulate a wall (or roof) you need to:
 
 1. **Geolocate it** — pass an EPW file to `Location`.
-2. **Orient it** — set `azimuth` (and `tilt` if needed: `90` = wall, `0` = roof).
+2. **Orient it** — set `azimuth` (and `tilt` if needed: `90` = wall, `0` = roof;
+   1D accepts any tilt, with $RF$ varying linearly between both; 2D only 0/90).
 3. **Define its solar absorptance** — set `absortance` (intuitively the surface
    color, but coatings of the same visible color can differ in absorptance).
 4. **Define its layers** — set `layers` from outside to inside.

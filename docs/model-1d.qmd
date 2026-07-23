@@ -87,9 +87,11 @@ where:
   wall/roof — though coatings of the same visible color can have quite different
   solar absorptance, e.g. cool-roof paints);
 - $h_o$ — outdoor film coefficient;
-- $RF$ — long-wave radiation factor: EnerHabitat uses $RF = 3.9\ °\mathrm{C}$ for
-  horizontal surfaces (`tilt = 0`, a roof facing the cold sky) and $RF = 0$ for any
-  other tilt (e.g. vertical walls, `tilt = 90`).
+- $RF$ — long-wave radiation factor, decreasing linearly with the surface tilt
+  $\beta$: $RF = 3.9\,(1 - \beta/90°)$ °C for $0° \le \beta \le 90°$ (3.9 °C for a
+  horizontal roof facing the cold sky, 0 for a vertical wall) and 0 beyond — the
+  same rule as the 2016 online tool [@barrios2016]. It is an empirical sun–air
+  correction, not an explicit sky/surroundings radiative balance.
 
 $I_s$ is computed with [pvlib](https://pvlib-python.readthedocs.io/) [@holmgren2018]
 from the average-day beam, diffuse and global horizontal irradiances, the solar position

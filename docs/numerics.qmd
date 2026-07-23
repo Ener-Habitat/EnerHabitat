@@ -164,7 +164,7 @@ the deliberate differences (each entry verified against the code).
 |---|---|---|
 | Climate source | Built-in database, 80 Mexican cities (Meteonorm) | User-provided **EPW file**, any location |
 | Average-day irradiance | Positive half-sine, amplitude = monthly max; diffuse varies linearly with tilt | **Monthly hour-by-hour means** interpolated in time; tilted-surface $I_s$ by **pvlib transposition** |
-| Long-wave factor $RF$ | 3.9 °C horizontal → 0 vertical, linear in tilt | **Binary**: 3.9 °C only for `tilt = 0`, else 0 |
+| Long-wave factor $RF$ | 3.9 °C horizontal → 0 vertical, linear in tilt | Same (linear in tilt) |
 | Time step | 1 s | **10 s, fixed** (explicit air-node coupling, @eq-air-coupling) |
 | Mesh | 1D $N_x = 100$; 2D $160 \times 160$ | 1D $N_x = 200$; 2D $80 \times 160$ (`config2d`) |
 | Indoor film coefficient $h_i$ | 8.1 (wall); 9.4 / 6.6 (roof, by flux direction) | **8.1** W/(m²·K) (NOM vertical-surface value, constant for all orientations), configurable |

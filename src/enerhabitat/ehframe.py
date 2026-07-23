@@ -551,10 +551,11 @@ class System():
         
         outside_convection_heat_transfer = config.ho
 
-        if tilt == 0:
-            LWR = 3.9
-        else:
-            LWR = 0.
+        # Long-wave radiation factor RF: 3.9 °C for a horizontal roof facing
+        # the cold sky, decreasing linearly with tilt to 0 at a vertical wall
+        # (the 2016 online tool's rule), 0 beyond 90°. Identical to the
+        # previous binary rule at tilt = 0 and tilt = 90.
+        LWR = 3.9 * max(0.0, 1.0 - tilt / 90.0)
 
         total_irradiance = pvlib.irradiance.get_total_irradiance(
             surface_tilt=tilt,

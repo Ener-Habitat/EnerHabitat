@@ -22,6 +22,12 @@
   now silent and leaves `config.materials == {}`; the `file` getter no longer
   performs I/O nor returns `None`.
 
+- **Linear long-wave factor `RF` (P2)**: `RF` now decreases linearly with the
+  surface tilt, `3.9·(1 − tilt/90°)` °C (0 beyond 90°) — the 2016 online
+  tool's rule — instead of the binary 3.9-only-at-tilt-0 inherited port.
+  Results at `tilt = 0` and `tilt = 90` (all documented cases, and the only
+  tilts 2D admits) are bit-identical; intermediate 1D tilts no longer lose
+  the sky correction discontinuously.
 - **Fractional UTC offsets fixed (P2)**: the EPW header's decimal UTC offset
   is now preserved via `pytz.FixedOffset` — it used to be truncated
   (`+5.5 → +5`, up to 45 min of solar-time error in half/quarter-hour zones

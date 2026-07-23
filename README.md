@@ -59,8 +59,9 @@ T_{sa} = T_a + \frac{a\, I_s}{h_o} - RF,
 $$
 
 with `a` the solar absorptance, $I_s$ the irradiance on the tilted surface
-(computed with pvlib) and $RF = 3.9$ °C for roofs (`tilt = 0`), $0$ for
-walls. At the indoor surface the system exchanges heat with the indoor air,
+(computed with pvlib) and $RF$ decreasing linearly from 3.9 °C at `tilt = 0`
+(roof) to 0 at `tilt = 90` (wall).
+At the indoor surface the system exchanges heat with the indoor air,
 and two solution modes exist:
 
 - **Free-running** — `solve()`: the indoor air is a lumped thermal mass whose

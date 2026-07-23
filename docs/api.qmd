@@ -51,7 +51,7 @@ wall = eh.System(location=loc, tilt=90, azimuth=0, absortance=0.8, layers=[])
 | Attribute | Type | Description |
 |---|---|---|
 | `location` | `Location` | Climate source |
-| `tilt` | `float` | Degrees from horizontal: `0` roof, `90` vertical wall |
+| `tilt` | `float` | Degrees from horizontal: `0` roof, `90` vertical wall. Any tilt is accepted in 1D — $I_s$ is transposed by pvlib and $RF$ varies linearly from 3.9 °C (0°) to 0 (90°); the 2D elements only admit 0/90 |
 | `azimuth` | `float` | Surface azimuth, pvlib convention (N=0, E=90, S=180, W=270) |
 | `absortance` | `float` | Solar absorptance of the outdoor surface, `[0, 1]` — **validated**: values outside the range raise `ValueError` |
 | `layers` | `list[tuple[str, float]]` | `(material, thickness_m)`, **outside → inside** |
