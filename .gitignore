@@ -12,7 +12,7 @@ wheels/
 # Virtual environments
 .venv
 
-#Papers directory to document 
+#Papers directory to document
 pdfs/
 
 # marimo session cache
@@ -27,3 +27,6 @@ test/
 # Quarto (docs site — HTML lives only in the gh-pages branch)
 docs/_site/
 docs/.quarto/
+
+/.quarto/
+**/*.quarto_ipynb
