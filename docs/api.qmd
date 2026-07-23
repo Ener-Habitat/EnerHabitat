@@ -71,7 +71,7 @@ Read-only results (energy per unit surface area over the converged day, **J/(m²
 
 **Methods**
 
-- `Tsa()` — sun–air temperature and `Is` for the current color/orientation/month, on
+- `Tsa()` — sun–air temperature and `Is` for the current absorptance/orientation/month, on
   the solver's time grid (results concatenate directly with `solve()` output).
 - `solve()` — free-running indoor temperature `Ti` (`pandas.Series` named `"Ti"`;
   use `.to_frame("Ti")` when a DataFrame is needed).

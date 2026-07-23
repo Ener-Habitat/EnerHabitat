@@ -49,7 +49,9 @@
   api/usage. The 2D outputs `solve_dataframe` (columns, units, `Thueco`
   semantics per element, and the C-inherited sampling convention: `Tso` at the
   start of each step, `Ti`/`Tsi` at the end), `Tfield` and `Qout` are now
-  documented as public API.
+  documented as public API. "Color" is no longer used as a synonym of solar
+  absorptance: it remains once, as intuition with a caveat (same-color
+  coatings can differ in absorptance).
 
 - **Cavity radiation solved with radiosity** (P0-02): the grey diffuse
   enclosure of each cavity is now solved exactly via Gebhart transfer factors

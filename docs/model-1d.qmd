@@ -83,7 +83,9 @@ where:
 
 - $T_a$ — outdoor air temperature of the average day;
 - $I_s$ — solar irradiance on the (tilted, oriented) surface, W/m²;
-- $a$ — solar absorptance of the outdoor surface (the *color* of the wall/roof);
+- $a$ — solar absorptance of the outdoor surface (intuitively, the *color* of the
+  wall/roof — though coatings of the same visible color can have quite different
+  solar absorptance, e.g. cool-roof paints);
 - $h_o$ — outdoor film coefficient;
 - $RF$ — long-wave radiation factor: EnerHabitat uses $RF = 3.9\ °\mathrm{C}$ for
   horizontal surfaces (`tilt = 0`, a roof facing the cold sky) and $RF = 0$ for any
@@ -92,8 +94,8 @@ where:
 $I_s$ is computed with [pvlib](https://pvlib-python.readthedocs.io/) [@holmgren2018]
 from the average-day beam, diffuse and global horizontal irradiances, the solar position
 at the site, and the surface `tilt` and `azimuth`. This is why `Tsa()` is recomputed —
-automatically, on the next call — whenever the color, the orientation, the month or the
-location change.
+automatically, on the next call — whenever the absorptance, the orientation, the month
+or the location change.
 
 ## Indoor boundary condition and solution modes
 
