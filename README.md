@@ -43,16 +43,16 @@ the solar irradiances (`Ig` GHI, `Ib` DNI, `Id` DHI and the plane-of-array
 
 ## Theoretical background (summary)
 
-The temperature field in each layer obeys the 1D time-dependent heat
-conduction equation,
+EnerHabitat solves the **time-dependent heat conduction** through the
+constructive system — in **1D** across multilayer systems and in **2D** over
+the cross-section of non-homogeneous units — with flux continuity at the
+layer joints. The full derivations (equations, boundary conditions, cavity
+physics, assumptions and numerical method) are in the
+[theory pages](https://ener-habitat.github.io/EnerHabitat/model-1d.html).
 
-$$
-\rho\, c_p\, \frac{\partial T}{\partial t} = k\, \frac{\partial^2 T}{\partial x^2},
-$$
-
-with flux continuity at layer joints. At the outdoor surface the boundary
-condition uses the **sun–air temperature**, which lumps convection, absorbed
-solar radiation and the long-wave sky exchange:
+At the outdoor surface the boundary condition uses the **sun–air
+temperature**, which lumps convection, absorbed solar radiation and the
+long-wave sky exchange:
 
 $$
 T_{sa} = T_a + \frac{a\, I_s}{h_o} - RF,
