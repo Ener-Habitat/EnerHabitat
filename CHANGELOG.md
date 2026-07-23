@@ -19,7 +19,9 @@
   the next `Tsa()`/solver call recomputes; a prior manual call is optional and
   `layers` does not affect `Tsa`), with a new warning: mutating `layers` in
   place bypasses the **solver** cache invalidation — assign the list or use
-  `add_layer()`/`remove_layer()`.
+  `add_layer()`/`remove_layer()`. `config.reset()` is now documented as
+  restoring the *numeric* defaults only: `file`/`materials` are user-provided
+  and are kept.
 
 - **Cavity radiation solved with radiosity** (P0-02): the grey diffuse
   enclosure of each cavity is now solved exactly via Gebhart transfer factors

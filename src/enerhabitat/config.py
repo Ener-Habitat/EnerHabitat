@@ -51,7 +51,7 @@ class Config:
     Methods:
         materials_list(): Returns the list of materials in the configuration file.
         materials_dict(): Returns a dictionary of materials and their properties.
-        reset(): Resets configuration parameters to default values.
+        reset(): Restores the numeric defaults (file/materials are kept).
         info(): Prints the current configuration parameters.
         to_dict(): Returns the current configuration parameters as a dictionary.
     """
@@ -67,6 +67,8 @@ class Config:
 
 
     def reset(self):
+        """Restore the **numeric** defaults (La, Nx, ho, hi, dt, air
+        properties). ``file``/``materials`` are user-provided and are kept."""
         self.__La = 2.5
         self.__Nx = 200
         self.__ho = 13

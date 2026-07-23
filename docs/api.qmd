@@ -193,8 +193,10 @@ Global singleton; changing it affects all subsequent computations.
 | `AIR_DENSITY` | `1.18` kg/m³ | Indoor/cavity air density |
 | `AIR_HEAT_CAPACITY` | `1005` J/(kg·K) | Indoor/cavity air specific heat |
 
-**Methods**: `info()`, `to_dict()`, `reset()`, `materials_list()`, `materials_dict()`;
-`config.materials` is a read-only dict of material properties (`.k`, `.rho`, `.c`).
+**Methods**: `info()`, `to_dict()`, `reset()` (restores the numeric defaults;
+`file`/`materials` are user-provided and are kept), `materials_list()`,
+`materials_dict()`; `config.materials` is a read-only dict of material properties
+(`.k`, `.rho`, `.c`).
 
 ## `config2d` (2D)
 

@@ -387,7 +387,8 @@ locked because of the explicit indoor-air coupling — see
 eh.config.file = "./materials.ini"
 eh.config.La = 2.0
 eh.config.ho = 12          # override the NOM defaults if needed
-eh.config.reset()          # restore all defaults
+eh.config.reset()          # restore the numeric defaults (La, Nx, ho, hi, dt, air);
+                           # config.file / materials are user-provided and are kept
 ```
 
 `config.materials` is a read-only dict keyed by material name
