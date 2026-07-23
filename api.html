@@ -180,6 +180,10 @@ window.Quarto = {
     <a class="dropdown-item" href="./numerics.html">
  <span class="dropdown-text">Numerical method</span></a>
   </li>  
+        <li>
+    <a class="dropdown-item" href="./assumptions.html">
+ <span class="dropdown-text">Assumptions and limits</span></a>
+  </li>  
     </ul>
   </li>
   <li class="nav-item">
@@ -256,6 +260,11 @@ window.Quarto = {
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>loc <span class="op">=</span> eh.Location(<span class="st">"./epw/example.epw"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Attributes.</strong> The EPW path is stored in <code>file</code>; assigning a new path reloads the header. The rest are read-only, recovered from the EPW header:</p>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>Attribute</th>
@@ -286,14 +295,14 @@ window.Quarto = {
 </tr>
 <tr class="odd">
 <td><code>timezone</code></td>
-<td><code>pytz.timezone</code></td>
-<td>Built from the EPW UTC offset</td>
+<td><code>datetime.timezone</code></td>
+<td>Fixed offset built from the EPW decimal UTC offset (local standard time, no DST; fractional offsets like +5.5/+5.75 preserved)</td>
 </tr>
 </tbody>
 </table>
 <p><strong>Methods</strong></p>
 <ul>
-<li><code>meanDay(day=15, month, year)</code> — average-day DataFrame (<code>Ta</code>, <code>Ig</code>, <code>Ib</code>, <code>Id</code>, <code>Tn</code>, <code>DeltaTn</code>, solar position), cached; see <a href="./model-1d.html#the-average-day">how it is built</a>.</li>
+<li><code>meanDay(day="15", month="current", year="current")</code> — average-day DataFrame (<code>Ta</code>; <code>Ig</code> GHI, <code>Ib</code> <strong>DNI</strong>, <code>Id</code> DHI; <code>Tn</code>, <code>DeltaTn</code>; solar position), cached; see <a href="./model-1d.html#the-average-day">how it is built</a>. <code>month</code> selects which EPW rows are averaged; <code>day</code> and <code>year</code> only set the <strong>synthetic date</strong> used for the solar geometry and the index — in a TMY, <code>year=2025</code> does <strong>not</strong> select observations from 2025.</li>
 <li><code>copy()</code> — independent copy of the instance.</li>
 <li><code>info()</code> — prints the attributes.</li>
 <li><code>flag()</code> — dict with metadata of the last <code>meanDay()</code> call (e.g.&nbsp;<code>flag()["date"]</code>).</li>
@@ -326,7 +335,7 @@ window.Quarto = {
 <tr class="even">
 <td><code>tilt</code></td>
 <td><code>float</code></td>
-<td>Degrees from horizontal: <code>0</code> roof, <code>90</code> vertical wall</td>
+<td>Degrees from horizontal: <code>0</code> roof, <code>90</code> vertical wall. Any tilt is accepted in 1D — <span class="math inline">\(I_s\)</span> is transposed by pvlib and <span class="math inline">\(RF\)</span> varies linearly from 3.9 °C (0°) to 0 (90°); the 2D elements only admit 0/90</td>
 </tr>
 <tr class="odd">
 <td><code>azimuth</code></td>
@@ -336,7 +345,7 @@ window.Quarto = {
 <tr class="even">
 <td><code>absortance</code></td>
 <td><code>float</code></td>
-<td>Solar absorptance of the outdoor surface, <code>[0, 1]</code></td>
+<td>Solar absorptance of the outdoor surface, <code>[0, 1]</code> — <strong>validated</strong>: values outside the range raise <code>ValueError</code></td>
 </tr>
 <tr class="odd">
 <td><code>layers</code></td>
@@ -347,6 +356,11 @@ window.Quarto = {
 </table>
 <p>Read-only results (energy per unit surface area over the converged day, <strong>J/(m²·day)</strong> — divide by 3600 for Wh or 3.6e6 for kWh):</p>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>Attribute</th>
@@ -370,18 +384,38 @@ window.Quarto = {
 <td><code>solveAC()</code></td>
 <td>Heating demand to hold <span class="math inline">\(T_n\)</span></td>
 </tr>
+<tr class="even">
+<td><code>days</code></td>
+<td>both</td>
+<td>Day-to-day iterations used by the last solve (capped at 60)</td>
+</tr>
+<tr class="odd">
+<td><code>day_error</code></td>
+<td>both</td>
+<td>Final day-to-day error (°C): max of the solid-field mean change and the indoor-state change</td>
+</tr>
+<tr class="even">
+<td><code>converged</code></td>
+<td>both</td>
+<td><code>True</code> if the periodic regime was reached; otherwise a <code>RuntimeWarning</code> is emitted</td>
+</tr>
+<tr class="odd">
+<td><code>energy_imbalance</code></td>
+<td><code>solve()</code></td>
+<td>Energy-closure check <span class="math inline">\(\|Q_{in}-Q_{out}\|/\max(Q_{in},Q_{out})\)</span> (≈ 0 when periodic); <code>None</code> after <code>solveAC()</code></td>
+</tr>
 </tbody>
 </table>
 <p><strong>Methods</strong></p>
 <ul>
-<li><code>Tsa()</code> — sun–air temperature and <code>Is</code> for the current color/orientation/month, on the solver’s time grid (results concatenate directly with <code>solve()</code> output).</li>
-<li><code>solve()</code> — free-running indoor temperature <code>Ti</code> (DataFrame).</li>
-<li><code>solveAC()</code> — <code>Ti</code> held at <span class="math inline">\(T_n\)</span>; sets <code>cooling_energy</code>/<code>heating_energy</code>.</li>
+<li><code>Tsa()</code> — sun–air temperature and <code>Is</code> for the current absorptance/orientation/month, on the solver’s time grid (results concatenate directly with <code>solve()</code> output).</li>
+<li><code>solve()</code> — free-running indoor temperature <code>Ti</code> (<code>pandas.Series</code> named <code>"Ti"</code>; use <code>.to_frame("Ti")</code> when a DataFrame is needed).</li>
+<li><code>solveAC()</code> — <code>Ti</code> held at <span class="math inline">\(T_n\)</span> (constant <code>pandas.Series</code>); sets <code>cooling_energy</code>/<code>heating_energy</code>.</li>
 <li><code>add_layer(material, width)</code> / <code>remove_layer(index)</code> — edit the stack (appends at the inside).</li>
-<li><code>copy()</code>, <code>info()</code>, <code>flag()</code>.</li>
+<li><code>copy()</code> — re-creates the <code>Location</code> from the EPW file, so the <code>meanDay()</code> selection must be re-applied on the copy (<code>System2D.copy()</code> shares the <code>Location</code> instead), <code>info()</code>, <code>flag()</code>.</li>
 </ul>
 <blockquote class="blockquote">
-<p><code>Tsa</code> depends on <code>absortance</code>, <code>tilt</code>, <code>azimuth</code>, <code>meanDay</code> (month) and <code>Location</code>; it is recomputed automatically when any of these change (results are cached otherwise).</p>
+<p><code>Tsa</code> depends on <code>absortance</code>, <code>tilt</code>, <code>azimuth</code>, <code>meanDay</code> (month) and <code>Location</code>; it is recomputed automatically when any of these change (results are cached otherwise) — a prior manual <code>Tsa()</code> call is optional, for inspection. <code>layers</code> does not affect <code>Tsa</code>, but mutating it in place (<code>.append(...)</code>) bypasses the cache invalidation of the <strong>solvers</strong>: assign the list or use <code>add_layer()</code>/<code>remove_layer()</code>.</p>
 </blockquote>
 </section>
 <section id="system2d" class="level2">
@@ -389,7 +423,14 @@ window.Quarto = {
 <p>Mirror of <code>System</code> for cross-sections that are heterogeneous across their width. Same <code>Location</code>, <code>tilt</code>, <code>azimuth</code>, <code>absortance</code>, <code>Tsa()</code>, <code>solve()</code>, <code>solveAC()</code> and result attributes. Differences:</p>
 <ul>
 <li><code>layers</code> contains, besides ordinary <code>(material, thickness)</code> tuples, <strong>exactly one</strong> 2D element: a <a href="#hollowblock"><code>HollowBlock</code></a> or a <a href="#slab"><code>Slab</code></a>. The element’s thickness is derived from its <code>geometry</code>.</li>
+<li>The stack accepts at most <strong>7 layers, including the 2D element</strong> — the section builder uses the fixed seven slots (<code>L1…L7</code>) inherited from the C engine. Exceeding it raises <code>ValueError: at most 7 layers (including the 2D element).</code> The 1D <code>System</code> has no layer limit.</li>
 <li>Orientation is validated: <code>HollowBlock</code> requires <code>tilt = 90</code>, <code>Slab</code> <code>tilt = 0</code>.</li>
+<li><code>setpoint</code> exists <strong>only</strong> in 2D; the 1D <code>System</code> always uses the mean neutrality temperature as the AC setpoint.</li>
+<li><code>flag()</code> is not available (1D only).</li>
+<li><code>copy()</code> <strong>shares</strong> the <code>Location</code> instance — a later <code>meanDay()</code> affects the original and the copy alike (the 1D <code>System.copy()</code> re-creates it instead).</li>
+<li>Result attributes are plain writable attributes, not read-only properties as in the 1D <code>System</code>.</li>
+<li><code>solve()</code> and <code>solveAC()</code> results are cached <strong>separately</strong>, so alternating modes is free; the 1D <code>System</code> keeps one cache tagged by the last mode and recomputes when alternating.</li>
+<li>Additional outputs beyond the 1D set: <code>Qout</code>, <code>Tfield</code>, <code>solve_dataframe</code> (see the attribute table below) and the inspectors <code>preview()</code> / <code>section_report()</code>.</li>
 <li>Extra attributes:</li>
 </ul>
 <table class="caption-top table">
@@ -410,7 +451,35 @@ window.Quarto = {
 </tr>
 <tr class="even">
 <td><code>days</code></td>
-<td>Day-to-day iterations used by the last solve; if it equals <code>config2d.max_days</code> the solution may not be fully periodic</td>
+<td>Day-to-day iterations used by the last solve</td>
+</tr>
+<tr class="odd">
+<td><code>converged</code></td>
+<td><code>True</code> if the last solve met <code>tol_day</code> <strong>and</strong> every inner step converged; a <code>RuntimeWarning</code> is emitted otherwise</td>
+</tr>
+<tr class="even">
+<td><code>day_error</code></td>
+<td>Final day-to-day error (°C) of the last solve: max over the solid field, <span class="math inline">\(\|\Delta T_i\|\)</span> and each cavity <span class="math inline">\(\|\Delta T_h\|\)</span></td>
+</tr>
+<tr class="odd">
+<td><code>inner_iterations</code></td>
+<td>Largest inner sweep count observed in the last solve</td>
+</tr>
+<tr class="even">
+<td><code>energy_imbalance</code></td>
+<td>Energy-closure check <span class="math inline">\(\|Q_{in}-Q_{out}\|/\max(Q_{in},Q_{out})\)</span> of the last free-running solve (≈ 0 when periodic); <code>None</code> after <code>solveAC()</code></td>
+</tr>
+<tr class="odd">
+<td><code>Qout</code></td>
+<td>Gross energy <strong>leaving</strong> the indoor air over the converged day, J/(m²·day) — counterpart of <code>energy_transfer</code> (= <span class="math inline">\(Q_{in}\)</span>); in the periodic regime <code>Qout ≈ energy_transfer</code></td>
+</tr>
+<tr class="even">
+<td><code>solve_dataframe</code></td>
+<td>Full result <code>DataFrame</code> on the <code>Tsa()</code> time grid: the forcing columns plus <code>Ti</code>, <code>Tso</code> (outer-surface mean), <code>Tsi</code> (inner-surface mean) and <code>Thueco</code> (cavity-air temperature; the mean over the N cavities in <code>Slab</code>, <code>NaN</code> with <code>Fill.SOLID</code>), all in °C. Sampling convention inherited from the C: <code>Tso</code> is recorded at the <strong>start</strong> of each time step, <code>Ti</code>/<code>Tsi</code> at the <strong>end</strong></td>
+</tr>
+<tr class="odd">
+<td><code>Tfield</code></td>
+<td>Temperature field <code>(nx, ny)</code> in °C at the end of the last simulated day (outside → inside along the second axis) — useful for cross-section plots</td>
 </tr>
 </tbody>
 </table>
@@ -557,8 +626,8 @@ window.Quarto = {
 </tr>
 <tr class="odd">
 <td><code>hi</code></td>
-<td><code>8.6</code> W/(m²·K)</td>
-<td>Indoor film coefficient (NOM)</td>
+<td><code>8.1</code> W/(m²·K)</td>
+<td>Indoor film coefficient (NOM, vertical-surface value)</td>
 </tr>
 <tr class="even">
 <td><code>dt</code></td>
@@ -577,11 +646,17 @@ window.Quarto = {
 </tr>
 </tbody>
 </table>
-<p><strong>Methods</strong>: <code>info()</code>, <code>to_dict()</code>, <code>reset()</code>, <code>materials_list()</code>, <code>materials_dict()</code>; <code>config.materials</code> is a read-only dict of material properties (<code>.k</code>, <code>.rho</code>, <code>.c</code>).</p>
+<p><strong>Methods</strong>: <code>info()</code>, <code>to_dict()</code>, <code>reset()</code> (restores the numeric defaults; <code>file</code>/<code>materials</code> are user-provided and are kept), <code>materials_list()</code>, <code>materials_dict()</code>; <code>config.materials</code> is a read-only dict of material properties (<code>.k</code>, <code>.rho</code>, <code>.c</code>).</p>
+<p>Setters <strong>validate</strong> (raising <code>ValueError</code>): <code>La</code>, <code>ho</code>, <code>hi</code> and the air properties must be &gt; 0; <code>Nx</code> must be an integer ≥ 3; materials must have <code>k</code>, <code>rho</code>, <code>c</code> &gt; 0 (checked when the <code>.ini</code> is loaded; on failure the previous materials are kept). Layer thicknesses must be &gt; 0 (checked at solve time).</p>
 </section>
 <section id="config2d-2d" class="level2">
 <h2 class="anchored" data-anchor-id="config2d-2d"><code>config2d</code> (2D)</h2>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>Attribute</th>
@@ -602,12 +677,12 @@ window.Quarto = {
 </tr>
 <tr class="odd">
 <td><code>tol_inner</code></td>
-<td><code>1e-10</code></td>
-<td>Inner line-by-line tolerance</td>
+<td><code>1e-8</code> °C</td>
+<td>Inner-step tolerance: max node update <strong>and</strong> max scaled equation residual must both fall below it</td>
 </tr>
 <tr class="even">
 <td><code>tol_day</code></td>
-<td><code>5e-4</code></td>
+<td><code>5e-4</code> °C</td>
 <td>Day-to-day convergence tolerance</td>
 </tr>
 <tr class="odd">
@@ -615,9 +690,15 @@ window.Quarto = {
 <td><code>60</code></td>
 <td>Cap on day-to-day iterations</td>
 </tr>
+<tr class="even">
+<td><code>max_inner</code></td>
+<td><code>10000</code></td>
+<td>Cap on inner sweeps per time step; if hit, the solve is flagged <code>converged = False</code></td>
+</tr>
 </tbody>
 </table>
-<p><strong>Methods</strong>: <code>info()</code>, <code>to_dict()</code>, <code>reset()</code>.</p>
+<p><strong>Methods</strong>: <code>info()</code>, <code>to_dict()</code>, <code>reset()</code>, <code>validate()</code>.</p>
+<p>The attributes are plain (assignment is not checked); <code>validate()</code> runs at the start of every <code>System2D</code> solve and raises <code>ValueError</code> if <code>nx</code>/<code>ny</code> are not integers ≥ 3, a tolerance is ≤ 0, or <code>max_days</code>/<code>max_inner</code> are not integers ≥ 1.</p>
 
 
 </section>

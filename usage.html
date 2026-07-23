@@ -180,6 +180,10 @@ window.Quarto = {
     <a class="dropdown-item" href="./numerics.html">
  <span class="dropdown-text">Numerical method</span></a>
   </li>  
+        <li>
+    <a class="dropdown-item" href="./assumptions.html">
+ <span class="dropdown-text">Assumptions and limits</span></a>
+  </li>  
     </ul>
   </li>
   <li class="nav-item">
@@ -262,8 +266,8 @@ window.Quarto = {
 <p>To simulate a wall (or roof) you need to:</p>
 <ol type="1">
 <li><strong>Geolocate it</strong> — pass an EPW file to <code>Location</code>.</li>
-<li><strong>Orient it</strong> — set <code>azimuth</code> (and <code>tilt</code> if needed: <code>90</code> = wall, <code>0</code> = roof).</li>
-<li><strong>Define its color</strong> — set <code>absortance</code>.</li>
+<li><strong>Orient it</strong> — set <code>azimuth</code> (and <code>tilt</code> if needed: <code>90</code> = wall, <code>0</code> = roof; 1D accepts any tilt, with <span class="math inline">\(RF\)</span> varying linearly between both; 2D only 0/90).</li>
+<li><strong>Define its solar absorptance</strong> — set <code>absortance</code> (intuitively the surface color, but coatings of the same visible color can differ in absorptance).</li>
 <li><strong>Define its layers</strong> — set <code>layers</code> from outside to inside.</li>
 <li><strong>Choose the period</strong> — call <code>location.meanDay(month, year)</code>.</li>
 <li><strong>Compute <code>Tsa()</code></strong>, then choose one solver:
@@ -272,9 +276,10 @@ window.Quarto = {
 <li><strong><code>solveAC()</code></strong> — air-conditioned: <code>Ti</code> is held at the comfort setpoint and the cooling/heating energies are reported.</li>
 </ul></li>
 </ol>
-<p>Both solvers return pandas DataFrames indexed by time of day, on the same time grid as <code>Tsa()</code> — so results concatenate directly (<code>pd.concat([data, wall.Tsa()], axis=1)</code>, no resampling, no NaN).</p>
+<p>Both solvers return a <code>pandas.Series</code> named <code>"Ti"</code>, indexed by time of day on the same time grid as <code>Tsa()</code> — so results concatenate directly (<code>pd.concat([data, wall.Tsa()], axis=1)</code> promotes the named Series to a column; no resampling, no NaN). When a <code>DataFrame</code> is required, convert with <code>wall.solve().to_frame("Ti")</code>.</p>
 <blockquote class="blockquote">
-<p><code>Tsa</code> depends on <code>absortance</code>, <code>tilt</code>, <code>azimuth</code>, the month (<code>meanDay</code>) and the <code>Location</code> — it must be recomputed whenever any of these change.</p>
+<p><code>Tsa</code> depends on <code>absortance</code>, <code>tilt</code>, <code>azimuth</code>, the month (<code>meanDay</code>) and the <code>Location</code> — the layer stack does <strong>not</strong> affect it. The setters invalidate the cache and the next call to <code>Tsa()</code> or to a solver recomputes automatically; a prior manual <code>Tsa()</code> call is optional (useful to inspect the forcing before solving).</p>
+<p>One caveat: mutating the stack in place (<code>wall.layers.append(...)</code>) bypasses the setters, so a later <code>solve()</code> can return the cached result of the <em>previous</em> stack. Assign the full list (<code>wall.layers = [...]</code>) or use <code>add_layer()</code>/<code>remove_layer()</code>, which invalidate correctly.</p>
 </blockquote>
 </section>
 <section id="recommended-folder-structure" class="level2">
@@ -292,9 +297,9 @@ window.Quarto = {
 <p>Material properties are declared in an <code>.ini</code> file: the material name is the section header and <code>k</code>, <code>rho</code>, <code>c</code> the keys (case-sensitive, no Greek letters). Inline comments (<code>#</code> or <code>;</code>) are allowed. By default the package looks for <code>materials.ini</code> in the working directory; otherwise set <code>eh.config.file</code>.</p>
 <p>The file below defines <strong>every material used in these docs</strong>, so you can run all the snippets as-is (values are typical/illustrative — replace with your own data):</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[Adobe]</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">k   </span><span class="ot">=</span><span class="st"> 0.58    # Thermal conductivity, W/m·K</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">k   </span><span class="ot">=</span><span class="st"> 0.58    # Thermal conductivity, W/(m·K)</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dt">rho </span><span class="ot">=</span><span class="st"> 1500    # Density, kg/m³</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="dt">c   </span><span class="ot">=</span><span class="st"> 1480    # Specific heat, J/kg·K</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="dt">c   </span><span class="ot">=</span><span class="st"> 1480    # Specific heat, J/(kg·K)</span></span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">[Mortero]</span><span class="dt">     ; cement mortar / render</span></span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="dt">k   </span><span class="ot">=</span><span class="st"> </span><span class="fl">0.70</span></span>
@@ -330,87 +335,84 @@ window.Quarto = {
 <span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a><span class="dt">k   </span><span class="ot">=</span><span class="st"> </span><span class="fl">0.17</span></span>
 <span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a><span class="dt">rho </span><span class="ot">=</span><span class="st"> </span><span class="dv">1100</span></span>
 <span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a><span class="dt">c   </span><span class="ot">=</span><span class="st"> </span><span class="dv">1000</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>If <code>config.file</code> points at a missing file, EnerHabitat reports <code>Error: &lt;path&gt; not found</code> and <code>materials</code> will be empty — solving then fails because the layer materials cannot be resolved.</p>
+<p>Assigning a missing path to <code>config.file</code> raises <code>FileNotFoundError</code> immediately, and the previously loaded materials (and path) are kept untouched. If the default <code>materials.ini</code> is not present in the working directory when EnerHabitat is imported, <code>materials</code> starts empty (<code>{}</code>) — solving then fails because the layer materials cannot be resolved — so set <code>config.file</code> before building systems.</p>
 </section>
 <section id="examples" class="level2">
 <h2 class="anchored" data-anchor-id="examples">Examples</h2>
 <p>The examples form the <strong>system × mode</strong> matrix: 1D/2D, free-running and air-conditioned. Setup shared by all of them:</p>
-<div id="75c7f954" class="cell" data-execution_count="1">
+<div id="52c4d51d" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> enerhabitat <span class="im">as</span> eh</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"data/materials.ini"</span></span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>epw_file <span class="op">=</span> <span class="st">"data/MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-2018.epw"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Error: materials.ini not found</code></pre>
 </div>
-</div>
-<div id="9eb89b62" class="cell" data-execution_count="2">
+<div id="f9be9ce3" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Plot helper used by the examples (click to show)</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>EH_COLORS <span class="op">=</span> {<span class="st">"Ti"</span>: <span class="st">"#2a78d6"</span>, <span class="st">"Tsa"</span>: <span class="st">"#eb6834"</span>, <span class="st">"Ta"</span>: <span class="st">"#008300"</span>, <span class="st">"Tn"</span>: <span class="st">"#6b7280"</span>}</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>INK <span class="op">=</span> <span class="st">"#374151"</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> plot_day(df, cols<span class="op">=</span>(<span class="st">"Ta"</span>, <span class="st">"Tsa"</span>, <span class="st">"Ti"</span>), title<span class="op">=</span><span class="st">""</span>):</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Temperatures of the average day, with the comfort zone Tn ± DeltaTn."""</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">7.2</span>, <span class="fl">3.6</span>))</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    hours <span class="op">=</span> (df.index <span class="op">-</span> df.index[<span class="dv">0</span>]).total_seconds() <span class="op">/</span> <span class="dv">3600</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="st">"Tn"</span> <span class="kw">in</span> df <span class="kw">and</span> <span class="st">"DeltaTn"</span> <span class="kw">in</span> df:</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        tn, dtn <span class="op">=</span> <span class="bu">float</span>(df[<span class="st">"Tn"</span>].iloc[<span class="dv">0</span>]), <span class="bu">float</span>(df[<span class="st">"DeltaTn"</span>].iloc[<span class="dv">0</span>])</span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        ax.axhspan(tn <span class="op">-</span> dtn, tn <span class="op">+</span> dtn, color<span class="op">=</span>EH_COLORS[<span class="st">"Tn"</span>], alpha<span class="op">=</span><span class="fl">0.12</span>, lw<span class="op">=</span><span class="dv">0</span>)</span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>        ax.axhline(tn, color<span class="op">=</span>EH_COLORS[<span class="st">"Tn"</span>], ls<span class="op">=</span><span class="st">"--"</span>, lw<span class="op">=</span><span class="dv">1</span>)</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>        ax.annotate(<span class="st">"comfort  Tn ± ΔTn"</span>, xy<span class="op">=</span>(<span class="fl">0.4</span>, tn <span class="op">+</span> dtn), va<span class="op">=</span><span class="st">"bottom"</span>,</span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>                    fontsize<span class="op">=</span><span class="dv">8</span>, color<span class="op">=</span>INK)</span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># end-of-line labels, dodged vertically if two lines end too close</span></span>
-<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    ends <span class="op">=</span> {c: <span class="bu">float</span>(df[c].iloc[<span class="op">-</span><span class="dv">1</span>]) <span class="cf">for</span> c <span class="kw">in</span> cols}</span>
-<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>    span <span class="op">=</span> df[<span class="bu">list</span>(cols)].to_numpy()</span>
-<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    min_sep <span class="op">=</span> <span class="fl">0.06</span> <span class="op">*</span> (span.<span class="bu">max</span>() <span class="op">-</span> span.<span class="bu">min</span>())</span>
-<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>    ypos <span class="op">=</span> <span class="bu">dict</span>(ends)</span>
-<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>    order <span class="op">=</span> <span class="bu">sorted</span>(cols, key<span class="op">=</span>ends.get)</span>
-<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> a, b <span class="kw">in</span> <span class="bu">zip</span>(order, order[<span class="dv">1</span>:]):</span>
-<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> ypos[b] <span class="op">-</span> ypos[a] <span class="op">&lt;</span> min_sep:</span>
-<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>            ypos[b] <span class="op">=</span> ypos[a] <span class="op">+</span> min_sep</span>
-<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> c <span class="kw">in</span> cols:</span>
-<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>        ax.plot(hours, df[c], color<span class="op">=</span>EH_COLORS[c], lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span>c)</span>
-<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>        ax.annotate(c, xy<span class="op">=</span>(hours[<span class="op">-</span><span class="dv">1</span>] <span class="op">+</span> <span class="fl">0.4</span>, ypos[c]),</span>
-<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>                    va<span class="op">=</span><span class="st">"center"</span>, fontsize<span class="op">=</span><span class="dv">9</span>, color<span class="op">=</span>INK)</span>
-<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>    ax.set_xlim(<span class="dv">0</span>, <span class="dv">26</span>)</span>
-<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>    ax.set_xticks([<span class="dv">0</span>, <span class="dv">6</span>, <span class="dv">12</span>, <span class="dv">18</span>, <span class="dv">24</span>])</span>
-<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>    ax.set_xlabel(<span class="st">"hour of the average day"</span>)</span>
-<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>    ax.set_ylabel(<span class="st">"temperature (°C)"</span>)</span>
-<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> title:</span>
-<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>        ax.set_title(title, fontsize<span class="op">=</span><span class="dv">10</span>)</span>
-<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>    ax.legend(frameon<span class="op">=</span><span class="va">False</span>, fontsize<span class="op">=</span><span class="dv">9</span>, loc<span class="op">=</span><span class="st">"upper left"</span>)</span>
-<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>    ax.grid(alpha<span class="op">=</span><span class="fl">0.25</span>, lw<span class="op">=</span><span class="fl">0.5</span>)</span>
-<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> s <span class="kw">in</span> (<span class="st">"top"</span>, <span class="st">"right"</span>):</span>
-<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>        ax.spines[s].set_visible(<span class="va">False</span>)</span>
-<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>    fig.tight_layout()</span>
-<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>    plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>EH_COLORS <span class="op">=</span> {<span class="st">"Ti"</span>: <span class="st">"#2a78d6"</span>, <span class="st">"Tsa"</span>: <span class="st">"#eb6834"</span>, <span class="st">"Ta"</span>: <span class="st">"#008300"</span>, <span class="st">"Tn"</span>: <span class="st">"#6b7280"</span>}</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>INK <span class="op">=</span> <span class="st">"#374151"</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> plot_day(df, cols<span class="op">=</span>(<span class="st">"Ta"</span>, <span class="st">"Tsa"</span>, <span class="st">"Ti"</span>), title<span class="op">=</span><span class="st">""</span>):</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Temperatures of the average day, with the comfort zone Tn ± DeltaTn."""</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">7.2</span>, <span class="fl">3.6</span>))</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    hours <span class="op">=</span> (df.index <span class="op">-</span> df.index[<span class="dv">0</span>]).total_seconds() <span class="op">/</span> <span class="dv">3600</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="st">"Tn"</span> <span class="kw">in</span> df <span class="kw">and</span> <span class="st">"DeltaTn"</span> <span class="kw">in</span> df:</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        tn, dtn <span class="op">=</span> <span class="bu">float</span>(df[<span class="st">"Tn"</span>].iloc[<span class="dv">0</span>]), <span class="bu">float</span>(df[<span class="st">"DeltaTn"</span>].iloc[<span class="dv">0</span>])</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>        ax.axhspan(tn <span class="op">-</span> dtn, tn <span class="op">+</span> dtn, color<span class="op">=</span>EH_COLORS[<span class="st">"Tn"</span>], alpha<span class="op">=</span><span class="fl">0.12</span>, lw<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>        ax.axhline(tn, color<span class="op">=</span>EH_COLORS[<span class="st">"Tn"</span>], ls<span class="op">=</span><span class="st">"--"</span>, lw<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        ax.annotate(<span class="st">"comfort  Tn ± ΔTn"</span>, xy<span class="op">=</span>(<span class="fl">0.4</span>, tn <span class="op">+</span> dtn), va<span class="op">=</span><span class="st">"bottom"</span>,</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>                    fontsize<span class="op">=</span><span class="dv">8</span>, color<span class="op">=</span>INK)</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># end-of-line labels, dodged vertically if two lines end too close</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    ends <span class="op">=</span> {c: <span class="bu">float</span>(df[c].iloc[<span class="op">-</span><span class="dv">1</span>]) <span class="cf">for</span> c <span class="kw">in</span> cols}</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    span <span class="op">=</span> df[<span class="bu">list</span>(cols)].to_numpy()</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    min_sep <span class="op">=</span> <span class="fl">0.06</span> <span class="op">*</span> (span.<span class="bu">max</span>() <span class="op">-</span> span.<span class="bu">min</span>())</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    ypos <span class="op">=</span> <span class="bu">dict</span>(ends)</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    order <span class="op">=</span> <span class="bu">sorted</span>(cols, key<span class="op">=</span>ends.get)</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> a, b <span class="kw">in</span> <span class="bu">zip</span>(order, order[<span class="dv">1</span>:]):</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> ypos[b] <span class="op">-</span> ypos[a] <span class="op">&lt;</span> min_sep:</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>            ypos[b] <span class="op">=</span> ypos[a] <span class="op">+</span> min_sep</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> c <span class="kw">in</span> cols:</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>        ax.plot(hours, df[c], color<span class="op">=</span>EH_COLORS[c], lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span>c)</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>        ax.annotate(c, xy<span class="op">=</span>(hours[<span class="op">-</span><span class="dv">1</span>] <span class="op">+</span> <span class="fl">0.4</span>, ypos[c]),</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>                    va<span class="op">=</span><span class="st">"center"</span>, fontsize<span class="op">=</span><span class="dv">9</span>, color<span class="op">=</span>INK)</span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>    ax.set_xlim(<span class="dv">0</span>, <span class="dv">26</span>)</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    ax.set_xticks([<span class="dv">0</span>, <span class="dv">6</span>, <span class="dv">12</span>, <span class="dv">18</span>, <span class="dv">24</span>])</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>    ax.set_xlabel(<span class="st">"hour of the average day"</span>)</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>    ax.set_ylabel(<span class="st">"temperature (°C)"</span>)</span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> title:</span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>        ax.set_title(title, fontsize<span class="op">=</span><span class="dv">10</span>)</span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>    ax.legend(frameon<span class="op">=</span><span class="va">False</span>, fontsize<span class="op">=</span><span class="dv">9</span>, loc<span class="op">=</span><span class="st">"upper left"</span>)</span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>    ax.grid(alpha<span class="op">=</span><span class="fl">0.25</span>, lw<span class="op">=</span><span class="fl">0.5</span>)</span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> s <span class="kw">in</span> (<span class="st">"top"</span>, <span class="st">"right"</span>):</span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>        ax.spines[s].set_visible(<span class="va">False</span>)</span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>    fig.tight_layout()</span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>    plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <section id="d-wall-free-running" class="level3">
 <h3 class="anchored" data-anchor-id="d-wall-free-running">1D wall, free-running</h3>
-<div id="3ed849e8" class="cell" data-execution_count="3">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>wall <span class="op">=</span> eh.System(eh.Location(epw_file))</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>wall.azimuth <span class="op">=</span> <span class="dv">90</span>                    <span class="co"># east-facing</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>wall.absortance <span class="op">=</span> <span class="fl">0.3</span></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>wall.layers <span class="op">=</span> [(<span class="st">"Mortero"</span>, <span class="fl">0.025</span>), (<span class="st">"Ladrillo"</span>, <span class="fl">0.10</span>)]</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>wall.location.meanDay(month<span class="op">=</span><span class="dv">5</span>, year<span class="op">=</span><span class="dv">2025</span>)</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>wall.Tsa()</span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> wall.solve()                  <span class="co"># free-running Ti</span></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> pd.concat([data, wall.Tsa()], axis<span class="op">=</span><span class="dv">1</span>)</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"energy_transfer = </span><span class="sc">{</span>wall<span class="sc">.</span>energy_transfer<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>energy_transfer<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="81472230" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>wall <span class="op">=</span> eh.System(eh.Location(epw_file))</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>wall.azimuth <span class="op">=</span> <span class="dv">90</span>                    <span class="co"># east-facing</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>wall.absortance <span class="op">=</span> <span class="fl">0.3</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>wall.layers <span class="op">=</span> [(<span class="st">"Mortero"</span>, <span class="fl">0.025</span>), (<span class="st">"Ladrillo"</span>, <span class="fl">0.10</span>)]</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>wall.location.meanDay(month<span class="op">=</span><span class="dv">5</span>, year<span class="op">=</span><span class="dv">2025</span>)</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>wall.Tsa()</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> wall.solve()                  <span class="co"># free-running Ti</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> pd.concat([data, wall.Tsa()], axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"energy_transfer = </span><span class="sc">{</span>wall<span class="sc">.</span>energy_transfer<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>energy_transfer<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>energy_transfer = 31,929 J/(m²·day)  = 9 Wh/(m²·day)</code></pre>
+<pre><code>energy_transfer = 31,973 J/(m²·day)  = 9 Wh/(m²·day)</code></pre>
 </div>
 </div>
-<div id="5392dcc7" class="cell" data-execution_count="4">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>plot_day(data, title<span class="op">=</span><span class="st">"Mortero + Ladrillo wall, east, free-running — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="3a4f6e13" class="cell" data-execution_count="4">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>plot_day(data, title<span class="op">=</span><span class="st">"Mortero + Ladrillo wall, east, free-running — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -424,21 +426,21 @@ window.Quarto = {
 <section id="d-wall-air-conditioned" class="level3">
 <h3 class="anchored" data-anchor-id="d-wall-air-conditioned">1D wall, air-conditioned</h3>
 <p>Same wall; <code>solveAC()</code> holds <code>Ti</code> at the neutrality temperature <code>Tn</code> and reports the energy needed to do so:</p>
-<div id="9a8b749e" class="cell" data-execution_count="5">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>dataAC <span class="op">=</span> wall.solveAC()</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>dataAC <span class="op">=</span> pd.concat([dataAC, wall.Tsa()], axis<span class="op">=</span><span class="dv">1</span>)</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"cooling_energy = </span><span class="sc">{</span>wall<span class="sc">.</span>cooling_energy<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>cooling_energy<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"heating_energy = </span><span class="sc">{</span>wall<span class="sc">.</span>heating_energy<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>heating_energy<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="22196402" class="cell" data-execution_count="5">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>dataAC <span class="op">=</span> wall.solveAC()</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>dataAC <span class="op">=</span> pd.concat([dataAC, wall.Tsa()], axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"cooling_energy = </span><span class="sc">{</span>wall<span class="sc">.</span>cooling_energy<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>cooling_energy<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"heating_energy = </span><span class="sc">{</span>wall<span class="sc">.</span>heating_energy<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>heating_energy<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>cooling_energy = 968,152 J/(m²·day)  = 269 Wh/(m²·day)
-heating_energy = 399,814 J/(m²·day)  = 111 Wh/(m²·day)</code></pre>
+<pre><code>cooling_energy = 943,968 J/(m²·day)  = 262 Wh/(m²·day)
+heating_energy = 386,936 J/(m²·day)  = 107 Wh/(m²·day)</code></pre>
 </div>
 </div>
-<div id="4dd1ebb6" class="cell" data-execution_count="6">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>plot_day(dataAC, title<span class="op">=</span><span class="st">"Same wall, air-conditioned (Ti = Tn) — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="b2617bf9" class="cell" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>plot_day(dataAC, title<span class="op">=</span><span class="st">"Same wall, air-conditioned (Ti = Tn) — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -451,44 +453,48 @@ heating_energy = 399,814 J/(m²·day)  = 111 Wh/(m²·day)</code></pre>
 <section id="d-hollow-block-wall-free-running" class="level3">
 <h3 class="anchored" data-anchor-id="d-hollow-block-wall-free-running">2D hollow-block wall, free-running</h3>
 <p>A concrete block with one air cavity per cell. The 2D element goes <strong>inside</strong> the layer stack; finishes are ordinary 1D layers around it.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>block <span class="op">=</span> eh.HollowBlock(</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    material   <span class="op">=</span> <span class="st">"Concreto"</span>,          <span class="co"># single material of the block</span></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    emissivity <span class="op">=</span> <span class="fl">0.9</span>,                 <span class="co"># cavity-wall emissivity (radiation)</span></span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    geometry   <span class="op">=</span> {                    <span class="co"># cell measures, in metres</span></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"web"</span>:          <span class="fl">0.02</span>,         <span class="co"># half web (rib) thickness</span></span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>        <span class="st">"block_width"</span>:  <span class="fl">0.16</span>,         <span class="co"># cavity width</span></span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cover_top"</span>:    <span class="fl">0.02</span>,         <span class="co"># outer shell</span></span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cavity"</span>:       <span class="fl">0.08</span>,         <span class="co"># cavity height</span></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cover_bottom"</span>: <span class="fl">0.02</span>,         <span class="co"># inner shell</span></span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    },</span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>wall2d <span class="op">=</span> eh.System2D(eh.Location(epw_file))</span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>wall2d.tilt <span class="op">=</span> <span class="dv">90</span>                      <span class="co"># walls only (required for HollowBlock)</span></span>
-<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>wall2d.azimuth <span class="op">=</span> <span class="dv">90</span></span>
-<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>wall2d.absortance <span class="op">=</span> <span class="fl">0.6</span></span>
-<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>wall2d.layers <span class="op">=</span> [(<span class="st">"Mortero"</span>, <span class="fl">0.02</span>), block, (<span class="st">"Yeso"</span>, <span class="fl">0.01</span>)]</span>
-<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>wall2d.location.meanDay(month<span class="op">=</span><span class="dv">5</span>, year<span class="op">=</span><span class="dv">2025</span>)</span>
-<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>wall2d.Tsa()</span>
-<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>ti <span class="op">=</span> wall2d.solve()                   <span class="co"># free-running</span></span>
-<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(wall2d.energy_transfer)         <span class="co"># J/(m²·day), per unit indoor area</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>block <span class="op">=</span> eh.HollowBlock(</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    material   <span class="op">=</span> <span class="st">"Concreto"</span>,          <span class="co"># single material of the block</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    emissivity <span class="op">=</span> <span class="fl">0.9</span>,                 <span class="co"># cavity-wall emissivity (radiation)</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    geometry   <span class="op">=</span> {                    <span class="co"># cell measures, in metres</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"web"</span>:          <span class="fl">0.02</span>,         <span class="co"># half web (rib) thickness</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>        <span class="st">"block_width"</span>:  <span class="fl">0.16</span>,         <span class="co"># cavity width</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cover_top"</span>:    <span class="fl">0.02</span>,         <span class="co"># outer shell</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cavity"</span>:       <span class="fl">0.08</span>,         <span class="co"># cavity height</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cover_bottom"</span>: <span class="fl">0.02</span>,         <span class="co"># inner shell</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>    },</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>wall2d <span class="op">=</span> eh.System2D(eh.Location(epw_file))</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>wall2d.tilt <span class="op">=</span> <span class="dv">90</span>                      <span class="co"># walls only (required for HollowBlock)</span></span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>wall2d.azimuth <span class="op">=</span> <span class="dv">90</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>wall2d.absortance <span class="op">=</span> <span class="fl">0.6</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>wall2d.layers <span class="op">=</span> [(<span class="st">"Mortero"</span>, <span class="fl">0.02</span>), block, (<span class="st">"Yeso"</span>, <span class="fl">0.01</span>)]</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a><span class="co"># 2D stacks accept at most 7 layers INCLUDING the 2D element (fixed slots</span></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a><span class="co"># inherited from the C engine); exceeding it raises ValueError. 1D has no limit.</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>wall2d.location.meanDay(month<span class="op">=</span><span class="dv">5</span>, year<span class="op">=</span><span class="dv">2025</span>)</span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>wall2d.Tsa()</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>ti <span class="op">=</span> wall2d.solve()                   <span class="co"># free-running</span></span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Full results: wall2d.solve_dataframe (Ti, Tso, Tsi, Thueco, °C, on the Tsa grid),</span></span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a><span class="co"># wall2d.Tfield ((nx, ny) °C field of the last day), wall2d.Qout (J/(m²·day)).</span></span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(wall2d.energy_transfer)         <span class="co"># J/(m²·day), per unit indoor area</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Pre-computed result of that exact code:</p>
-<div id="f588156d" class="cell" data-execution_count="7">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>RES <span class="op">=</span> <span class="st">"data/results"</span></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>summary <span class="op">=</span> json.load(<span class="bu">open</span>(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/summary.json"</span>))</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>hollow <span class="op">=</span> pd.read_csv(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/hollow_free.csv"</span>, index_col<span class="op">=</span><span class="dv">0</span>, parse_dates<span class="op">=</span><span class="va">True</span>)</span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> summary[<span class="st">"hollow_free"</span>]</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"energy_transfer = </span><span class="sc">{</span>s[<span class="st">'energy_transfer'</span>]<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  ·  converged in </span><span class="sc">{</span>s[<span class="st">'days'</span>]<span class="sc">}</span><span class="ss"> days"</span></span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  ·  solve time ≈ </span><span class="sc">{</span>s[<span class="st">'runtime_s'</span>]<span class="op">/</span><span class="dv">60</span><span class="sc">:.0f}</span><span class="ss"> min"</span>)</span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>plot_day(hollow, title<span class="op">=</span><span class="st">"Hollow-block wall (2D), east, free-running — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="76decb2b" class="cell" data-execution_count="7">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>RES <span class="op">=</span> <span class="st">"data/results"</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>summary <span class="op">=</span> json.load(<span class="bu">open</span>(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/summary.json"</span>))</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>hollow <span class="op">=</span> pd.read_csv(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/hollow_free.csv"</span>, index_col<span class="op">=</span><span class="dv">0</span>, parse_dates<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> summary[<span class="st">"hollow_free"</span>]</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"energy_transfer = </span><span class="sc">{</span>s[<span class="st">'energy_transfer'</span>]<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  ·  converged in </span><span class="sc">{</span>s[<span class="st">'days'</span>]<span class="sc">}</span><span class="ss"> days"</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  ·  solve time ≈ </span><span class="sc">{</span>s[<span class="st">'runtime_s'</span>]<span class="op">/</span><span class="dv">60</span><span class="sc">:.0f}</span><span class="ss"> min"</span>)</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>plot_day(hollow, title<span class="op">=</span><span class="st">"Hollow-block wall (2D), east, free-running — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>energy_transfer = 47,705 J/(m²·day)  ·  converged in 4 days  ·  solve time ≈ 21 min</code></pre>
+<pre><code>energy_transfer = 47,610 J/(m²·day)  ·  converged in 4 days  ·  solve time ≈ 26 min</code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <div>
@@ -501,19 +507,19 @@ heating_energy = 399,814 J/(m²·day)  = 111 Wh/(m²·day)</code></pre>
 </section>
 <section id="d-hollow-block-wall-air-conditioned" class="level3">
 <h3 class="anchored" data-anchor-id="d-hollow-block-wall-air-conditioned">2D hollow-block wall, air-conditioned</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>wall2d.solveAC()                      <span class="co"># Ti held at Tn</span></span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(wall2d.cooling_energy, wall2d.heating_energy)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div id="c517c7b0" class="cell" data-execution_count="8">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>hollowAC <span class="op">=</span> pd.read_csv(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/hollow_ac.csv"</span>, index_col<span class="op">=</span><span class="dv">0</span>, parse_dates<span class="op">=</span><span class="va">True</span>)</span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> summary[<span class="st">"hollow_ac"</span>]</span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"cooling_energy = </span><span class="sc">{</span>s[<span class="st">'cooling_energy'</span>]<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>s[<span class="st">'cooling_energy'</span>]<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"heating_energy = </span><span class="sc">{</span>s[<span class="st">'heating_energy'</span>]<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>s[<span class="st">'heating_energy'</span>]<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>plot_day(hollowAC, title<span class="op">=</span><span class="st">"Hollow-block wall (2D), air-conditioned — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>wall2d.solveAC()                      <span class="co"># Ti held at Tn</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(wall2d.cooling_energy, wall2d.heating_energy)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="0d28fcf7" class="cell" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>hollowAC <span class="op">=</span> pd.read_csv(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/hollow_ac.csv"</span>, index_col<span class="op">=</span><span class="dv">0</span>, parse_dates<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> summary[<span class="st">"hollow_ac"</span>]</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"cooling_energy = </span><span class="sc">{</span>s[<span class="st">'cooling_energy'</span>]<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>s[<span class="st">'cooling_energy'</span>]<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"heating_energy = </span><span class="sc">{</span>s[<span class="st">'heating_energy'</span>]<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>s[<span class="st">'heating_energy'</span>]<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>plot_day(hollowAC, title<span class="op">=</span><span class="st">"Hollow-block wall (2D), air-conditioned — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>cooling_energy = 1,611,252 J/(m²·day)  = 448 Wh/(m²·day)
-heating_energy = 298,479 J/(m²·day)  = 83 Wh/(m²·day)</code></pre>
+<pre><code>cooling_energy = 1,574,884 J/(m²·day)  = 437 Wh/(m²·day)
+heating_energy = 287,568 J/(m²·day)  = 80 Wh/(m²·day)</code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <div>
@@ -527,42 +533,42 @@ heating_energy = 298,479 J/(m²·day)  = 83 Wh/(m²·day)</code></pre>
 <section id="joist-and-block-roof-slab" class="level3">
 <h3 class="anchored" data-anchor-id="joist-and-block-roof-slab">Joist-and-block roof (<code>Slab</code>)</h3>
 <p>Three solids (compression topping, L-shaped rib, filler block) plus N equal cavities that can be air (<code>Fill.AIR</code>) or a solid fill (<code>Fill.SOLID</code>).</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>slab <span class="op">=</span> eh.Slab(</span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>    rib_material     <span class="op">=</span> <span class="st">"Concreto"</span>,       <span class="co"># joist/rib (L-shaped: web + foot)</span></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    block_material   <span class="op">=</span> <span class="st">"Bovedilla"</span>,      <span class="co"># filler block around the cavities</span></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    topping_material <span class="op">=</span> <span class="st">"Concreto"</span>,       <span class="co"># compression topping</span></span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    fill_type        <span class="op">=</span> eh.Fill.AIR,      <span class="co"># or eh.Fill.SOLID (+ fill_material)</span></span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    emissivity       <span class="op">=</span> <span class="fl">0.9</span>,              <span class="co"># required if AIR</span></span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>    geometry <span class="op">=</span> {</span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"web"</span>:          <span class="fl">0.025</span>,   <span class="co"># rib web</span></span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"foot"</span>:         <span class="fl">0.025</span>,   <span class="co"># rib foot</span></span>
-<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"shoulder"</span>:     <span class="fl">0.050</span>,   <span class="co"># block between rib and cavities</span></span>
-<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"n_cavities"</span>:   <span class="dv">3</span>,</span>
-<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cavity_width"</span>: <span class="fl">0.103</span>,</span>
-<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">"topping"</span>:      <span class="fl">0.100</span>,   <span class="co"># compression topping</span></span>
-<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>        <span class="st">"topping_cap"</span>:  <span class="fl">0.050</span>,   <span class="co"># topping above the rib web</span></span>
-<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cover_top"</span>:    <span class="fl">0.030</span>,   <span class="co"># block above the cavity</span></span>
-<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cavity"</span>:       <span class="fl">0.040</span>,   <span class="co"># cavity height</span></span>
-<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cover_bottom"</span>: <span class="fl">0.030</span>,   <span class="co"># block below the cavity</span></span>
-<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>    },</span>
-<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>roof <span class="op">=</span> eh.System2D(eh.Location(epw_file))</span>
-<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a>roof.tilt <span class="op">=</span> <span class="dv">0</span>                            <span class="co"># roofs only (required for Slab)</span></span>
-<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a>roof.absortance <span class="op">=</span> <span class="fl">0.3</span></span>
-<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a>roof.layers <span class="op">=</span> [(<span class="st">"Impermeabilizante"</span>, <span class="fl">0.003</span>), slab, (<span class="st">"Yeso"</span>, <span class="fl">0.015</span>)]</span>
-<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a>roof.location.meanDay(month<span class="op">=</span><span class="dv">5</span>, year<span class="op">=</span><span class="dv">2025</span>)</span>
-<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a>roof.Tsa()</span>
-<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a>roof.solve()                             <span class="co"># or roof.solveAC()</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div id="f1bd7456" class="cell" data-execution_count="9">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>slab_df <span class="op">=</span> pd.read_csv(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/slab_free.csv"</span>, index_col<span class="op">=</span><span class="dv">0</span>, parse_dates<span class="op">=</span><span class="va">True</span>)</span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> summary[<span class="st">"slab_free"</span>]</span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"energy_transfer = </span><span class="sc">{</span>s[<span class="st">'energy_transfer'</span>]<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  ·  converged in </span><span class="sc">{</span>s[<span class="st">'days'</span>]<span class="sc">}</span><span class="ss"> days"</span>)</span>
-<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>plot_day(slab_df, title<span class="op">=</span><span class="st">"Joist-and-block roof (2D), free-running — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>slab <span class="op">=</span> eh.Slab(</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>    rib_material     <span class="op">=</span> <span class="st">"Concreto"</span>,       <span class="co"># joist/rib (L-shaped: web + foot)</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    block_material   <span class="op">=</span> <span class="st">"Bovedilla"</span>,      <span class="co"># filler block around the cavities</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    topping_material <span class="op">=</span> <span class="st">"Concreto"</span>,       <span class="co"># compression topping</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    fill_type        <span class="op">=</span> eh.Fill.AIR,      <span class="co"># or eh.Fill.SOLID (+ fill_material)</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>    emissivity       <span class="op">=</span> <span class="fl">0.9</span>,              <span class="co"># required if AIR</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>    geometry <span class="op">=</span> {</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"web"</span>:          <span class="fl">0.025</span>,   <span class="co"># rib web</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"foot"</span>:         <span class="fl">0.025</span>,   <span class="co"># rib foot</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"shoulder"</span>:     <span class="fl">0.050</span>,   <span class="co"># block between rib and cavities</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"n_cavities"</span>:   <span class="dv">3</span>,</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cavity_width"</span>: <span class="fl">0.103</span>,</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">"topping"</span>:      <span class="fl">0.100</span>,   <span class="co"># compression topping</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>        <span class="st">"topping_cap"</span>:  <span class="fl">0.050</span>,   <span class="co"># topping above the rib web</span></span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cover_top"</span>:    <span class="fl">0.030</span>,   <span class="co"># block above the cavity</span></span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cavity"</span>:       <span class="fl">0.040</span>,   <span class="co"># cavity height</span></span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cover_bottom"</span>: <span class="fl">0.030</span>,   <span class="co"># block below the cavity</span></span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>    },</span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>roof <span class="op">=</span> eh.System2D(eh.Location(epw_file))</span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>roof.tilt <span class="op">=</span> <span class="dv">0</span>                            <span class="co"># roofs only (required for Slab)</span></span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a>roof.absortance <span class="op">=</span> <span class="fl">0.3</span></span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a>roof.layers <span class="op">=</span> [(<span class="st">"Impermeabilizante"</span>, <span class="fl">0.003</span>), slab, (<span class="st">"Yeso"</span>, <span class="fl">0.015</span>)]</span>
+<span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a>roof.location.meanDay(month<span class="op">=</span><span class="dv">5</span>, year<span class="op">=</span><span class="dv">2025</span>)</span>
+<span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a>roof.Tsa()</span>
+<span id="cb17-27"><a href="#cb17-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-28"><a href="#cb17-28" aria-hidden="true" tabindex="-1"></a>roof.solve()                             <span class="co"># or roof.solveAC()</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="723ca7ad" class="cell" data-execution_count="9">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>slab_df <span class="op">=</span> pd.read_csv(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/slab_free.csv"</span>, index_col<span class="op">=</span><span class="dv">0</span>, parse_dates<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> summary[<span class="st">"slab_free"</span>]</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"energy_transfer = </span><span class="sc">{</span>s[<span class="st">'energy_transfer'</span>]<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  ·  converged in </span><span class="sc">{</span>s[<span class="st">'days'</span>]<span class="sc">}</span><span class="ss"> days"</span>)</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>plot_day(slab_df, title<span class="op">=</span><span class="st">"Joist-and-block roof (2D), free-running — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>energy_transfer = 27,041 J/(m²·day)  ·  converged in 5 days</code></pre>
+<pre><code>energy_transfer = 26,877 J/(m²·day)  ·  converged in 6 days</code></pre>
 </div>
 <div class="cell-output cell-output-display">
 <div>
@@ -572,27 +578,27 @@ heating_energy = 298,479 J/(m²·day)  = 83 Wh/(m²·day)</code></pre>
 </div>
 </div>
 </div>
-<p>Note how the roof’s <code>Tsa</code> drops <strong>below</strong> <code>Ta</code> at night: that is the long-wave radiation factor (<span class="math inline">\(RF = 3.9\)</span> °C for horizontal surfaces) at work — the roof sees the cold sky (see <a href="./model-1d.html#outdoor-boundary-condition-the-sunair-temperature">the 1D model</a>).</p>
+<p>Note how the roof’s <code>Tsa</code> drops <strong>below</strong> <code>Ta</code> at night: that is the long-wave radiation factor (<span class="math inline">\(RF = 3.9\)</span> °C for horizontal surfaces) at work — the roof sees the cold sky (see <a href="./model-1d.html#outdoor-the-sunair-temperature">the 1D model</a>).</p>
 </section>
 <section id="filled-cavities-fill.solid" class="level3">
 <h3 class="anchored" data-anchor-id="filled-cavities-fill.solid">Filled cavities (<code>Fill.SOLID</code>)</h3>
 <p>The cavity of a <code>HollowBlock</code> (or the cavities of a <code>Slab</code>) can be filled with a solid material instead of air — e.g.&nbsp;an insulating core:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>block <span class="op">=</span> eh.HollowBlock(</span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    material      <span class="op">=</span> <span class="st">"Concreto"</span>,</span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    fill_type     <span class="op">=</span> eh.Fill.SOLID,</span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>    fill_material <span class="op">=</span> <span class="st">"EPS"</span>,</span>
-<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>    geometry      <span class="op">=</span> {<span class="st">"web"</span>: <span class="fl">0.02</span>, <span class="st">"block_width"</span>: <span class="fl">0.16</span>,</span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>                     <span class="st">"cover_top"</span>: <span class="fl">0.02</span>, <span class="st">"cavity"</span>: <span class="fl">0.08</span>, <span class="st">"cover_bottom"</span>: <span class="fl">0.02</span>},</span>
-<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>block <span class="op">=</span> eh.HollowBlock(</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>    material      <span class="op">=</span> <span class="st">"Concreto"</span>,</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    fill_type     <span class="op">=</span> eh.Fill.SOLID,</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>    fill_material <span class="op">=</span> <span class="st">"EPS"</span>,</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>    geometry      <span class="op">=</span> {<span class="st">"web"</span>: <span class="fl">0.02</span>, <span class="st">"block_width"</span>: <span class="fl">0.16</span>,</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>                     <span class="st">"cover_top"</span>: <span class="fl">0.02</span>, <span class="st">"cavity"</span>: <span class="fl">0.08</span>, <span class="st">"cover_bottom"</span>: <span class="fl">0.02</span>},</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Filling with the <em>same</em> material as the shell makes the unit homogeneous — equivalent to a 1D layer (this is one of the package’s validation checks).</p>
 </section>
 <section id="inspecting-the-section" class="level3">
 <h3 class="anchored" data-anchor-id="inspecting-the-section">Inspecting the section</h3>
 <p>Before solving you can inspect, <strong>to scale</strong>, how materials and node types are laid out on the 2D mesh:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>wall2d.section_report()            <span class="co"># table: node types + materials (k, ρc, y-range)</span></span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>wall2d.preview()                   <span class="co"># to-scale panels (node type, k, ρc)</span></span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>wall2d.preview(field<span class="op">=</span><span class="st">"materials"</span>, backend<span class="op">=</span><span class="st">"ascii"</span>)   <span class="co"># terminal fallback</span></span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>sec <span class="op">=</span> wall2d.section()             <span class="co"># NT / k / rhoc arrays + mesh</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>wall2d.section_report()            <span class="co"># table: node types + materials (k, ρc, y-range)</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>wall2d.preview()                   <span class="co"># to-scale panels (node type, k, ρc)</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>wall2d.preview(field<span class="op">=</span><span class="st">"materials"</span>, backend<span class="op">=</span><span class="st">"ascii"</span>)   <span class="co"># terminal fallback</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>sec <span class="op">=</span> wall2d.section()             <span class="co"># NT / k / rhoc arrays + mesh</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>matplotlib is an optional extra (<code>pip install enerhabitat[viz]</code>); without it the inspector falls back to a to-scale ASCII drawing.</p>
 </section>
 </section>
@@ -637,7 +643,7 @@ heating_energy = 298,479 J/(m²·day)  = 83 Wh/(m²·day)</code></pre>
 </tr>
 <tr class="odd">
 <td><code>hi</code></td>
-<td><code>8.6</code> W/(m²·K)</td>
+<td><code>8.1</code> W/(m²·K)</td>
 <td>Indoor film coefficient</td>
 </tr>
 <tr class="even">
@@ -647,11 +653,12 @@ heating_energy = 298,479 J/(m²·day)  = 83 Wh/(m²·day)</code></pre>
 </tr>
 </tbody>
 </table>
-<p>The <code>ho</code>/<code>hi</code> defaults are the values prescribed by the Mexican standards <strong>NOM-020-ENER</strong> and <strong>NOM-008-ENER</strong>; they can be overridden at any time. <code>dt</code> is locked because of the explicit indoor-air coupling — see <a href="./numerics.html#indoor-air-coupling-free-running-mode">the numerical method</a>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"./materials.ini"</span></span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>eh.config.La <span class="op">=</span> <span class="fl">2.0</span></span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>eh.config.ho <span class="op">=</span> <span class="dv">12</span>          <span class="co"># override the NOM defaults if needed</span></span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>eh.config.reset()          <span class="co"># restore all defaults</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The <code>ho</code>/<code>hi</code> defaults are the values prescribed by the Mexican standards <strong>NOM-008-ENER</strong> and <strong>NOM-020-ENER</strong> (<code>hi = 8.1</code> is the vertical-surface value, applied to all orientations); they can be overridden at any time. <code>dt</code> is locked because of the explicit indoor-air coupling — see <a href="./numerics.html#indoor-air-coupling-free-running-mode">the numerical method</a>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"./materials.ini"</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>eh.config.La <span class="op">=</span> <span class="fl">2.0</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>eh.config.ho <span class="op">=</span> <span class="dv">12</span>          <span class="co"># override the NOM defaults if needed</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>eh.config.reset()          <span class="co"># restore the numeric defaults (La, Nx, ho, hi, dt, air);</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>                           <span class="co"># config.file / materials are user-provided and are kept</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><code>config.materials</code> is a read-only dict keyed by material name (<code>eh.config.materials["Adobe"].k</code>, <code>.rho</code>, <code>.c</code>).</p>
 </section>
 <section id="config2d-2d-mesh-and-convergence" class="level3">
@@ -683,12 +690,12 @@ heating_energy = 298,479 J/(m²·day)  = 83 Wh/(m²·day)</code></pre>
 </tr>
 <tr class="odd">
 <td><code>tol_inner</code></td>
-<td><code>1e-10</code></td>
-<td>inner (line-by-line) loop tolerance</td>
+<td><code>1e-8</code> °C</td>
+<td>inner-step tolerance (max node update <strong>and</strong> max equation residual)</td>
 </tr>
 <tr class="even">
 <td><code>tol_day</code></td>
-<td><code>5e-4</code></td>
+<td><code>5e-4</code> °C</td>
 <td>day-to-day convergence tolerance</td>
 </tr>
 <tr class="odd">
@@ -696,10 +703,15 @@ heating_energy = 298,479 J/(m²·day)  = 83 Wh/(m²·day)</code></pre>
 <td><code>60</code></td>
 <td>cap on the day-to-day iterations</td>
 </tr>
+<tr class="even">
+<td><code>max_inner</code></td>
+<td><code>10000</code></td>
+<td>cap on inner sweeps per step (hit → <code>converged = False</code>)</td>
+</tr>
 </tbody>
 </table>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> enerhabitat <span class="im">import</span> config2d</span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>config2d.nx, config2d.ny <span class="op">=</span> <span class="dv">120</span>, <span class="dv">160</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> enerhabitat <span class="im">import</span> config2d</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>config2d.nx, config2d.ny <span class="op">=</span> <span class="dv">120</span>, <span class="dv">160</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <blockquote class="blockquote">
 <p>Each solve is single-threaded. For volume (many configurations), parallelise at the <strong>process level</strong> — run independent <code>solve()</code> calls in separate processes (<code>multiprocessing</code>, <code>joblib</code>); this scales near-linearly (≈6× at 8 processes). See <a href="./numerics.html#performance">Performance</a>.</p>
 </blockquote>

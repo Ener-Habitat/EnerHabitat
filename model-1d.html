@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>1D model: physical problem – EnerHabitat</title>
+<title>1D model: homogeneous multilayer systems – EnerHabitat</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -164,6 +164,10 @@ window.Quarto = {
     <a class="dropdown-item" href="./numerics.html">
  <span class="dropdown-text">Numerical method</span></a>
   </li>  
+        <li>
+    <a class="dropdown-item" href="./assumptions.html">
+ <span class="dropdown-text">Assumptions and limits</span></a>
+  </li>  
     </ul>
   </li>
   <li class="nav-item">
@@ -199,9 +203,10 @@ window.Quarto = {
   <ul>
   <li><a href="#domain-and-assumptions" id="toc-domain-and-assumptions" class="nav-link active" data-scroll-target="#domain-and-assumptions">Domain and assumptions</a></li>
   <li><a href="#governing-equations" id="toc-governing-equations" class="nav-link" data-scroll-target="#governing-equations">Governing equations</a></li>
-  <li><a href="#outdoor-boundary-condition-the-sunair-temperature" id="toc-outdoor-boundary-condition-the-sunair-temperature" class="nav-link" data-scroll-target="#outdoor-boundary-condition-the-sunair-temperature">Outdoor boundary condition: the sun–air temperature</a></li>
-  <li><a href="#indoor-boundary-condition-and-solution-modes" id="toc-indoor-boundary-condition-and-solution-modes" class="nav-link" data-scroll-target="#indoor-boundary-condition-and-solution-modes">Indoor boundary condition and solution modes</a>
+  <li><a href="#boundary-conditions-and-solution-modes" id="toc-boundary-conditions-and-solution-modes" class="nav-link" data-scroll-target="#boundary-conditions-and-solution-modes">Boundary conditions and solution modes</a>
   <ul class="collapse">
+  <li><a href="#outdoor-the-sunair-temperature" id="toc-outdoor-the-sunair-temperature" class="nav-link" data-scroll-target="#outdoor-the-sunair-temperature">Outdoor: the sun–air temperature</a></li>
+  <li><a href="#indoor-boundary-condition" id="toc-indoor-boundary-condition" class="nav-link" data-scroll-target="#indoor-boundary-condition">Indoor boundary condition</a></li>
   <li><a href="#free-running-mode-solve" id="toc-free-running-mode-solve" class="nav-link" data-scroll-target="#free-running-mode-solve">Free-running mode — <code>solve()</code></a></li>
   <li><a href="#air-conditioned-mode-solveac" id="toc-air-conditioned-mode-solveac" class="nav-link" data-scroll-target="#air-conditioned-mode-solveac">Air-conditioned mode — <code>solveAC()</code></a></li>
   </ul></li>
@@ -216,7 +221,7 @@ window.Quarto = {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">1D model: physical problem</h1>
+<h1 class="title">1D model: homogeneous multilayer systems</h1>
 </div>
 
 
@@ -237,7 +242,7 @@ window.Quarto = {
 <p>The simulation runs over the <strong>average day</strong> of a chosen month, built from the EPW weather file (see <a href="#the-average-day">The average day</a>), and is iterated day after day until the solution becomes periodic — the daily cycle repeats itself. All reported results correspond to that converged, periodic day.</p>
 <section id="domain-and-assumptions" class="level2">
 <h2 class="anchored" data-anchor-id="domain-and-assumptions">Domain and assumptions</h2>
-<p>The constructive system is a stack of <span class="math inline">\(N\)</span> homogeneous layers, ordered from outside (<span class="math inline">\(x = 0\)</span>) to inside (<span class="math inline">\(x = L\)</span>). Each layer <span class="math inline">\(j\)</span> is described by three constant properties: thermal conductivity <span class="math inline">\(k_j\)</span> (W/m·K), density <span class="math inline">\(\rho_j\)</span> (kg/m³) and specific heat <span class="math inline">\(c_j\)</span> (J/kg·K).</p>
+<p>The constructive system is a stack of <span class="math inline">\(N\)</span> homogeneous layers, ordered from outside (<span class="math inline">\(x = 0\)</span>) to inside (<span class="math inline">\(x = L\)</span>). Each layer <span class="math inline">\(j\)</span> is described by three constant properties: thermal conductivity <span class="math inline">\(k_j\)</span> (W/(m·K)), density <span class="math inline">\(\rho_j\)</span> (kg/m³) and specific heat <span class="math inline">\(c_j\)</span> (J/(kg·K)).</p>
 <div id="fig-domain" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-domain-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -252,10 +257,11 @@ Figure&nbsp;1: 1D domain: multilayer wall/roof with its boundary conditions and 
 <ul>
 <li><strong>1D conduction</strong> perpendicular to the surface (the <span class="math inline">\(x\)</span> direction); layers are homogeneous, so there is no in-plane heat flow.</li>
 <li><strong>Constant thermal properties</strong> per layer (no temperature dependence, no moisture).</li>
-<li><strong>Convective boundary conditions</strong> with fixed film coefficients <span class="math inline">\(h_o\)</span> (outdoor) and <span class="math inline">\(h_i\)</span> (indoor). The defaults, <span class="math inline">\(h_o = 13\)</span> and <span class="math inline">\(h_i = 8.6\)</span> W/m²·K, are the values prescribed by the Mexican standards NOM-020-ENER and NOM-008-ENER; both are configurable.</li>
+<li><strong>Convective boundary conditions</strong> with fixed film coefficients <span class="math inline">\(h_o\)</span> (outdoor) and <span class="math inline">\(h_i\)</span> (indoor). The defaults, <span class="math inline">\(h_o = 13\)</span> and <span class="math inline">\(h_i = 8.1\)</span> W/(m²·K), are the values prescribed by the Mexican standards NOM-008-ENER-2001 (Appendix B) and NOM-020-ENER-2011 <span class="citation" data-cites="nom008 nom020">(<a href="#ref-nom008" role="doc-biblioref">Secretaría de Energía (México) 2001</a>, <a href="#ref-nom020" role="doc-biblioref">2011</a>)</span> (<span class="math inline">\(h_i = 8.1\)</span> is the vertical-surface value, applied here to all orientations); both are configurable.</li>
 <li><strong>Solar and long-wave radiation</strong> on the outdoor surface enter through the sun–air temperature (<a href="#eq-tsa" class="quarto-xref">Equation&nbsp;4</a>).</li>
 <li>The indoor space is a <strong>lumped air node</strong> of depth <span class="math inline">\(L_a\)</span> (2.5 m by default) in the free-running mode, or a <strong>fixed setpoint</strong> in the air-conditioned mode.</li>
 </ul>
+<p>The canonical list of assumptions, with the consequence each one has for interpreting the results, is in <a href="./assumptions.html">Assumptions and limits</a>.</p>
 </section>
 <section id="governing-equations" class="level2">
 <h2 class="anchored" data-anchor-id="governing-equations">Governing equations</h2>
@@ -271,15 +277,17 @@ k_j \left.\frac{\partial T}{\partial x}\right|_{j,\,j+1}
 k_{j+1} \left.\frac{\partial T}{\partial x}\right|_{j,\,j+1}.
 \tag{2}\]</span></span></p>
 </section>
-<section id="outdoor-boundary-condition-the-sunair-temperature" class="level2">
-<h2 class="anchored" data-anchor-id="outdoor-boundary-condition-the-sunair-temperature">Outdoor boundary condition: the sun–air temperature</h2>
+<section id="boundary-conditions-and-solution-modes" class="level2">
+<h2 class="anchored" data-anchor-id="boundary-conditions-and-solution-modes">Boundary conditions and solution modes</h2>
+<section id="outdoor-the-sunair-temperature" class="level3">
+<h3 class="anchored" data-anchor-id="outdoor-the-sunair-temperature">Outdoor: the sun–air temperature</h3>
 <p>At the outdoor surface, <span class="math inline">\(x = 0\)</span>, convection against the <strong>sun–air temperature</strong> <span class="math inline">\(T_{sa}\)</span> balances the conducted flux:</p>
 <p><span id="eq-bc-out"><span class="math display">\[
 h_o \left( T_{sa} - T_{x=0} \right)
 \;=\;
 -\,k_1 \left.\frac{\partial T_1}{\partial x}\right|_{x=0}.
 \tag{3}\]</span></span></p>
-<p><span class="math inline">\(T_{sa}\)</span> is a fictitious temperature that lumps together the three thermal loads on the exterior surface — convection with outdoor air, absorbed short-wave solar radiation, and the long-wave radiative exchange with the sky <span class="citation" data-cites="ashrae1997">(<a href="#ref-ashrae1997" role="doc-biblioref">ASHRAE 1997</a>)</span>:</p>
+<p><span class="math inline">\(T_{sa}\)</span> is a fictitious temperature that lumps together the three thermal loads on the exterior surface — convection with outdoor air, absorbed short-wave solar radiation, and the long-wave radiative exchange with the sky <span class="citation" data-cites="mackey1944 ashrae1997">(<a href="#ref-mackey1944" role="doc-biblioref">Mackey and Wright 1944</a>; <a href="#ref-ashrae1997" role="doc-biblioref">ASHRAE 1997</a>)</span>:</p>
 <p><span id="eq-tsa"><span class="math display">\[
 T_{sa} \;=\; T_a \;+\; \frac{a\, I_s}{h_o} \;-\; RF,
 \tag{4}\]</span></span></p>
@@ -287,14 +295,14 @@ T_{sa} \;=\; T_a \;+\; \frac{a\, I_s}{h_o} \;-\; RF,
 <ul>
 <li><span class="math inline">\(T_a\)</span> — outdoor air temperature of the average day;</li>
 <li><span class="math inline">\(I_s\)</span> — solar irradiance on the (tilted, oriented) surface, W/m²;</li>
-<li><span class="math inline">\(a\)</span> — solar absorptance of the outdoor surface (the <em>color</em> of the wall/roof);</li>
+<li><span class="math inline">\(a\)</span> — solar absorptance of the outdoor surface (intuitively, the <em>color</em> of the wall/roof — though coatings of the same visible color can have quite different solar absorptance, e.g.&nbsp;cool-roof paints);</li>
 <li><span class="math inline">\(h_o\)</span> — outdoor film coefficient;</li>
-<li><span class="math inline">\(RF\)</span> — long-wave radiation factor: EnerHabitat uses <span class="math inline">\(RF = 3.9\ °\mathrm{C}\)</span> for horizontal surfaces (<code>tilt = 0</code>, a roof facing the cold sky) and <span class="math inline">\(RF = 0\)</span> for any other tilt (e.g.&nbsp;vertical walls, <code>tilt = 90</code>).</li>
+<li><span class="math inline">\(RF\)</span> — long-wave radiation factor, decreasing linearly with the surface tilt <span class="math inline">\(\beta\)</span>: <span class="math inline">\(RF = 3.9\,(1 - \beta/90°)\)</span> °C for <span class="math inline">\(0° \le \beta \le 90°\)</span> (3.9 °C for a horizontal roof facing the cold sky, 0 for a vertical wall) and 0 beyond — the same rule as the 2016 online tool <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>. The 3.9 °C (7 °F) horizontal value is the classical <span class="math inline">\(\varepsilon \Delta R / h_o\)</span> long-wave correction of the sol–air method <span class="citation" data-cites="ashrae1997">(<a href="#ref-ashrae1997" role="doc-biblioref">ASHRAE 1997</a>)</span>, whose concept goes back to Mackey &amp; Wright <span class="citation" data-cites="mackey1944">(<a href="#ref-mackey1944" role="doc-biblioref">1944</a>)</span>. It is an empirical correction, not an explicit sky/surroundings radiative balance.</li>
 </ul>
-<p><span class="math inline">\(I_s\)</span> is computed with <a href="https://pvlib-python.readthedocs.io/">pvlib</a> <span class="citation" data-cites="holmgren2018">(<a href="#ref-holmgren2018" role="doc-biblioref">Holmgren et al. 2018</a>)</span> from the average-day beam, diffuse and global horizontal irradiances, the solar position at the site, and the surface <code>tilt</code> and <code>azimuth</code>. This is why <code>Tsa()</code> must be recomputed whenever the color, the orientation, the month or the location change.</p>
+<p><span class="math inline">\(I_s\)</span> is computed with <a href="https://pvlib-python.readthedocs.io/">pvlib</a>’s <code>get_total_irradiance</code> <span class="citation" data-cites="holmgren2018">(<a href="#ref-holmgren2018" role="doc-biblioref">Holmgren et al. 2018</a>)</span> from the average-day DNI (<span class="math inline">\(I_b\)</span>), DHI (<span class="math inline">\(I_d\)</span>) and GHI (<span class="math inline">\(I_g\)</span>) and the solar position at the site, for the surface <code>tilt</code> and <code>azimuth</code>, using the <strong>isotropic-sky</strong> transposition model and ground <strong>albedo 0.25</strong> (the pvlib defaults); <span class="math inline">\(I_s\)</span> (<code>poa_global</code>) includes the beam, sky-diffuse and ground-reflected components. This is why <code>Tsa()</code> is recomputed — automatically, on the next call — whenever the absorptance, the orientation, the month or the location change.</p>
 </section>
-<section id="indoor-boundary-condition-and-solution-modes" class="level2">
-<h2 class="anchored" data-anchor-id="indoor-boundary-condition-and-solution-modes">Indoor boundary condition and solution modes</h2>
+<section id="indoor-boundary-condition" class="level3">
+<h3 class="anchored" data-anchor-id="indoor-boundary-condition">Indoor boundary condition</h3>
 <p>At the indoor surface, <span class="math inline">\(x = L\)</span>, the conducted flux is released by convection to the indoor air at temperature <span class="math inline">\(T_i\)</span>:</p>
 <p><span id="eq-bc-in"><span class="math display">\[
 -\,k_N \left.\frac{\partial T_N}{\partial x}\right|_{x=L}
@@ -302,13 +310,14 @@ T_{sa} \;=\; T_a \;+\; \frac{a\, I_s}{h_o} \;-\; RF,
 h_i \left( T_{x=L} - T_i \right).
 \tag{5}\]</span></span></p>
 <p>What happens to <span class="math inline">\(T_i\)</span> defines the two solution modes.</p>
+</section>
 <section id="free-running-mode-solve" class="level3">
 <h3 class="anchored" data-anchor-id="free-running-mode-solve">Free-running mode — <code>solve()</code></h3>
 <p>The indoor air is a lumped thermal mass — density <span class="math inline">\(\rho_a\)</span>, specific heat <span class="math inline">\(c_a\)</span>, depth <span class="math inline">\(L_a\)</span> — whose temperature evolves with the heat received from the indoor surface:</p>
 <p><span id="eq-air"><span class="math display">\[
 L_a\, \rho_a\, c_a\, \frac{dT_i}{dt} \;=\; h_i \left( T_{x=L} - T_i \right),
 \tag{6}\]</span></span></p>
-<p>with <span class="math inline">\(L_a = 2.5\)</span> m by default (<code>config.La</code>). The air properties are <span class="math inline">\(\rho_a \approx 1.18\)</span> kg/m³ and <span class="math inline">\(c_a \approx 1005\)</span> J/kg·K (<code>config.AIR_DENSITY</code>, <code>config.AIR_HEAT_CAPACITY</code>). Because <a href="#eq-air" class="quarto-xref">Equation&nbsp;6</a> is integrated in time alongside the wall, the time step is constrained by this coupling — see the <a href="./numerics.html#indoor-air-coupling-free-running-mode">numerical method</a> for why <code>config.dt</code> is fixed at 10 s.</p>
+<p>with <span class="math inline">\(L_a = 2.5\)</span> m by default (<code>config.La</code>). The air properties are <span class="math inline">\(\rho_a \approx 1.18\)</span> kg/m³ and <span class="math inline">\(c_a \approx 1005\)</span> J/(kg·K) (<code>config.AIR_DENSITY</code>, <code>config.AIR_HEAT_CAPACITY</code>). Because <a href="#eq-air" class="quarto-xref">Equation&nbsp;6</a> is integrated in time alongside the wall, the time step is constrained by this coupling — see the <a href="./numerics.html#indoor-air-coupling-free-running-mode">numerical method</a> for why <code>config.dt</code> is fixed at 10 s.</p>
 <p>The reported <strong><code>energy_transfer</code></strong> is the heat delivered by the indoor surface to the air, accumulated over the converged day:</p>
 <p><span id="eq-energy-transfer"><span class="math display">\[
 E \;=\; \int_{24\,\mathrm{h}} h_i \left( T_{x=L} - T_i \right)^{+} dt
@@ -349,7 +358,7 @@ Note
 <p>The climate forcing is built from the EPW file for the selected month (<code>Location.meanDay(month, year)</code>), at 1-second resolution:</p>
 <ul>
 <li><strong>Outdoor temperature <span class="math inline">\(T_a\)</span></strong> — the monthly means of the daily minimum and maximum, <span class="math inline">\(T_{min}\)</span> and <span class="math inline">\(T_{max}\)</span>, are interpolated with the cosine model of Chow &amp; Levermore <span class="citation" data-cites="chow2007">(<a href="#ref-chow2007" role="doc-biblioref">2007</a>)</span>: the minimum is assumed at sunrise and the maximum at the month’s mean time of daily maximum, both extracted from the EPW.</li>
-<li><strong>Irradiances <span class="math inline">\(I_g\)</span>, <span class="math inline">\(I_b\)</span>, <span class="math inline">\(I_d\)</span></strong> — the month’s hour-by-hour means of global, beam and diffuse horizontal irradiance, interpolated in time to the simulation grid.</li>
+<li><strong>Irradiances</strong> — the month’s hour-by-hour means of the EPW solar fields: <span class="math inline">\(I_g\)</span> = global <strong>horizontal</strong> irradiance (GHI), <span class="math inline">\(I_b\)</span> = direct <strong>normal</strong> irradiance (DNI) and <span class="math inline">\(I_d\)</span> = diffuse <strong>horizontal</strong> irradiance (DHI), linearly interpolated in time to the simulation grid. (The EPW records each value as the energy accumulated over the preceding hour <span class="citation" data-cites="epwspec">(<a href="#ref-epwspec" role="doc-biblioref">U.S. Department of Energy 2022</a>)</span>; the hourly means are treated as mean-power samples, in W/m², placed on the hour.)</li>
 <li><strong>Solar position and sunrise</strong> — computed with pvlib for the site’s latitude, longitude, altitude and timezone (read from the EPW header).</li>
 <li><strong>Comfort quantities</strong> — <span class="math inline">\(T_n\)</span> (<a href="#eq-tn" class="quarto-xref">Equation&nbsp;8</a>) and <code>DeltaTn</code> (constant columns).</li>
 </ul>
@@ -374,7 +383,7 @@ Note
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>Ti</code> (DataFrame)</td>
+<td><code>Ti</code> (<code>pandas.Series</code>)</td>
 <td>both</td>
 <td>Indoor air temperature over the converged day</td>
 <td>°C</td>
@@ -411,7 +420,7 @@ ASHRAE. 1997. <em>ASHRAE Handbook — Fundamentals</em>. SI. American Society of
 Barrios, G., J. M. Casas, G. Huelsz, and J. Rojas. 2016. <span>“Ener-Habitat: An Online Numerical Tool to Evaluate the Thermal Performance of Homogeneous and Non-Homogeneous Envelope Walls/Roofs.”</span> <em>Solar Energy</em> 131: 296–304. <a href="https://doi.org/10.1016/j.solener.2015.12.017">https://doi.org/10.1016/j.solener.2015.12.017</a>.
 </div>
 <div id="ref-chow2007" class="csl-entry" role="listitem">
-Chow, D. H. C., and G. J. Levermore. 2007. <span>“New Algorithm for Generating Hourly Temperature Values Using Daily Maximum, Minimum and Average Values from Climate Models.”</span> <em>Building Services Engineering Research and Technology</em> 28: 237–48.
+Chow, D. H. C., and G. J. Levermore. 2007. <span>“New Algorithm for Generating Hourly Temperature Values Using Daily Maximum, Minimum and Average Values from Climate Models.”</span> <em>Building Services Engineering Research and Technology</em> 28 (3): 237–48. <a href="https://doi.org/10.1177/0143624407078642">https://doi.org/10.1177/0143624407078642</a>.
 </div>
 <div id="ref-holmgren2018" class="csl-entry" role="listitem">
 Holmgren, W. F., C. W. Hansen, and M. A. Mikofski. 2018. <span>“Pvlib Python: A Python Package for Modeling Solar Energy Systems.”</span> <em>Journal of Open Source Software</em> 3 (29): 884. <a href="https://doi.org/10.21105/joss.00884">https://doi.org/10.21105/joss.00884</a>.
@@ -422,8 +431,20 @@ Humphreys, M. A., and F. J. Nicol. 2000. <span>“Outdoor Temperature and Indoor
 <div id="ref-incropera2007" class="csl-entry" role="listitem">
 Incropera, F., D. DeWitt, T. Bergman, and A. Lavine. 2007. <em>Fundamentals of Heat and Mass Transfer</em>. 6th ed. John Wiley; Sons.
 </div>
+<div id="ref-mackey1944" class="csl-entry" role="listitem">
+Mackey, C. O., and L. T. Wright. 1944. <span>“Periodic Heat Flow—Homogeneous Walls or Roofs.”</span> <em>ASHVE Transactions</em> 50: 293–312.
+</div>
 <div id="ref-morillon2004" class="csl-entry" role="listitem">
-Morillón-Gálvez, D., R. Saldaña-Flores, and A. Tejeda-Martínez. 2004. <span>“Human Bioclimatic Atlas for <span>M</span>exico.”</span> <em>Solar Energy</em> 76: 781–92.
+Morillón-Gálvez, D., R. Saldaña-Flores, and A. Tejeda-Martínez. 2004. <span>“Human Bioclimatic Atlas for <span>M</span>exico.”</span> <em>Solar Energy</em> 76 (6): 781–92. <a href="https://doi.org/10.1016/j.solener.2003.11.008">https://doi.org/10.1016/j.solener.2003.11.008</a>.
+</div>
+<div id="ref-nom008" class="csl-entry" role="listitem">
+Secretaría de Energía (México). 2001. <em><span>NOM-008-ENER-2001</span>: Eficiencia Energ<span>é</span>tica En Edificaciones, Envolvente de Edificios No Residenciales</em>. Diario Oficial de la Federaci<span>ó</span>n. <a href="https://e.economia.gob.mx/wp-content/uploads/sites/29/PDF_Normas_Publicas/008ener.pdf">https://e.economia.gob.mx/wp-content/uploads/sites/29/PDF_Normas_Publicas/008ener.pdf</a>.
+</div>
+<div id="ref-nom020" class="csl-entry" role="listitem">
+Secretaría de Energía (México). 2011. <em><span>NOM-020-ENER-2011</span>: Eficiencia Energ<span>é</span>tica En Edificaciones, Envolvente de Edificios Para Uso Habitacional</em>. Diario Oficial de la Federaci<span>ó</span>n.
+</div>
+<div id="ref-epwspec" class="csl-entry" role="listitem">
+U.S. Department of Energy. 2022. <em>EnergyPlus Auxiliary Programs: Weather File (<span>EPW</span>) Data Dictionary</em>. <a href="https://bigladdersoftware.com/epx/docs/22-1/auxiliary-programs/energyplus-weather-file-epw-data-dictionary.html" class="uri">Https://bigladdersoftware.com/epx/docs/22-1/auxiliary-programs/energyplus-weather-file-epw-data-dictionary.html</a>.
 </div>
 </div>
 
