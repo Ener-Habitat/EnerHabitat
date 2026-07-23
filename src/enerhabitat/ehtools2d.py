@@ -627,6 +627,56 @@ def _view_factors(a21, e22):
     return Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld
 
 
+# Surface order of the 4x4 cavity matrices: up, down, left, right.
+_SURF_U, _SURF_D, _SURF_L, _SURF_R = 0, 1, 2, 3
+
+
+def _view_factor_matrix(a21, e22):
+    """4×4 view-factor matrix (order u, d, l, r) from :func:`_view_factors`."""
+    (Fud, Ful, Fur, Fru, Frd, Frl,
+     Fdl, Fdr, Fdu, Flu, Flr, Fld) = _view_factors(a21, e22)
+    F = np.zeros((4, 4))
+    F[_SURF_U, _SURF_D] = Fud; F[_SURF_U, _SURF_L] = Ful; F[_SURF_U, _SURF_R] = Fur
+    F[_SURF_D, _SURF_U] = Fdu; F[_SURF_D, _SURF_L] = Fdl; F[_SURF_D, _SURF_R] = Fdr
+    F[_SURF_L, _SURF_U] = Flu; F[_SURF_L, _SURF_R] = Flr; F[_SURF_L, _SURF_D] = Fld
+    F[_SURF_R, _SURF_U] = Fru; F[_SURF_R, _SURF_D] = Frd; F[_SURF_R, _SURF_L] = Frl
+    return F
+
+
+def _transfer_factors(a21, e22, emissivity):
+    """
+    Radiative **transfer factors** of the grey diffuse cavity enclosure
+    (Gebhart formulation), in the same 12-name order as :func:`_view_factors`.
+
+    Solving the radiosity system for the 4 isothermal cavity surfaces with
+    uniform emissivity ε gives the exact net exchange in pairwise form,
+
+        Q_m = Σ_n A_m 𝔉_mn σ (T_m⁴ − T_n⁴),
+        𝔉 = ε² (I − (1−ε) F)⁻¹ F,
+
+    where F is the view-factor matrix. 𝔉 inherits reciprocity
+    (A_m 𝔉_mn = A_n 𝔉_nm) and satisfies Σ_n 𝔉_mn = ε; for ε = 1 it reduces to
+    F (black surfaces, the direct-exchange model inherited from the C).
+
+    Because the kernels compute ``Q = A·E·σ·F_mn·(T⁴−T⁴)``, production passes
+    these factors with ``E = 1``: the kernel expression then evaluates the
+    exact grey-enclosure exchange with no kernel changes. Passing plain view
+    factors with ``E = ε`` reproduces the legacy approximation instead (kept
+    for the C golden masters).
+
+    Returns:
+        (Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld) —
+        transfer factors 𝔉, same ordering as :func:`_view_factors`.
+    """
+    eps = float(emissivity)
+    F = _view_factor_matrix(a21, e22)
+    G = (eps * eps) * np.linalg.solve(np.eye(4) - (1.0 - eps) * F, F)
+    return (G[_SURF_U, _SURF_D], G[_SURF_U, _SURF_L], G[_SURF_U, _SURF_R],
+            G[_SURF_R, _SURF_U], G[_SURF_R, _SURF_D], G[_SURF_R, _SURF_L],
+            G[_SURF_D, _SURF_L], G[_SURF_D, _SURF_R], G[_SURF_D, _SURF_U],
+            G[_SURF_L, _SURF_U], G[_SURF_L, _SURF_R], G[_SURF_L, _SURF_D])
+
+
 def solve_step_hueca(NT, k, rhoc, To, Tsa, Tint, Thueco, ho, hi, dt, dx, dy,
                      La, X, rhoair, cair, i1, j1, i2, j2, a21, e22, E, beta,
                      tol=1e-10):

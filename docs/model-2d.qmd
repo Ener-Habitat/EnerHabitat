@@ -118,15 +118,31 @@ inside the iteration of every time step (see the
 ### Radiation between cavity surfaces
 
 The four cavity walls exchange long-wave radiation. The air is non-participating, the
-surfaces are grey and diffuse with emissivity $\varepsilon$ (the `emissivity` parameter,
-0.9 by default), and each surface emits at its mean temperature [@incropera2007]. The
-net exchange between surfaces $m$ and $n$ is
+surfaces are grey and diffuse with uniform emissivity $\varepsilon$ (the `emissivity`
+parameter, 0.9 by default), and each surface emits at its mean temperature
+[@incropera2007]. Because grey surfaces reflect, the exchange couples all four
+surfaces through multiple reflections; the enclosure is solved exactly with the
+**radiosity system** in Gebhart form [@gebhart1961; @incropera2007]. For the four
+isothermal surfaces the solution reduces to a pairwise expression with constant
+**transfer factors** $\mathfrak{F}_{mn}$:
 
 $$
-q_{m \to n} \;=\; \varepsilon\, \sigma\, F_{mn} \left( T_m^4 - T_n^4 \right),
+q_{m \to n} \;=\; \mathfrak{F}_{mn}\, \sigma \left( T_m^4 - T_n^4 \right),
+\qquad
+\mathfrak{F} \;=\; \varepsilon^2 \left[ I - (1-\varepsilon)\, F \right]^{-1} F,
 $$ {#eq-rad}
 
-with $\sigma$ the Stefan–Boltzmann constant and $F_{mn}$ the view factor between them.
+with $\sigma$ the Stefan–Boltzmann constant and $F$ the view-factor matrix. The
+$\mathfrak{F}_{mn}$ inherit reciprocity ($A_m \mathfrak{F}_{mn} = A_n
+\mathfrak{F}_{nm}$), satisfy the closure $\sum_n \mathfrak{F}_{mn} = \varepsilon$, and
+reduce to $F_{mn}$ for black surfaces ($\varepsilon = 1$). Since the geometry and
+$\varepsilon$ are constant, the $4\times4$ system is solved **once** per cavity
+geometry; per-surface emissivities are supported by the same formulation. (The
+legacy Ener-Habitat tool used the direct-exchange approximation
+$q = \varepsilon \sigma F_{mn} \Delta T^4$, which overestimates the dominant pair —
+e.g. by ~10 % at $\varepsilon = 0.9$ in the parallel-plate limit, where the exact
+factor is $1/(2/\varepsilon - 1)$.)
+
 For a rectangular cavity of width $w$ and depth $d$ the view factors follow from the
 crossed-strings method; e.g. between the top wall and one lateral wall, and between
 the two opposite walls:

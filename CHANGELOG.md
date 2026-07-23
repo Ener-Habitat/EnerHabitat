@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Cavity radiation solved with radiosity** (P0-02): the grey diffuse
+  enclosure of each cavity is now solved exactly via Gebhart transfer factors
+  `𝔉 = ε²(I−(1−ε)F)⁻¹F`, precomputed once per geometry and fed to the
+  unchanged kernels (which evaluate the same pairwise form with `E = 1`). The
+  previous direct-exchange approximation `ε·σ·F·ΔT⁴` — inherited from the C —
+  overestimated the dominant pair by ~10 % at ε = 0.9. **2D results with
+  `Fill.AIR` change**; `ε = 1` and the legacy/golden paths are bit-identical.
+  Per-surface emissivities are now supported by the formulation.
+
 - **1D layer-to-mesh mapping corrected** (P0-05): layers are now assigned by
   cumulative coordinates (cell-centre material, thickness-weighted ρc — total
   thermal mass conserved exactly) and interior face conductances are computed

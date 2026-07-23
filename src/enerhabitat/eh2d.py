@@ -32,7 +32,7 @@ import numpy as np
 from .config import config, config2d
 from .ehtools2d import (solve_day_2d, solve_day_hueca_prod, solve_day_slab_prod,
                         solve_day_2d_ac, solve_day_hueca_ac, solve_day_slab_ac,
-                        _view_factors)
+                        _transfer_factors)
 
 
 class Fill(Enum):
@@ -846,23 +846,25 @@ class System2D:
 
         if isinstance(elem, Slab) and elem.fill_type is Fill.AIR:
             g = elem._geom()
-            vf = _view_factors(g["cavity_width"], g["cavity"])
+            # Gebhart transfer factors (exact grey enclosure) with E=1 in the
+            # kernels; legacy pairwise ε·F is kept only for the C golden tests.
+            vf = _transfer_factors(g["cavity_width"], g["cavity"], elem.emissivity)
             out = solve_day_slab_prod(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
                 sec.cav_of, sec.cav_i1, sec.cav_i2, sec.info["cj1"], sec.info["cj2"],
-                g["cavity_width"], g["cavity"], elem.emissivity, float(self.tilt), *vf,
+                g["cavity_width"], g["cavity"], 1.0, float(self.tilt), *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
                 config2d.max_inner)
             Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout, day_err, inner_ok, inner_max = out
         elif elem.fill_type is Fill.AIR:   # HollowBlock (wall)
             a, e = elem._ae()
             a21, e22 = a["a21"], e["e22"]
-            vf = _view_factors(a21, e22)
+            vf = _transfer_factors(a21, e22, elem.emissivity)
             out = solve_day_hueca_prod(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
-                m.i1, m.j1, m.i2, m.j2, a21, e22, elem.emissivity, *vf,
+                m.i1, m.j1, m.i2, m.j2, a21, e22, 1.0, *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
                 config2d.max_inner)
             Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout, day_err, inner_ok, inner_max = out
@@ -934,23 +936,23 @@ class System2D:
 
         if isinstance(elem, Slab) and elem.fill_type is Fill.AIR:
             g = elem._geom()
-            vf = _view_factors(g["cavity_width"], g["cavity"])
+            vf = _transfer_factors(g["cavity_width"], g["cavity"], elem.emissivity)
             out = solve_day_slab_ac(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
                 sec.cav_of, sec.cav_i1, sec.cav_i2, sec.info["cj1"], sec.info["cj2"],
-                g["cavity_width"], g["cavity"], elem.emissivity, float(self.tilt), *vf,
+                g["cavity_width"], g["cavity"], 1.0, float(self.tilt), *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
                 config2d.max_inner)
             Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat, day_err, inner_ok, inner_max = out
         elif elem.fill_type is Fill.AIR:   # HollowBlock (wall)
             a, e = elem._ae()
             a21, e22 = a["a21"], e["e22"]
-            vf = _view_factors(a21, e22)
+            vf = _transfer_factors(a21, e22, elem.emissivity)
             out = solve_day_hueca_ac(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
-                m.i1, m.j1, m.i2, m.j2, a21, e22, elem.emissivity, *vf,
+                m.i1, m.j1, m.i2, m.j2, a21, e22, 1.0, *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
                 config2d.max_inner)
             Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat, day_err, inner_ok, inner_max = out
