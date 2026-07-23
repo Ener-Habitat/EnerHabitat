@@ -174,18 +174,6 @@ consistent if the user changes the air properties. Because $h_c$ depends on the 
 temperatures, it is re-evaluated inside the iteration of every time step (see the
 [numerical method](numerics.qmd#solution-algorithm)).
 
-::: {.callout-important title="CORREGIDO — pendiente de verificación (GBV). Nota interna: retirar antes de publicar."}
-La ν heredada del C era $1.11\times10^{-5}$ m²/s (aire a ~240 K, inconsistente
-con el resto del conjunto a 300 K). Corregida (jul 2026): ahora se calcula
-$\nu = \mu_{Sutherland}(300\,\mathrm{K})/\rho_a$ en
-`src/enerhabitat/ehtools2d.py` (`_MU_AIR`, `_T_AIR_REF`), con test en
-`tests/test_air_properties.py`. El cambio **solo afecta techos** `Slab` con
-`Fill.AIR` ($Ra$ era ~43 % mayor; el $h_c$ de techo baja algo). Batería de
-regresión re-corrida en verde. **Pendiente:** verificación experimental de la
-correlación con la ν corregida en la campaña de validación, y regeneración de
-los ejemplos de techo (N1-5).
-:::
-
 ### Radiation between cavity surfaces
 
 The four cavity walls exchange long-wave radiation. The air is non-participating, the
