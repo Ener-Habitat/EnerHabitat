@@ -31,8 +31,9 @@ The model assumes:
   homogeneous, so there is no in-plane heat flow.
 - **Constant thermal properties** per layer (no temperature dependence, no moisture).
 - **Convective boundary conditions** with fixed film coefficients $h_o$ (outdoor) and
-  $h_i$ (indoor). The defaults, $h_o = 13$ and $h_i = 8.6$ W/m²·K, are the values
-  prescribed by the Mexican standards NOM-020-ENER and NOM-008-ENER; both are
+  $h_i$ (indoor). The defaults, $h_o = 13$ and $h_i = 8.1$ W/m²·K, are the values
+  prescribed by the Mexican standards NOM-008-ENER and NOM-020-ENER ($h_i = 8.1$
+  is the vertical-surface value, applied here to all orientations); both are
   configurable.
 - **Solar and long-wave radiation** on the outdoor surface enter through the sun–air
   temperature (@eq-tsa).
@@ -186,7 +187,7 @@ and `absortance`, and returns it on the same time grid used by the solvers.
 
 | Result | Mode | Meaning | Units |
 |---|---|---|---|
-| `Ti` (DataFrame) | both | Indoor air temperature over the converged day | °C |
+| `Ti` (`pandas.Series`) | both | Indoor air temperature over the converged day | °C |
 | `energy_transfer` | `solve()` | Energy delivered to the indoor air (@eq-energy-transfer) | J/(m²·day) |
 | `cooling_energy` | `solveAC()` | Cooling demand to hold $T_n$ (@eq-energies-ac) | J/(m²·day) |
 | `heating_energy` | `solveAC()` | Heating demand to hold $T_n$ (@eq-energies-ac) | J/(m²·day) |

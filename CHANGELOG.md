@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **API-accuracy doc fixes (P1 series)**: `solve()`/`solveAC()` return a
+  `pandas.Series` named `"Ti"`, not a DataFrame — corrected in usage/api/
+  model-1d pages, 1D docstrings and type annotations (which also promised a
+  nonexistent `energy` argument and `Qcool, Qheat` return values; the energies
+  are instance attributes). Use `.to_frame("Ti")` when a DataFrame is needed.
+
 - **Cavity radiation solved with radiosity** (P0-02): the grey diffuse
   enclosure of each cavity is now solved exactly via Gebhart transfer factors
   `𝔉 = ε²(I−(1−ε)F)⁻¹F`, precomputed once per geometry and fed to the

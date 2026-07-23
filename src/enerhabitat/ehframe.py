@@ -392,15 +392,16 @@ class System():
         self.__flag['recalculate'] = recalculate
         return self.__tsa_dataframe
     
-    def solve(self) -> pd.DataFrame:
+    def solve(self) -> pd.Series:
         """
         Solves the constructive system's inside temperature with the Tsa simulation dataframe.
 
-        Args:
-            energy (bool): If True, returns also the energy transfer ET.
-        
         Returns:
-            Ti (DataFrame): Interior temperature for the constructive system.
+            Ti (pandas.Series named "Ti"): Interior temperature for the
+            constructive system, on the ``config.dt`` time grid. Use
+            ``.to_frame("Ti")`` when a DataFrame is required. Also stores
+            ``energy_transfer``, ``days``, ``day_error``, ``converged`` and
+            ``energy_imbalance`` on the instance.
         """
         constructive_system = self.layers
         if len(constructive_system) == 0:
@@ -426,14 +427,16 @@ class System():
             
         return self.__solve_dataframe
     
-    def solveAC(self) -> pd.DataFrame:
+    def solveAC(self) -> pd.Series:
         """
-        Solves the constructive system's required cooling and heating energy to 
+        Solves the constructive system's required cooling and heating energy to
         maintain the interior temperature with the Tsa simulation dataframe.
 
         Returns:
-            Ti (DataFrame): Interior temperature for the constructive system.
-            Qcool, Qheat (float): Cooling energy and heating energy values.
+            Ti (pandas.Series named "Ti"): Interior temperature for the
+            constructive system. The energies are stored on the instance as
+            ``cooling_energy`` and ``heating_energy`` (J/(m²·day)), along with
+            ``days``, ``day_error`` and ``converged``.
         """
         constructive_system = self.layers
         if len(constructive_system) == 0:
@@ -581,9 +584,10 @@ class System():
             Tsa_dataframe (DataFrame): Predicted sun-air temperature ( Tsa ) at the dt grid for the average day DataFrame.
 
         Returns:
-            Ti (DataFrame): Interior temperature for the constructive system.
-            ET (float): Energy transfer if energia=True.
-            Qcool, Qheat (float): Cooling energy and heating energy values if AC=True.
+            Ti (pandas.Series named "Ti"): Interior temperature for the
+            constructive system. The energies are stored on the instance:
+            ``energy_transfer`` (free-running) or ``cooling_energy`` /
+            ``heating_energy`` (AC), plus the convergence diagnostics.
         """
         
         La = config.La # Length of the dummy frame

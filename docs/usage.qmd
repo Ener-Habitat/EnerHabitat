@@ -25,9 +25,11 @@ To simulate a wall (or roof) you need to:
    - **`solveAC()`** — air-conditioned: `Ti` is held at the comfort setpoint and the
      cooling/heating energies are reported.
 
-Both solvers return pandas DataFrames indexed by time of day, on the same time grid as
-`Tsa()` — so results concatenate directly (`pd.concat([data, wall.Tsa()], axis=1)`,
-no resampling, no NaN).
+Both solvers return a `pandas.Series` named `"Ti"`, indexed by time of day on the same
+time grid as `Tsa()` — so results concatenate directly
+(`pd.concat([data, wall.Tsa()], axis=1)` promotes the named Series to a column; no
+resampling, no NaN). When a `DataFrame` is required, convert with
+`wall.solve().to_frame("Ti")`.
 
 > `Tsa` depends on `absortance`, `tilt`, `azimuth`, the month (`meanDay`) and the
 > `Location` — it must be recomputed whenever any of these change.

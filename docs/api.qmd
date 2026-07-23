@@ -73,8 +73,10 @@ Read-only results (energy per unit surface area over the converged day, **J/(m²
 
 - `Tsa()` — sun–air temperature and `Is` for the current color/orientation/month, on
   the solver's time grid (results concatenate directly with `solve()` output).
-- `solve()` — free-running indoor temperature `Ti` (DataFrame).
-- `solveAC()` — `Ti` held at $T_n$; sets `cooling_energy`/`heating_energy`.
+- `solve()` — free-running indoor temperature `Ti` (`pandas.Series` named `"Ti"`;
+  use `.to_frame("Ti")` when a DataFrame is needed).
+- `solveAC()` — `Ti` held at $T_n$ (constant `pandas.Series`); sets
+  `cooling_energy`/`heating_energy`.
 - `add_layer(material, width)` / `remove_layer(index)` — edit the stack (appends at
   the inside).
 - `copy()`, `info()`, `flag()`.
