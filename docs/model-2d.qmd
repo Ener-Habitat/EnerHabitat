@@ -165,27 +165,27 @@ h_c \;=\; \frac{k_{air}}{d}
 Ra = \frac{g\, \beta\, \Delta T\, d^3}{\nu\, \alpha},
 $$ {#eq-nu-roof}
 
-where $[\,\cdot\,]^{+}$ keeps the positive part and the air properties are evaluated at
-ambient conditions ($k_{air} = 0.0262$ W/(m·K), $\nu = 1.11\times10^{-5}$ m²/s,
-$\beta = 1/300$ K⁻¹). Because $h_c$ depends on the wall temperatures, it is re-evaluated
-inside the iteration of every time step (see the
+where $[\,\cdot\,]^{+}$ keeps the positive part and the air properties are anchored at
+a fixed reference temperature of 300 K [@incropera2007]: $k_{air} = 0.0262$ W/(m·K),
+$\beta = 1/300$ K⁻¹, and $\mu(300\,\mathrm{K}) = 1.846\times10^{-5}$ Pa·s from
+Sutherland's law. The kinematic values entering $Ra$ are computed with the
+**configurable** air density and heat capacity — $\nu = \mu/\rho_a \approx
+1.56\times10^{-5}$ m²/s and $\alpha = k_{air}/(\rho_a c_a) \approx
+2.21\times10^{-5}$ m²/s with the defaults — so they remain thermodynamically
+consistent if the user changes the air properties. Because $h_c$ depends on the wall
+temperatures, it is re-evaluated inside the iteration of every time step (see the
 [numerical method](numerics.qmd#solution-algorithm)).
 
-::: {.callout-important title="PENDIENTE DE CORRECCIÓN Y VERIFICACIÓN (GBV) — viscosidad ν. Nota interna: retirar antes de publicar."}
-Las propiedades del aire provienen de **Incropera** (tabla A.4). A ~300 K
-concuerdan $k_{air} = 0.0262$ W/(m·K), $\beta = 1/300$ K⁻¹ y
-$\alpha = k_{air}/(\rho_a c_a) \approx 2.21\times10^{-5}$ m²/s — pero
-$\nu = 1.11\times10^{-5}$ m²/s **no**: Incropera a 300 K da
-$1.589\times10^{-5}$; el valor del código corresponde a aire a ~240 K
-(−33 °C). Probable errata heredada del código C.
-
-**Dónde está:** `src/enerhabitat/ehtools2d.py:928` (`_NU_AIR = 1.11e-5`),
-usada solo en `_slab_hh` (`:938-947`) para el $Ra$ de Hollands — es decir,
-**solo afecta techos** (`Slab` con `Fill.AIR`); la correlación de muro
-(@eq-nu-wall) no usa $\nu$. Efecto: $Ra \propto 1/\nu$ sobreestimado ~43 % →
-$h_c$ de cavidades de techo algo mayor. **Corregir a $1.589\times10^{-5}$
-implica re-verificar los resultados 2D de techos** (batería AC + regeneración
-de ejemplos) — hacerlo antes de N1-5 para regenerar una sola vez.
+::: {.callout-important title="CORREGIDO — pendiente de verificación (GBV). Nota interna: retirar antes de publicar."}
+La ν heredada del C era $1.11\times10^{-5}$ m²/s (aire a ~240 K, inconsistente
+con el resto del conjunto a 300 K). Corregida (jul 2026): ahora se calcula
+$\nu = \mu_{Sutherland}(300\,\mathrm{K})/\rho_a$ en
+`src/enerhabitat/ehtools2d.py` (`_MU_AIR`, `_T_AIR_REF`), con test en
+`tests/test_air_properties.py`. El cambio **solo afecta techos** `Slab` con
+`Fill.AIR` ($Ra$ era ~43 % mayor; el $h_c$ de techo baja algo). Batería de
+regresión re-corrida en verde. **Pendiente:** verificación experimental de la
+correlación con la ν corregida en la campaña de validación, y regeneración de
+los ejemplos de techo (N1-5).
 :::
 
 ### Radiation between cavity surfaces

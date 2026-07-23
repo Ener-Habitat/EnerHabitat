@@ -920,13 +920,24 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
 # cavity each air/wall node belongs to, from `cav_of`. Production conventions
 # (single dt in Thueco/Tint, surfaces /(nx-1)).
 #
-# Air properties for the roof Nusselt (identical to the C):
-#   gr=9.81, Beta=1/300, nu=1.11e-5, kair=0.0262, alphaair=kair/(rhoair·cair).
+# Air properties for the roof Nusselt, anchored at a fixed reference
+# temperature (Incropera, Table A.4). The C hardcoded nu = 1.11e-5 m²/s,
+# which corresponds to air at ~240 K — inconsistent with the rest of the set
+# (~300 K); it is now computed:
+#   - beta = 1/T_ref (ideal gas);
+#   - mu(T_ref) from Sutherland's law (at 300 K: 1.846e-5 Pa·s, matching
+#     Incropera);
+#   - nu = mu / rho_air and alpha = k_air/(rho_air·c_air), both with the
+#     CONFIGURABLE air density/heat capacity, so nu and alpha stay
+#     thermodynamically consistent if the user changes the air properties.
 
+_T_AIR_REF = 300.0                 # K, reference temperature of the property set
 _GR = 9.81
-_BETA_EXP = 1.0 / 300.0
-_NU_AIR = 1.11e-5
-_K_AIR = 0.0262
+_BETA_EXP = 1.0 / _T_AIR_REF
+_K_AIR = 0.0262                    # W/(m·K), Incropera at _T_AIR_REF
+# Sutherland's law: mu_ref = 1.716e-5 Pa·s at 273.15 K, S = 110.4 K
+_MU_AIR = 1.716e-5 * (_T_AIR_REF / 273.15) ** 1.5 \
+    * (273.15 + 110.4) / (_T_AIR_REF + 110.4)
 
 
 @njit(cache=True)
@@ -1142,6 +1153,7 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     Cair = rhoair * cair * La * X
     Ch = rhoair * cair * cavity_width * e22
     alphaair = _K_AIR / rhoair / cair
+    nuair = _MU_AIR / rhoair
     Th_prev_day = np.empty(n_cav)
     days = 0
     day_err = 1.0e9
@@ -1168,7 +1180,7 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             it_s, conv_s, _e = _step_slab(
                        k, rhoc, To, T, Tsa_arr[s], Ti_old, Th, ho, hi, dt, dx, dy,
                        NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
-                       _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair,
+                       _K_AIR, _GR, _BETA_EXP, nuair, alphaair,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                        a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright,
                        tol_inner, max_inner, False)
@@ -1249,11 +1261,12 @@ def solve_step_slab(NT, k, rhoc, To, Tsa, Tint, Th0, ho, hi, dt, dx, dy,
     Qleft = np.empty(n_cav); Qright = np.empty(n_cav)
     vf = _view_factors(cavity_width, e22)
     alphaair = _K_AIR / rhoair / cair
+    nuair = _MU_AIR / rhoair
     T = To.copy()
     iters, converged, _err = _step_slab(
         k, rhoc, To, T, float(Tsa), float(Tint), Th, ho, hi, dt, dx, dy,
         NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, float(beta),
-        _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair, *vf,
+        _K_AIR, _GR, _BETA_EXP, nuair, alphaair, *vf,
         a, b, cc, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol,
         1000000000, True)
     Ch = rhoair * cair * cavity_width * e22
@@ -1462,6 +1475,7 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
     Ch = rhoair * cair * cavity_width * e22
     alphaair = _K_AIR / rhoair / cair
+    nuair = _MU_AIR / rhoair
     Th_prev_day = np.empty(n_cav)
     days = 0; day_err = 1.0e9; Qcool = Qheat = 0.0
     inner_ok = True
@@ -1484,7 +1498,7 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             it_s, conv_s, _e = _step_slab(
                        k, rhoc, To, T, Tsa_arr[s], Tset, Th, ho, hi, dt, dx, dy,
                        NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
-                       _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair,
+                       _K_AIR, _GR, _BETA_EXP, nuair, alphaair,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                        a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright,
                        tol_inner, max_inner, False)

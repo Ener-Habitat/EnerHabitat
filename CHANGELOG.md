@@ -22,6 +22,13 @@
   now silent and leaves `config.materials == {}`; the `file` getter no longer
   performs I/O nor returns `None`.
 
+- **Roof-cavity air viscosity corrected and de-hardcoded**: the C inherited
+  `ν = 1.11e-5` m²/s — air at ~240 K, inconsistent with the rest of the
+  property set (300 K). ν is now computed as Sutherland `μ(300 K)`
+  (1.846e-5 Pa·s, matching Incropera) divided by the **configurable** air
+  density, keeping ν and α thermodynamically consistent (`ν ≈ 1.56e-5` with
+  the defaults). Only `Slab` + `Fill.AIR` roofs are affected (their Rayleigh
+  number was ~43 % overestimated; the Hollands `h_c` decreases slightly).
 - **Bibliography completed**: DOIs/issue numbers for Xamán, Hollands, Chow &
   Levermore, Morillón and Borbón (full-text URL); NOM-008-ENER-2001 (Appendix
   B) and NOM-020-ENER-2011 added as standards and cited where the `ho`/`hi`
