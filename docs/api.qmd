@@ -99,6 +99,10 @@ result attributes. Differences:
 - `layers` contains, besides ordinary `(material, thickness)` tuples, **exactly one**
   2D element: a [`HollowBlock`](#hollowblock) or a [`Slab`](#slab). The element's
   thickness is derived from its `geometry`.
+- The stack accepts at most **7 layers, including the 2D element** — the section
+  builder uses the fixed seven slots (`L1…L7`) inherited from the C engine.
+  Exceeding it raises `ValueError: at most 7 layers (including the 2D element).`
+  The 1D `System` has no layer limit.
 - Orientation is validated: `HollowBlock` requires `tilt = 90`, `Slab` `tilt = 0`.
 - `setpoint` exists **only** in 2D; the 1D `System` always uses the mean neutrality
   temperature as the AC setpoint.

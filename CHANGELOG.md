@@ -25,7 +25,9 @@
   (2D-only `setpoint`, missing `flag()`, `copy()` shares the `Location` in 2D
   but re-creates it in 1D, writable vs read-only result attributes, per-mode
   caches, extra 2D outputs); README no longer claims the interfaces are
-  identical.
+  identical. The 2D 7-layer limit (fixed `L1…L7` slots inherited from the C
+  engine; already enforced with a clear `ValueError`) is now documented in
+  api/usage.
 
 - **Cavity radiation solved with radiosity** (P0-02): the grey diffuse
   enclosure of each cavity is now solved exactly via Gebhart transfer factors

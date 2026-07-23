@@ -239,6 +239,8 @@ wall2d.tilt = 90                      # walls only (required for HollowBlock)
 wall2d.azimuth = 90
 wall2d.absortance = 0.6
 wall2d.layers = [("Mortero", 0.02), block, ("Yeso", 0.01)]
+# 2D stacks accept at most 7 layers INCLUDING the 2D element (fixed slots
+# inherited from the C engine); exceeding it raises ValueError. 1D has no limit.
 
 wall2d.location.meanDay(month=5, year=2025)
 wall2d.Tsa()
