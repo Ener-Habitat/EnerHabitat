@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
+
+**Scientific-review release** — every P0 blocker and all P1/P2 items of the
+July 2026 documentation/model review are resolved. Results are **not**
+bit-reproducible against 0.2.1: the default `hi`, the cavity radiation model,
+the 1D layer mapping, the roof-air viscosity, the wall convective constant
+and the intermediate-tilt `RF` all changed (each documented below). The
+independent validation campaign (EnergyPlus + Borbón hot box) runs in a
+separate repository on top of this version.
 
 - **`Fill.SOLID_SYMMETRIC` removed (P1)**: the C's `tipo 4` (symmetric half
   cell) is deliberately not ported — it is redundant with `Fill.SOLID` on the

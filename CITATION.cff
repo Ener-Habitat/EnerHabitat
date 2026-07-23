@@ -15,7 +15,8 @@ authors:
     affiliation: "Instituto de Energías Renovables, UNAM"
   - family-names: "Rodríguez Calderón"
     given-names: "Fernando"
-version: 0.2.1
+version: 0.3.0
+date-released: 2026-07-23
 license: MIT
 repository-code: "https://github.com/Ener-Habitat/EnerHabitat"
 url: "https://ener-habitat.github.io/EnerHabitat/"

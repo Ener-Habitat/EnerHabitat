@@ -7,4 +7,4 @@ from .eh2d import System2D, Section2D, Fill, HollowBlock, Slab
 try:
     __version__ = _pkg_version("enerhabitat")
 except PackageNotFoundError:        # not installed (e.g. running from source)
-    __version__ = "0.2.0"
+    __version__ = "0.3.0"
