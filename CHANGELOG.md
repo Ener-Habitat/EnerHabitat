@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`Fill.SOLID_SYMMETRIC` removed (P1)**: the C's `tipo 4` (symmetric half
+  cell) is deliberately not ported — it is redundant with `Fill.SOLID` on the
+  full cell and inapplicable to `Slab` (L-shaped rib breaks the symmetry). The
+  member was never functional (it always raised `NotImplementedError`), so no
+  working code is affected; the docs always listed two values.
 - **Targeted range validation (P1)**: physically corrupting inputs now raise
   `ValueError` instead of being accepted silently — `absortance` outside
   `[0, 1]` (1D and 2D), `config.La/ho/hi`/air properties ≤ 0, non-integer or

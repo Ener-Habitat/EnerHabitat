@@ -36,17 +36,21 @@ from .ehtools2d import (solve_day_2d, solve_day_hueca_prod, solve_day_slab_prod,
 
 
 class Fill(Enum):
-    """State of the filler block (what the C numeric ``tipo`` controls)."""
+    """State of the filler block (what the C numeric ``tipo`` controls).
+
+    The C's ``tipo 4`` (symmetric half cell, solid) is deliberately not
+    ported: it is redundant with ``SOLID`` on the full cell (the adiabatic
+    sides already are symmetry planes) and inapplicable to ``Slab`` (the
+    L-shaped rib breaks the mirror symmetry).
+    """
     SOLID = "solid"            # tipo 2: solid block (fill kr, rhocr)
     AIR = "air"                  # tipo 1: air cavity (radiation + Nusselt)  [Phase 6]
-    SOLID_SYMMETRIC = "solid_sym"  # tipo 4: symmetric half cell, solid    [later]
 
 
 # Mapping to the C `tipo` integers, to read .inp files and legacy golden masters.
 TIPO_C = {
     Fill.AIR: 1,
     Fill.SOLID: 2,
-    Fill.SOLID_SYMMETRIC: 4,
 }
 
 
@@ -451,7 +455,7 @@ class Section2D:
                                      self.L, self.k, self.rhoc)
         else:
             raise NotImplementedError(
-                f"{self.fill_type} (symmetric tipo 4) not ported yet.")
+                f"unsupported fill_type: {self.fill_type!r}")
         self.mesh, self.NT, self.kfield, self.rhocfield = m, NT, kf, rf
         return self
 
