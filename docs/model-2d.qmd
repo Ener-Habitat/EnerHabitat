@@ -120,35 +120,33 @@ node. The convective coefficient $h_c$ depends on the cavity orientation.
 
 ### Convective coefficient: walls vs roofs
 
-For a **wall** (`tilt = 90`, vertical cavity) EnerHabitat uses the correlation of
-Xamán et al. [-@xaman2005] for cavities of façade elements, as a function of the
-temperature difference between the two faces across the thickness and the cavity depth
-$d$ (m):
+For a **wall** (`tilt = 90`, vertical cavity) EnerHabitat uses the turbulent
+correlation of Xamán et al. [-@xaman2005] for tall cavities of façade elements —
+their Eq. (11), aspect ratio 20, $10^4 \le Ra_L \le 10^8$:
+$Nu = 0.0857\,Ra_L^{0.3033}$. Substituting $Ra_L = g\beta\Delta T d^3/(\nu\alpha)$
+and $Nu = h_c d / k_{air}$, with the air properties anchored at 300 K (see the roof
+correlation below), gives the dimensional form actually evaluated, as a function of
+the temperature difference between the two faces across the thickness and the cavity
+depth $d$ (m):
 
 $$
-h_c \;=\; 0.4005\; \frac{\left| T_{out} - T_{in} \right|^{0.3033}}{d^{\,0.0901}}
-\qquad \left[\mathrm{W/m^2\,K}\right].
+h_c \;=\; C_w\, \frac{\left| T_{out} - T_{in} \right|^{0.3033}}{d^{\,0.0901}},
+\qquad
+C_w = 0.0857\, k_{air} \left( \frac{g\,\beta}{\nu\,\alpha} \right)^{0.3033}
+\approx 0.59,
 $$ {#eq-nu-wall}
 
-::: {.callout-important title="PENDIENTE DE REVISIÓN (GBV) — procedencia de @eq-nu-wall. Nota interna: retirar antes de publicar."}
-La forma dimensional de @eq-nu-wall **no aparece así en Xamán et al. (2005)**
-(el artículo reporta ajustes adimensionales $Nu(Ra)$). El álgebra demuestra que
-es la reducción de un ajuste $Nu = C\,Ra^{n}$ con propiedades de aire fijas:
-sustituyendo $Ra = g\beta\Delta T d^3/\nu\alpha$ y $Nu = h_c d/k_{air}$ se
-obtiene $h_c = C\,k_{air}(g\beta/\nu\alpha)^{n}\,\Delta T^{n}\,d^{\,3n-1}$; con
-$n = 0.3033$ el exponente de $d$ da $3n-1 = -0.0901$, **exactamente** el del
-código. Despejando con las propiedades del código, la correlación subyacente es
-$Nu \approx 0.052\,Ra^{0.3033}$.
-
-**Por revisar:** ¿de cuál ajuste de Xamán 2005 sale (¿régimen turbulento?,
-¿qué relación de aspecto: 20, 40, 80?) y quién hizo la reducción (¿equipo
-EnerHabitat, 2016?). Documentarlo aquí como «derivada de Xamán ec. X con
-propiedades de aire de Incropera a 300 K». La constante vive en
-`src/enerhabitat/ehtools2d.py:491` (muro, `_step_hueca`) y `:937` (`_slab_hh`
-con `beta = 90`). Ojo: el rango de Xamán es cavidades altas (A = 20–80,
-$Ra$ 10²–10⁸); la cavidad del bloque documentado (0.16 × 0.08 m) queda fuera —
-declarar extrapolación mientras la campaña de validación no diga otra cosa.
-:::
+where the exponent of $d$ follows from the reduction ($3 \times 0.3033 - 1 =
+-0.0901$) and $C_w$ is computed at run time from the same property set as the roof
+correlation (so it stays consistent if the air density or heat capacity are
+changed). Two provenance notes: the 2016 tool hardcoded $C_w = 0.4005$ — an
+unrecorded reduction, ~0.61× the value above — which is kept only in the C-fidelity
+regression tests; and Xamán's fits cover **tall** cavities ($A = 20$–$80$), while
+the hollow-block cavity has a much lower aspect ratio, so this use is an
+**extrapolation**. Both the constant and the extrapolation are tested directly by
+the hollow-block hot-box experiment of Borbón et al. [-@borbon2010] in the
+validation campaign; the sensitivity of the documented wall's daily energies to
+$C_w$ is ~1 % (0.4005 → 0.59).
 
 For a **roof** (`tilt = 0`, horizontal cavity) the regime is Rayleigh–Bénard. If the
 lower face is not hotter than the upper one the air stratifies stably and only conducts,

@@ -12,7 +12,8 @@ Correr con pytest o como script:
     .venv/bin/python tests/test_air_properties.py
 """
 
-from enerhabitat.ehtools2d import _MU_AIR, _K_AIR, _BETA_EXP, _T_AIR_REF
+from enerhabitat.ehtools2d import (_MU_AIR, _K_AIR, _BETA_EXP, _T_AIR_REF,
+                                   _GR, _c_wall_xaman)
 
 RHOAIR = 1.1797660470258469
 CAIR = 1005.458757
@@ -37,10 +38,22 @@ def test_alpha_beta_anchored_at_300K():
     assert abs(_BETA_EXP - 1.0 / 300.0) < 1e-12
 
 
+def test_xaman_wall_constant():
+    """C_w reducida de la Ec. (11) de Xamán (Nu = 0.0857·Ra^0.3033, A=20):
+    ~0.589 con las propiedades default — no el 0.4005 heredado del C (que
+    solo sobrevive en los caminos golden de fidelidad al C)."""
+    nu = _MU_AIR / RHOAIR
+    alpha = _K_AIR / RHOAIR / CAIR
+    cw = _c_wall_xaman(_K_AIR, _GR, _BETA_EXP, nu, alpha)
+    assert abs(cw - 0.589) <= 0.005, f"C_w={cw:.4f}"
+    assert cw > 0.4005 * 1.4
+
+
 if __name__ == "__main__":
     for fn in (test_sutherland_matches_incropera_300K,
                test_nu_consistent_with_config_density,
-               test_alpha_beta_anchored_at_300K):
+               test_alpha_beta_anchored_at_300K,
+               test_xaman_wall_constant):
         fn()
         print(f"PASS  {fn.__name__}")
     nu = _MU_AIR / RHOAIR

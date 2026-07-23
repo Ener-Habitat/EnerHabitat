@@ -455,10 +455,14 @@ _SIGMA = 5.6704e-8
 
 @njit(cache=True)
 def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
-                i1, j1, i2, j2, e22, E,
+                i1, j1, i2, j2, e22, E, c_wall,
                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                 a, b, c, d, P, Q, Tnew, tol, max_inner, legacy):
     """Inner loop of one step for a filler block with air cavity (wall).
+
+    ``c_wall`` is the dimensional constant of the wall Nusselt correlation
+    (production: computed from Xamán's Eq. (11) via :func:`_c_wall_xaman`;
+    the C-fidelity golden paths pass the legacy 0.4005).
 
     Stopping rule as in :func:`_step_inner`: ``legacy=True`` reproduces the
     C's signed mean; ``legacy=False`` requires max node update AND max scaled
@@ -488,7 +492,7 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
         nlr = j2 - j1
         tup /= nud; tdn /= nud; tlf /= nlr; trt /= nlr
         # --- Nusselt (wall) ---
-        hh = 0.4005 * (abs(tup - tdn) ** 0.3033) / (e22 ** 0.0901)
+        hh = c_wall * (abs(tup - tdn) ** 0.3033) / (e22 ** 0.0901)
         # --- radiation between walls (view factors) ---
         Tu = tup + 273.15; Td = tdn + 273.15; Tl = tlf + 273.15; Tr = trt + 273.15
         Tu4 = Tu * Tu * Tu * Tu; Td4 = Td * Td * Td * Td
@@ -698,7 +702,7 @@ def solve_step_hueca(NT, k, rhoc, To, Tsa, Tint, Thueco, ho, hi, dt, dx, dy,
     vf = _view_factors(a21, e22)
     iters, hh, converged, _err = _step_hueca(
         k, rhoc, To, T, Tsa, Ti, Th, ho, hi, dt, dx, dy,
-        i1, j1, i2, j2, e22, E, *vf,
+        i1, j1, i2, j2, e22, E, 0.4005, *vf,
         a, b, cc, d, P, Q, Tnew, tol, 1000000000, True)
     # cavity air (lumped, single dt)
     Qh_hole = 0.0
@@ -764,7 +768,7 @@ def solve_day_hueca(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             Ti_old = Tint
             Th_old = Th
             _, hh, _, _ = _step_hueca(k, rhoc, To, T, Tsa_arr[s], Ti_old, Th_old,
-                                ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E,
+                                ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E, 0.4005,
                                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                                 a, b, c, d, P, Q, Tnew, tol_inner, 1000000000, True)
             # cavity air
@@ -828,6 +832,9 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
     Cair = rhoair * cair * La * X
     Ch = rhoair * cair * a21 * e22
+    alphaair = _K_AIR / rhoair / cair
+    nuair = _MU_AIR / rhoair
+    c_wall = _c_wall_xaman(_K_AIR, _GR, _BETA_EXP, nuair, alphaair)
     days = 0
     day_err = 1.0e9
     Qin = Qout = 0.0
@@ -852,7 +859,7 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             Th_old = Th
             it_s, hh, conv_s, _e = _step_hueca(
                                 k, rhoc, To, T, Tsa_arr[s], Ti_old, Th_old,
-                                ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E,
+                                ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E, c_wall,
                                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                                 a, b, c, d, P, Q, Tnew, tol_inner, max_inner, False)
             if not conv_s:
@@ -941,11 +948,23 @@ _MU_AIR = 1.716e-5 * (_T_AIR_REF / 273.15) ** 1.5 \
 
 
 @njit(cache=True)
+def _c_wall_xaman(kair, gr, beta_exp, nu, alphaair):
+    """Dimensional constant of the wall-cavity correlation, reduced from
+    Xamán et al. (2005) Eq. (11) — turbulent, A = 20:  Nu = 0.0857·Ra^0.3033.
+    Substituting Ra = g·β·ΔT·d³/(ν·α) and Nu = h_c·d/k gives
+    h_c = C_w·ΔT^0.3033·d^(3·0.3033−1), with C_w below (~0.589 with the
+    default air properties). The C tool hardcoded 0.4005 — an unrecorded
+    reduction ~0.61× this value — kept only in the C-fidelity golden paths."""
+    return 0.0857 * kair * (gr * beta_exp / (nu * alphaair)) ** 0.3033
+
+
+@njit(cache=True)
 def _slab_hh(tup, tdn, e22, beta, kair, gr, beta_exp, nu, alphaair):
     """Cavity convective coefficient ``hh``. ``beta=90`` wall, ``beta=0`` roof
     (Rayleigh). ``tup`` = top wall (outside), ``tdn`` = bottom (inside)."""
     if beta == 90.0:
-        return 0.4005 * (abs(tup - tdn) ** 0.3033) / (e22 ** 0.0901)
+        return _c_wall_xaman(kair, gr, beta_exp, nu, alphaair) \
+            * (abs(tup - tdn) ** 0.3033) / (e22 ** 0.0901)
     # roof (beta=0): Rayleigh-Bénard; stable (tdn<=tup) → conduction only.
     if tdn <= tup:
         return kair / e22
@@ -1384,6 +1403,9 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     Ti_s = np.empty(nsteps); Tso_s = np.empty(nsteps)
     Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
     Ch = rhoair * cair * a21 * e22
+    alphaair = _K_AIR / rhoair / cair
+    nuair = _MU_AIR / rhoair
+    c_wall = _c_wall_xaman(_K_AIR, _GR, _BETA_EXP, nuair, alphaair)
     days = 0; day_err = 1.0e9; Qcool = Qheat = 0.0
     inner_ok = True
     inner_max = 0
@@ -1404,7 +1426,7 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             Th_old = Th
             it_s, hh, conv_s, _e = _step_hueca(
                                 k, rhoc, To, T, Tsa_arr[s], Tset, Th_old,
-                                ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E,
+                                ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E, c_wall,
                                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                                 a, b, c, d, P, Q, Tnew, tol_inner, max_inner, False)
             if not conv_s:

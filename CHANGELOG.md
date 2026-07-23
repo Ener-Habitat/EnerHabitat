@@ -22,6 +22,16 @@
   now silent and leaves `config.materials == {}`; the `file` getter no longer
   performs I/O nor returns `None`.
 
+- **Wall-cavity convective constant corrected and de-hardcoded**: the wall
+  correlation is the dimensional reduction of Xamán et al. (2005) Eq. (11)
+  (turbulent, A = 20, `Nu = 0.0857·Ra^0.3033` — the exponent of `d`,
+  `3n−1 = −0.0901`, proves the lineage). The C hardcoded `0.4005`, an
+  unrecorded reduction ~0.61× the faithful value; production now computes
+  `C_w = 0.0857·k·(gβ/να)^0.3033` at run time from the 300 K property set and
+  the configurable air density (≈ 0.589 with the defaults). The legacy 0.4005
+  survives only in the C-fidelity golden paths. Wall daily energies shift
+  ≈ +1 %; the Borbón hot-box case in the validation campaign tests the
+  constant (and the tall-cavity extrapolation) directly.
 - **Roof-cavity air viscosity corrected and de-hardcoded**: the C inherited
   `ν = 1.11e-5` m²/s — air at ~240 K, inconsistent with the rest of the
   property set (300 K). ν is now computed as Sutherland `μ(300 K)`
