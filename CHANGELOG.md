@@ -22,6 +22,9 @@
   now silent and leaves `config.materials == {}`; the `file` getter no longer
   performs I/O nor returns `None`.
 
+- **New "Assumptions and limits" page**: the canonical assumption →
+  consequence table (scope, materials/geometry, surfaces/forcing, cavities),
+  linked from the landing page, the Theory menu and both model pages.
 - **Average-day factual fixes**: `Ib` is the EPW's **Direct Normal**
   Irradiance (DNI) — it was documented as "beam horizontal"; the GHI/DNI/DHI
   mapping is now stated everywhere, along with the EPW hourly-accumulation

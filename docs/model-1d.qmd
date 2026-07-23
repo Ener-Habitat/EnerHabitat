@@ -40,6 +40,9 @@ The model assumes:
 - The indoor space is a **lumped air node** of depth $L_a$ (2.5 m by default) in the
   free-running mode, or a **fixed setpoint** in the air-conditioned mode.
 
+The canonical list of assumptions, with the consequence each one has for
+interpreting the results, is in [Assumptions and limits](assumptions.qmd).
+
 ## Governing equations
 
 Within each layer $j$ the temperature field obeys the one-dimensional, time-dependent

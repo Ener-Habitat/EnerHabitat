@@ -16,6 +16,8 @@ infiltration, no internal gains — so any difference in the results is caused b
 constructive system alone. Two solution modes are available: **free-running** (the
 indoor temperature evolves with the system's dynamics) and **air-conditioned** (the
 indoor temperature is held at a comfort setpoint and the energy demands are reported).
+The full list of modelling assumptions and their consequences is in
+[Assumptions and limits](assumptions.qmd).
 
 ## Installation
 
@@ -61,8 +63,9 @@ print(wall.energy_transfer)                  #    J/(m²·day)
 - [Usage](usage.qmd) — the full workflow, executable examples (1D and 2D, free-running
   and air-conditioned), materials and configuration.
 - Theory — [1D model](model-1d.qmd) (physical problem, equations, boundary
-  conditions), [2D model](model-2d.qmd) (cavities, hollow blocks, slabs) and
-  [numerical method](numerics.qmd) (discretisation, convergence, validation).
+  conditions), [2D model](model-2d.qmd) (cavities, hollow blocks, slabs),
+  [numerical method](numerics.qmd) (discretisation, convergence, validation) and
+  [assumptions and limits](assumptions.qmd).
 - [API reference](api.qmd) — every class and parameter.
 - [About](about.qmd) — how to cite, changelog, authors.
 

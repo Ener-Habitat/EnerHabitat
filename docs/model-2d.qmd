@@ -43,6 +43,9 @@ two-dimensional in the cross-section. In addition it assumes:
   temperature);
 - the cavity surfaces are grey and diffuse, each emitting at its **mean** temperature.
 
+The canonical list of assumptions, with the consequence each one has for
+interpreting the results, is in [Assumptions and limits](assumptions.qmd).
+
 ## Governing equations
 
 Conduction in the solids obeys the two-dimensional extension of the

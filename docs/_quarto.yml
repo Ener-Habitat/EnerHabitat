@@ -15,6 +15,7 @@ website:
           - {href: model-1d.qmd, text: "1D model"}
           - {href: model-2d.qmd, text: "2D model"}
           - {href: numerics.qmd, text: "Numerical method"}
+          - {href: assumptions.qmd, text: "Assumptions and limits"}
       - {href: api.qmd, text: API}
       - {href: about.qmd, text: About}
     right:
