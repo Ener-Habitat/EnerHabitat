@@ -4,7 +4,7 @@ P2 — Zona horaria del EPW: offsets fraccionarios preservados.
 El parser truncaba el offset UTC decimal del encabezado EPW
 (``int(datos[8].split('.')[0])``: +5.5 → +5, 30 min de error en hora solar) y
 usaba ``Etc/GMT±N``, que ni siquiera existe para fracciones. Ahora se usa
-``pytz.FixedOffset(round(offset·60))``:
+``datetime.timezone(timedelta(minutes=round(offset·60)))`` (stdlib, sin pytz):
 
   1. Offsets fraccionarios (+5.5, +5.75, −3.5, −9.5) → utcoffset exacto.
   2. Offset entero (−6, control) → idéntico al comportamiento previo.

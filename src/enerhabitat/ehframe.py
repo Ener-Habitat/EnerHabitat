@@ -1,9 +1,8 @@
 import pandas as pd
 import pvlib
-import pytz
 import warnings
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from .ehtools import *
 from .config import config
@@ -23,7 +22,7 @@ class Location:
         latitude (float): Latitude of the location.
         longitude (float): Longitude of the location.
         altitude (float): Altitude of the location in meters.
-        timezone (pytz.FixedOffset): Fixed-offset timezone built from the EPW
+        timezone (datetime.timezone): Fixed-offset timezone built from the EPW
             header's decimal UTC offset (local standard time, no DST rules;
             fractional offsets such as +5.5 or +5.75 are preserved).
              
@@ -256,10 +255,11 @@ class Location:
         self.__altitude = float(datos[9])
         
         # EPW field 8 is the decimal UTC offset (e.g. -6.0, +5.5, +5.75).
-        # A fixed offset preserves fractional zones exactly; 'Etc/GMT±N' only
-        # exists for integer offsets (and used to truncate +5.5 → +5).
+        # A stdlib fixed offset preserves fractional zones exactly;
+        # 'Etc/GMT±N' only exists for integer offsets (and used to truncate
+        # +5.5 → +5).
         tmz = float(datos[8])
-        self.__timezone = pytz.FixedOffset(round(tmz * 60))
+        self.__timezone = timezone(timedelta(minutes=round(tmz * 60)))
         
         self.__invalidate_cache()
     

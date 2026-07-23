@@ -71,6 +71,10 @@
   Results at `tilt = 0` and `tilt = 90` (all documented cases, and the only
   tilts 2D admits) are bit-identical; intermediate 1D tilts no longer lose
   the sky correction discontinuously.
+- **pytz dropped**: `Location.timezone` is now a stdlib `datetime.timezone`
+  fixed offset (pytz was only used for `FixedOffset`, and it reached the
+  package transitively through pvlib — a dependency pvlib itself is moving
+  away from). One less implicit dependency; same offsets, same results.
 - **Fractional UTC offsets fixed (P2)**: the EPW header's decimal UTC offset
   is now preserved via `pytz.FixedOffset` — it used to be truncated
   (`+5.5 → +5`, up to 45 min of solar-time error in half/quarter-hour zones
