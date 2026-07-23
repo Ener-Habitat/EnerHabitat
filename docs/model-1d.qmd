@@ -32,9 +32,9 @@ The model assumes:
 - **Constant thermal properties** per layer (no temperature dependence, no moisture).
 - **Convective boundary conditions** with fixed film coefficients $h_o$ (outdoor) and
   $h_i$ (indoor). The defaults, $h_o = 13$ and $h_i = 8.1$ W/(m²·K), are the values
-  prescribed by the Mexican standards NOM-008-ENER and NOM-020-ENER ($h_i = 8.1$
-  is the vertical-surface value, applied here to all orientations); both are
-  configurable.
+  prescribed by the Mexican standards NOM-008-ENER-2001 (Appendix B) and
+  NOM-020-ENER-2011 [@nom008; @nom020] ($h_i = 8.1$ is the vertical-surface value,
+  applied here to all orientations); both are configurable.
 - **Solar and long-wave radiation** on the outdoor surface enter through the sun–air
   temperature (@eq-tsa).
 - The indoor space is a **lumped air node** of depth $L_a$ (2.5 m by default) in the
@@ -78,7 +78,7 @@ $$ {#eq-bc-out}
 
 $T_{sa}$ is a fictitious temperature that lumps together the three thermal loads on the
 exterior surface — convection with outdoor air, absorbed short-wave solar radiation, and
-the long-wave radiative exchange with the sky [@ashrae1997]:
+the long-wave radiative exchange with the sky [@mackey1944; @ashrae1997]:
 
 $$
 T_{sa} \;=\; T_a \;+\; \frac{a\, I_s}{h_o} \;-\; RF,
@@ -95,8 +95,11 @@ where:
 - $RF$ — long-wave radiation factor, decreasing linearly with the surface tilt
   $\beta$: $RF = 3.9\,(1 - \beta/90°)$ °C for $0° \le \beta \le 90°$ (3.9 °C for a
   horizontal roof facing the cold sky, 0 for a vertical wall) and 0 beyond — the
-  same rule as the 2016 online tool [@barrios2016]. It is an empirical sun–air
-  correction, not an explicit sky/surroundings radiative balance.
+  same rule as the 2016 online tool [@barrios2016]. The 3.9 °C (7 °F) horizontal
+  value is the classical $\varepsilon \Delta R / h_o$ long-wave correction of the
+  sol–air method [@ashrae1997], whose concept goes back to Mackey & Wright
+  [-@mackey1944]. It is an empirical correction, not an explicit sky/surroundings
+  radiative balance.
 
 $I_s$ is computed with [pvlib](https://pvlib-python.readthedocs.io/)'s
 `get_total_irradiance` [@holmgren2018] from the average-day DNI ($I_b$), DHI ($I_d$)
@@ -191,8 +194,8 @@ The climate forcing is built from the EPW file for the selected month
   $I_g$ = global **horizontal** irradiance (GHI), $I_b$ = direct **normal**
   irradiance (DNI) and $I_d$ = diffuse **horizontal** irradiance (DHI), linearly
   interpolated in time to the simulation grid. (The EPW records each value as the
-  energy accumulated over the preceding hour; the hourly means are treated as
-  mean-power samples, in W/m², placed on the hour.)
+  energy accumulated over the preceding hour [@epwspec]; the hourly means are
+  treated as mean-power samples, in W/m², placed on the hour.)
 - **Solar position and sunrise** — computed with pvlib for the site's latitude,
   longitude, altitude and timezone (read from the EPW header).
 - **Comfort quantities** — $T_n$ (@eq-tn) and `DeltaTn` (constant columns).

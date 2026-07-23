@@ -22,6 +22,13 @@
   now silent and leaves `config.materials == {}`; the `file` getter no longer
   performs I/O nor returns `None`.
 
+- **Bibliography completed**: DOIs/issue numbers for Xamán, Hollands, Chow &
+  Levermore, Morillón and Borbón (full-text URL); NOM-008-ENER-2001 (Appendix
+  B) and NOM-020-ENER-2011 added as standards and cited where the `ho`/`hi`
+  defaults are stated; the 3.9 °C (7 °F) long-wave value traced to the
+  classical sol–air correction (ASHRAE) with the concept due to Mackey &
+  Wright (1944), now cited; the EPW data-dictionary spec cited for the
+  hourly-accumulation semantics.
 - **New "Assumptions and limits" page**: the canonical assumption →
   consequence table (scope, materials/geometry, surfaces/forcing, cavities),
   linked from the landing page, the Theory menu and both model pages.
