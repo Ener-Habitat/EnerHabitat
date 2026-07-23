@@ -1,5 +1,5 @@
 ---
-title: "1D model: physical problem"
+title: "1D model: homogeneous multilayer systems"
 ---
 
 EnerHabitat evaluates the thermal performance of a **single opaque component of the
@@ -60,7 +60,9 @@ k_j \left.\frac{\partial T}{\partial x}\right|_{j,\,j+1}
 k_{j+1} \left.\frac{\partial T}{\partial x}\right|_{j,\,j+1}.
 $$ {#eq-continuity}
 
-## Outdoor boundary condition: the sun–air temperature
+## Boundary conditions and solution modes
+
+### Outdoor: the sun–air temperature
 
 At the outdoor surface, $x = 0$, convection against the **sun–air temperature** $T_{sa}$
 balances the conducted flux:
@@ -99,7 +101,7 @@ at the site, and the surface `tilt` and `azimuth`. This is why `Tsa()` is recomp
 automatically, on the next call — whenever the absorptance, the orientation, the month
 or the location change.
 
-## Indoor boundary condition and solution modes
+### Indoor boundary condition
 
 At the indoor surface, $x = L$, the conducted flux is released by convection to the
 indoor air at temperature $T_i$:

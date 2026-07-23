@@ -332,7 +332,7 @@ plot_day(slab_df, title="Joist-and-block roof (2D), free-running — May, Cuerna
 
 Note how the roof's `Tsa` drops **below** `Ta` at night: that is the long-wave
 radiation factor ($RF = 3.9$ °C for horizontal surfaces) at work — the roof sees the
-cold sky (see [the 1D model](model-1d.qmd#outdoor-boundary-condition-the-sunair-temperature)).
+cold sky (see [the 1D model](model-1d.qmd#outdoor-the-sunair-temperature)).
 
 ### Filled cavities (`Fill.SOLID`)
 

@@ -9,22 +9,41 @@ homogeneous layer misses the physics that matters — heat bridging through the 
 and the convective/radiative exchange inside the cavities. For these systems EnerHabitat
 solves the heat transfer on a **2D cross-section** of the unit [@barrios2016].
 
-## Domain: the repeating cell
+## Domain and assumptions
 
 Constructive units repeat periodically along the wall or roof, so the domain is a single
 **repeating cell** — the block (or the rib-to-rib module) cut across its width and
-thickness. By periodicity, no heat flows between neighbouring cells: the lateral sides of
-the cell are **adiabatic** (symmetry planes).
+thickness. The lateral cuts are placed on **mirror-symmetry planes** of the periodic
+pattern (mid-web, mid-rib), where the temperature field has zero normal gradient — so
+the sides of the cell are **adiabatic**. (Periodicity alone would only impose equality
+of temperature and flux between opposite sides, not zero flux; it is the mirror
+symmetry of the chosen cell that makes the adiabatic condition exact.)
 
 Axis convention (used by the package and throughout these pages): $x$ runs across the
 **width** of the cell and $y$ through the **thickness**, from the outside ($y = 0$) to
-the inside ($y = e$), as in the cross-section figures below. Note that the reference
+the inside ($y = e$), as in the cross-section figures below — i.e. the 1D model's
+coordinate $x$ (through the thickness) corresponds to $y$ here. Note that the reference
 paper [@barrios2016] uses the transposed convention ($x$ through the thickness).
 
 The cell is a stack in $y$ — exterior finishes, the non-homogeneous unit, interior
 finishes — where the unit itself is a 2D patchwork of materials and, possibly, cavities.
 
-## Governing equations and boundary conditions
+The model keeps every [1D assumption](model-1d.qmd#domain-and-assumptions) — constant
+properties per material, perfect thermal contact, fixed film coefficients, sun–air
+forcing, lumped indoor air or fixed setpoint — except that conduction is now
+two-dimensional in the cross-section. In addition it assumes:
+
+- the cross-section is **invariant out of plane**: all quantities are per unit length
+  along the wall/roof;
+- the lateral sides of the cell are mirror-symmetry planes (adiabatic, as above);
+- the air of each cavity (`Fill.AIR`) is **well mixed** — one temperature $T_h$ per
+  cavity — and radiatively non-participating;
+- one **uniform** convective coefficient $h_c$ per cavity, evaluated from the mean
+  temperatures of the faces across the thickness (not from each local wall
+  temperature);
+- the cavity surfaces are grey and diffuse, each emitting at its **mean** temperature.
+
+## Governing equations
 
 Conduction in the solids obeys the two-dimensional extension of the
 [1D heat equation](model-1d.qmd#eq-heat), with position-dependent properties:
@@ -41,6 +60,8 @@ where $k(x,y)$, $\rho(x,y)$ and $c(x,y)$ take the value of the material occupyin
 point (rib, filler block, topping, solid fill…). Continuity of temperature and flux at
 material joints is as in the 1D case.
 
+## Boundary conditions
+
 The boundary conditions close the problem:
 
 $$
@@ -55,15 +76,27 @@ x = 0,\ x = W:&\quad \frac{\partial T}{\partial x} = 0
 $$ {#eq-bc2d}
 
 $T_{sa}$, $h_o$ and $h_i$ are exactly those of the [1D model](model-1d.qmd) — same
-average day, same `Tsa()`. The indoor air $T_i$ follows the same two solution modes:
-free-running (lumped air node, now fed by the width-averaged flux from the indoor
-surface) or air-conditioned ($T_i = T_n$ constant).
+average day, same `Tsa()`.
 
-## Cavity physics (`Fill.AIR`)
+## Solution modes
 
-When a cell is an air cavity, three heat-transfer mechanisms act together
-[@barrios2016]: conduction through the surrounding solids, **natural convection** of the
-cavity air, and **radiation** between the cavity surfaces.
+The indoor air $T_i$ follows the same
+[two solution modes as the 1D model](model-1d.qmd#boundary-conditions-and-solution-modes),
+with two 2D-specific details:
+
+- In the **free-running** mode the lumped indoor-air node is fed by the
+  **width-averaged** convective flux from the indoor surface at $y = e$ (so the energy
+  balance is per unit of indoor surface area, as in 1D).
+- In the **air-conditioned** mode only the *indoor* node is fixed at the setpoint
+  ($T_i = T_n$, or `System2D.setpoint`); the air of each cavity $T_h$ **keeps
+  floating**, governed by @eq-cavity-air throughout the AC solve.
+
+## Cavity physics
+
+When the unit's cavity contains air (`Fill.AIR`), three heat-transfer mechanisms act
+together [@barrios2016]: conduction through the surrounding solids, **natural
+convection** of the cavity air, and **radiation** between the cavity surfaces. (The
+alternative, a solid-filled cavity, is described [below](#solid-fill).)
 
 ### The cavity-air node
 
@@ -153,7 +186,7 @@ F_{u \to r} = \tfrac{1}{2}\left( 1 + \tfrac{d}{w} - \sqrt{1 + \tfrac{d^2}{w^2}} 
 F_{u \to d} = 1 - 2 F_{u \to r}.
 $$ {#eq-vf}
 
-### Solid fill (`Fill.SOLID`)
+### Solid fill (`Fill.SOLID`) {#solid-fill}
 
 The cavity can instead be filled with a solid material (e.g. an insulating core): the
 cavity physics switches off and the fill behaves as one more conducting material in
@@ -189,18 +222,39 @@ $h_c$.
 The rib's web rises through the whole section except the top `topping_cap` of the
 topping, reproducing the real joist profile.
 
-## Constraints and outputs
+## The average day
+
+The climate forcing — the synthetic average day and `Tsa()` — is exactly the 1D one:
+see [The average day](model-1d.qmd#the-average-day).
+
+## Constraints
 
 - The `layers` list of a `System2D` contains **exactly one** 2D element (`HollowBlock`
   or `Slab`); any other entries are ordinary homogeneous layers (finishes), handled as
-  1D bands of the cross-section.
+  1D bands of the cross-section. At most **7 layers** including the element.
 - The element's thickness is derived from its `geometry`, so it is not repeated as a
   layer thickness.
 - Orientation is validated: `HollowBlock` requires `tilt = 90`, `Slab` requires
   `tilt = 0`.
-- Outputs are those of the 1D model — `Ti`, `energy_transfer`, `cooling_energy`,
-  `heating_energy` — expressed **per unit of indoor surface area** (the width-averaged
-  flux at $y = e$), so 1D and 2D results are directly comparable.
+
+## Outputs and units
+
+All energies are expressed **per unit of indoor surface area** (built from the
+width-averaged flux at $y = e$), so 1D and 2D results are directly comparable.
+
+| Result | Mode | Meaning | Units |
+|---|---|---|---|
+| `Ti` (`pandas.Series`) | both | Indoor air temperature over the converged day | °C |
+| `energy_transfer` | `solve()` | Energy delivered to the indoor air | J/(m²·day) |
+| `Qout` | `solve()` | Gross energy leaving the indoor air (≈ `energy_transfer` in the periodic regime) | J/(m²·day) |
+| `cooling_energy` | `solveAC()` | Cooling demand to hold the setpoint | J/(m²·day) |
+| `heating_energy` | `solveAC()` | Heating demand to hold the setpoint | J/(m²·day) |
+| `solve_dataframe` | both | `Ti`, `Tso`, `Tsi`, `Thueco` on the `Tsa()` time grid | °C |
+| `Tfield` | both | Temperature field `(nx, ny)` at the end of the last day | °C |
+
+The convergence diagnostics (`days`, `day_error`, `converged`, `inner_iterations`,
+`energy_imbalance`) and the sampling conventions are described in the
+[API reference](api.qmd#system2d).
 
 ## References
 

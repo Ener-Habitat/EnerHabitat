@@ -22,6 +22,15 @@
   now silent and leaves `config.materials == {}`; the `file` getter no longer
   performs I/O nor returns `None`.
 
+- **Theory pages homogenized**: `model-1d` and `model-2d` now share the same
+  skeleton (Domain and assumptions → Governing equations → Boundary
+  conditions → solution modes → shared *average day* → Outputs and units).
+  The 2D page gains its explicit assumptions list, a *Solution modes* section
+  (width-averaged indoor flux; in AC mode the cavity air keeps floating), an
+  outputs table matching the 1D format, and the 1D↔2D axis mapping. The
+  incorrect "by periodicity, no heat flows" was replaced by the correct
+  argument (the lateral cuts are mirror-symmetry planes, hence adiabatic);
+  `Fill.SOLID` is no longer nested under a `Fill.AIR` heading.
 - **Linear long-wave factor `RF` (P2)**: `RF` now decreases linearly with the
   surface tilt, `3.9·(1 − tilt/90°)` °C (0 beyond 90°) — the 2016 online
   tool's rule — instead of the binary 3.9-only-at-tilt-0 inherited port.
