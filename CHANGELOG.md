@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **1D layer-to-mesh mapping corrected** (P0-05): layers are now assigned by
+  cumulative coordinates (cell-centre material, thickness-weighted ρc — total
+  thermal mass conserved exactly) and interior face conductances are computed
+  from the exact series resistance between cell centres, so material
+  interfaces may fall anywhere inside a cell. The previous `int(L/dx)+1`
+  counting gave each layer one extra cell (e.g. two 50 mm layers at Nx=10
+  became 60/40 mm), made results depend on layer ordering, and either deleted
+  a sub-cell sheet placed first (a 0.5 mm metal sheet vanished silently) or
+  turned it into a fake material. **Multilayer 1D results change** (toward the
+  correct geometry); single-layer systems are bit-identical.
+
 - **Daily (periodic) convergence over all states** (P0-04): the day-to-day
   criterion now closes **every persisted state** — the solid field, the indoor
   air `T_i` (free-running) and each cavity air `T_h` — via

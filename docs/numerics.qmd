@@ -26,12 +26,31 @@ in 1D), $b$ carries the previous-time-step term and the boundary sources, and th
 coefficients $h_o$, $h_i$ enter $a_P$ and $b$ at the boundary nodes exactly as the
 boundary conditions prescribe.
 
-At the face between two control volumes of different materials the conductance uses the
-**harmonic mean** of the conductivities — the physically consistent choice for layered
-media, since it preserves the flux across the interface [@patankar1980]:
+**Layer-to-mesh mapping (1D).** The physical layers are mapped onto the uniform mesh
+by cumulative coordinates: each cell takes for reference the material containing its
+centre, and its volumetric heat capacity is the thickness-weighted average of $\rho c$
+over the cell — so the total thermal mass $\sum_j \rho c_j L_j$ is conserved exactly
+at any $N_x$.
+
+At interior faces, the conductance (per unit area) is built from the **series
+resistance** between the adjacent cell centres [@patankar1980]:
 
 $$
-k_f \;=\; \frac{2\, k_L\, k_R}{k_L + k_R}.
+G_f \;=\; \left[\, \int_{x_P}^{x_E} \frac{dx'}{k(x')} \,\right]^{-1}
+\;=\; \left(\, \sum_m \frac{\delta_m}{k_m} \,\right)^{-1},
+$$ {#eq-face}
+
+where the sum runs over the material segments crossed by the span. Material
+interfaces may therefore fall **anywhere inside a cell**, and layers thinner than
+$\Delta x$ — metal sheets, membranes — contribute their exact resistance and mass at
+any position and any $N_x$ (a 0.5 mm metal sheet adds its true, negligible $L/k$
+instead of being deleted or smeared). When the interface lies exactly on the face
+with equal half-widths $\delta_L = \delta_R = \Delta x / 2$ and perfect thermal
+contact, @eq-face reduces to the familiar **harmonic mean**:
+
+$$
+k_f \;=\; \frac{2\, k_L\, k_R}{k_L + k_R},
+\qquad G_f = \frac{k_f}{\Delta x}.
 $$ {#eq-harmonic}
 
 ## Solution algorithm

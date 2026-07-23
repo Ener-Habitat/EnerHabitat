@@ -600,8 +600,8 @@ class System():
         materials = config.materials
 
         cs = set_construction(materials, constructive_system)
-        k, rhoc, dx = set_k_rhoc(cs, Nx)
-        mass_coeff, a_static, b_static, c_static = prepare_static_coefficients(k, rhoc, dx, dt, ho, hi)
+        k, rhoc, dx, Gf = set_k_rhoc(cs, Nx)
+        mass_coeff, a_static, b_static, c_static = prepare_static_coefficients(k, rhoc, dx, dt, ho, hi, Gf)
 
         d = np.empty(Nx)
         P = np.empty(Nx)

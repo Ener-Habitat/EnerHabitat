@@ -139,50 +139,80 @@ def get_total_L(cs):
 
 def set_k_rhoc(cs, nx):
     """
-    Compute the conductivity and (specific-heat × density) arrays for each control
-    volume, and also compute the size of each control volume (dx).
+    Map the physical layers onto the uniform 1D mesh (interface-aware).
+
+    Assignment by cumulative coordinates:
+
+    - ``k_array[i]``: conductivity of the material containing the cell
+      **centre** (reference/reporting value; the solver uses ``Gf``).
+    - ``rhoc_array[i]``: thickness-weighted average of ρc over the cell, so the
+      total thermal mass ``Σ ρc_j·L_j`` is conserved exactly.
+    - ``Gf[f]``: face conductance per unit area (W/m²K) between the centres of
+      cells ``f`` and ``f+1``, from the exact series resistance
+      ``∫ dx'/k(x')`` across the span. Material interfaces may fall anywhere
+      inside a cell, and layers thinner than ``Δx`` (metal sheets, membranes)
+      contribute their true resistance and mass at any position and any
+      ``nx``. For a single-material span it reduces to ``k/Δx``; for an
+      interface exactly at the face it reduces to the harmonic mean
+      ``2·k_L·k_R/(k_L+k_R)/Δx``.
 
     Args:
         cs (dict): Dictionary with the constructive-system configuration.
         nx (int): Number of discretisation elements.
 
     Returns:
-        tuple : [ k_array, rhoc_array, dx ] where k_array is the conductivity array,
-        rhoc_array is the (specific-heat × density) array, and dx is the size of
-        each control volume.
+        tuple: (k_array, rhoc_array, dx, Gf) with ``Gf`` of shape ``(nx-1,)``.
     """
     L_total = get_total_L(cs)
     dx = L_total / nx
 
+    n_lay = len(cs)
+    bounds = np.zeros(n_lay + 1)
+    k_lay = np.zeros(n_lay)
+    rhoc_lay = np.zeros(n_lay)
+    for j, L in enumerate(cs.keys()):
+        bounds[j + 1] = bounds[j] + cs[L]['L']
+        k_lay[j] = cs[L]['material'].k
+        rhoc_lay[j] = cs[L]['material'].rho * cs[L]['material'].c
+    bounds[-1] = L_total   # remove float accumulation dust
+
+    def overlaps(x0, x1):
+        """(length, layer index) of the intersection of [x0,x1] with each layer."""
+        out = []
+        for j in range(n_lay):
+            lo = x0 if x0 > bounds[j] else bounds[j]
+            hi = x1 if x1 < bounds[j + 1] else bounds[j + 1]
+            if hi > lo:
+                out.append((hi - lo, j))
+        return out
+
     k_array = np.zeros(nx)
     rhoc_array = np.zeros(nx)
+    for i in range(nx):
+        x0 = i * dx
+        x1 = x0 + dx
+        xc = 0.5 * (x0 + x1)
+        j = int(np.searchsorted(bounds, xc, side='right')) - 1
+        j = 0 if j < 0 else (n_lay - 1 if j > n_lay - 1 else j)
+        k_array[i] = k_lay[j]
+        acc = 0.0
+        for seg, jj in overlaps(x0, x1):
+            acc += seg * rhoc_lay[jj]
+        rhoc_array[i] = acc / dx
 
-    # Initialise the current position in the array
-    i = 0
+    Gf = np.zeros(max(nx - 1, 0))
+    for f in range(nx - 1):
+        x0 = (f + 0.5) * dx
+        x1 = x0 + dx
+        R = 0.0
+        for seg, jj in overlaps(x0, x1):
+            R += seg / k_lay[jj]
+        Gf[f] = 1.0 / R
 
-    for L in cs.keys():
-        L_value = cs[L]['L']
-        k_value = cs[L]['material'].k
-        rhoc_value = cs[L]['material'].rho * cs[L]['material'].c
+    return k_array, rhoc_array, dx, Gf
 
-        num_elements = int(L_value / dx)
-        
-        for j in range(num_elements):
-            if i >= nx:
-                break
-            k_array[i] = k_value
-            rhoc_array[i] = rhoc_value
-            i += 1
-
-        # Use the harmonic mean only with the first neighbour
-        if i < nx and i > 0:
-            k_array[i] = 2 * (k_array[i-1] * k_value) / (k_array[i-1] + k_value)
-            rhoc_array[i] = rhoc_value
-            i += 1
-
-    return k_array, rhoc_array, dx
-
-def prepare_static_coefficients(k_array, rhoc_array, dx, dt, ho, hi):
+def prepare_static_coefficients(k_array, rhoc_array, dx, dt, ho, hi,
+                                interface_cond=None):
     """
     Precompute mass and conductive coefficients that remain constant throughout the simulation.
 
@@ -193,6 +223,11 @@ def prepare_static_coefficients(k_array, rhoc_array, dx, dt, ho, hi):
         dt (float): Time step.
         ho (float): Outdoor convective coefficient.
         hi (float): Indoor convective coefficient.
+        interface_cond (numpy.ndarray, optional): Face conductances per unit
+            area (W/m²K), shape (nx-1,) — e.g. the interface-aware ``Gf`` from
+            :func:`set_k_rhoc`. If ``None``, falls back to the harmonic mean of
+            the neighbouring cell conductivities (exact only when the material
+            interface lies on the face).
 
     Returns:
         tuple: (mass_coeff, a_static, b_static, c_static) where:
@@ -211,13 +246,15 @@ def prepare_static_coefficients(k_array, rhoc_array, dx, dt, ho, hi):
         a_static[0] = mass_coeff[0] + ho + hi
         return mass_coeff, a_static, b_static, c_static
 
-    inv_dx = 1.0 / dx
-    interface_cond = np.empty(nx - 1, dtype=np.float64)
-
-    for i in range(nx - 1):
-        k_left = k_array[i]
-        k_right = k_array[i + 1]
-        interface_cond[i] = (2.0 * k_left * k_right) / (k_left + k_right) * inv_dx
+    if interface_cond is None:
+        inv_dx = 1.0 / dx
+        interface_cond = np.empty(nx - 1, dtype=np.float64)
+        for i in range(nx - 1):
+            k_left = k_array[i]
+            k_right = k_array[i + 1]
+            interface_cond[i] = (2.0 * k_left * k_right) / (k_left + k_right) * inv_dx
+    else:
+        interface_cond = np.asarray(interface_cond, dtype=np.float64)
 
     a_static = np.empty(nx, dtype=np.float64)
     b_static = np.empty(nx, dtype=np.float64)
