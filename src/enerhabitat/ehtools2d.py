@@ -132,14 +132,19 @@ def _tdma_rows(a, b, c, d):
 
 
 def solve_step_2d(NT, k, rhoc, To, Tsa, Tint, ho, hi, dt, dx, dy,
-                  La, X, rhoair, cair, tol=1e-10, max_iter=100000):
+                  La, X, rhoair, cair, tol=1e-10, max_iter=100000, legacy=True):
     """
     Port of ``solve_PQ`` for a solid filler block: **one** time step.
 
-    Inner loop (line-by-line Gauss-Seidel): recomputes coefficients with the most
-    recent `T`, solves each row with x TDMA (y neighbours deferred), and repeats
-    until ``|error| <= tol`` with ``error = Σ (T-Tn)/T /(nx·ny)`` (signed, like the
-    C). Then updates the indoor air `Tint` (lumped node).
+    Inner loop (line-by-line): recomputes coefficients with the most recent
+    `T`, solves each row with x TDMA (y neighbours deferred), and repeats
+    until convergence. Then updates the indoor air `Tint` (lumped node).
+
+    With ``legacy=True`` (default, C-faithful) the stopping rule is the signed
+    mean ``|Σ (T-Tn)/T /(nx·ny)| <= tol``, exactly like the C. With
+    ``legacy=False`` a non-cancellable rule is used instead: the step is
+    accepted when BOTH the max node update of the last sweep and the max
+    scaled residual ``|a·T_P − b·T_E − c·T_W − d| / a`` are ``<= tol`` (°C).
 
     Args:
         To: previous-step field; also the initial condition of the step
@@ -149,7 +154,7 @@ def solve_step_2d(NT, k, rhoc, To, Tsa, Tint, ho, hi, dt, dx, dy,
 
     Returns:
         dict with ``T`` (solved field), ``Tint`` (updated), ``iters``,
-        ``Qin``, ``error``.
+        ``Qin``, ``error``, ``converged``.
     """
     To = np.asarray(To, dtype=np.float64)
     nx, ny = To.shape
@@ -158,15 +163,37 @@ def solve_step_2d(NT, k, rhoc, To, Tsa, Tint, ho, hi, dt, dx, dy,
 
     iters = 0
     error = 0.0
+    converged = False
+    dT = np.inf
     while True:
         iters += 1
         a, b, c, d = calculate_coefficients_2d(
             NT, k, rhoc, To, T, Tsa, Ti, ho, hi, dt, dx, dy)
+        if not legacy:
+            # scaled residual of the current iterate (per-node Jacobi update)
+            rr = d - a * T
+            rr[:-1, :] += b[:-1, :] * T[1:, :]
+            rr[1:, :] += c[1:, :] * T[:-1, :]
+            res = float(np.max(np.abs(rr) / a))
+            if dT <= tol and res <= tol:
+                converged = True
+                error = max(dT, res)
+                break
         Tn = _tdma_rows(a, b, c, d)
-        error = float(np.sum((T - Tn) / T) / nx / ny)
-        T = Tn
-        if abs(error) <= tol or iters >= max_iter:
-            break
+        if legacy:
+            error = float(np.sum((T - Tn) / T) / nx / ny)
+            T = Tn
+            if abs(error) <= tol:
+                converged = True
+                break
+            if iters >= max_iter:
+                break
+        else:
+            dT = float(np.max(np.abs(T - Tn)))
+            error = dT
+            T = Tn
+            if iters >= max_iter:
+                break
 
     # Indoor convective flux and indoor-air update (lumped node).
     Tsurf = T[:, ny - 1]
@@ -175,7 +202,8 @@ def solve_step_2d(NT, k, rhoc, To, Tsa, Tint, ho, hi, dt, dx, dy,
     Cair = rhoair * cair * La * X
     Tint_new = (Qh + (Cair / dt) * Ti) * dt / Cair
 
-    return {"T": T, "Tint": Tint_new, "iters": iters, "Qin": Qin, "error": error}
+    return {"T": T, "Tint": Tint_new, "iters": iters, "Qin": Qin,
+            "error": error, "converged": converged}
 
 
 # =================================================================
@@ -196,18 +224,36 @@ def solve_step_2d(NT, k, rhoc, To, Tsa, Tint, ho, hi, dt, dx, dy,
 
 @njit(cache=True)
 def _step_inner(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
-                a, b, c, d, P, Q, Tn, Tnew, tol):
-    """Inner loop (line-by-line Gauss-Seidel) of one step; updates ``T`` in place.
+                a, b, c, d, P, Q, Tn, Tnew, tol, max_inner, legacy):
+    """Inner loop (line-by-line, Jacobi-lagged y neighbours) of one step;
+    updates ``T`` in place.
+
+    Stopping rule: with ``legacy=True`` the C's signed mean relative change
+    ``|Σ(T−Tn)/T /(nx·ny)| <= tol`` (kept for golden-master regression). With
+    ``legacy=False`` (production) the step is accepted only when BOTH the max
+    node update of the last sweep and the max scaled residual of the discrete
+    equations ``|a·T_P − b·T_E − c·T_W − d| / a`` are ``<= tol`` (°C) — two
+    non-cancellable criteria [Patankar 1980]. The residual is evaluated during
+    the assembly of the following sweep, so the accepted field is verified
+    against the equations with its own (non-linear) coefficients.
 
     Work buffers (preallocated): ``a,b,c,d`` (nx,ny), ``P,Q,Tn`` (nx),
     ``Tnew`` (nx,ny). Assumes NT ⊆ {1-8,13} (adiabatic sides, convective
     boundaries at j=0/j=ny-1) — valid for a solid filler block.
+
+    Returns:
+        (iters, converged, err) — sweeps used (the final verification-only
+        sweep included), success flag, last error measure.
     """
     nx, ny = k.shape
     iters = 0
+    converged = False
+    err = 1.0e30
+    dT = 1.0e30
     while True:
         iters += 1
-        # ---- assemble a,b,c,d ----
+        res = 0.0
+        # ---- assemble a,b,c,d (+ scaled residual of current T) ----
         for j in range(ny):
             for i in range(nx):
                 kij = k[i, j]
@@ -241,6 +287,18 @@ def _step_inner(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
                 b[i, j] = aE
                 c[i, j] = aW
                 d[i, j] = dd
+                rr = dd - aP * T[i, j]
+                if i < nx - 1:
+                    rr += aE * T[i + 1, j]
+                if i > 0:
+                    rr += aW * T[i - 1, j]
+                rs = abs(rr) / aP
+                if rs > res:
+                    res = rs
+        if (not legacy) and dT <= tol and res <= tol:
+            converged = True
+            err = dT if dT > res else res
+            break
         # ---- x TDMA for each row j -> Tnew ----
         for j in range(ny):
             P[0] = b[0, j] / a[0, j]
@@ -252,28 +310,51 @@ def _step_inner(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
             Tnew[nx - 1, j] = Q[nx - 1]
             for i in range(nx - 2, -1, -1):
                 Tnew[i, j] = P[i] * Tnew[i + 1, j] + Q[i]
-        # ---- signed error and commit T <- Tnew ----
-        error = 0.0
-        for j in range(ny):
-            for i in range(nx):
-                error += (T[i, j] - Tnew[i, j]) / T[i, j]
-                T[i, j] = Tnew[i, j]
-        error = error / nx / ny
-        if abs(error) <= tol:
+        # ---- error and commit T <- Tnew ----
+        if legacy:
+            error = 0.0
+            for j in range(ny):
+                for i in range(nx):
+                    error += (T[i, j] - Tnew[i, j]) / T[i, j]
+                    T[i, j] = Tnew[i, j]
+            error = error / nx / ny
+            err = error
+            if abs(error) <= tol:
+                converged = True
+                break
+        else:
+            dT = 0.0
+            for j in range(ny):
+                for i in range(nx):
+                    ad = T[i, j] - Tnew[i, j]
+                    if ad < 0.0:
+                        ad = -ad
+                    if ad > dT:
+                        dT = ad
+                    T[i, j] = Tnew[i, j]
+            err = dT
+        if iters >= max_inner:
             break
-    return iters
+    return iters, converged, err
 
 
 @njit(cache=True)
 def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
-                 rhoair, cair, T0, tol_inner=1e-10, tol_day=5e-4, max_days=60):
+                 rhoair, cair, T0, tol_inner=1e-8, tol_day=5e-4, max_days=60,
+                 max_inner=10000):
     """
     Production engine: runs the full day, repeating it until periodic steady
-    state (``mean|T_day−T_prev_day| < tol_day``).
+    state (``mean|T_day−T_prev_day| < tol_day``). Inner steps use the
+    non-cancellable criterion (max update + max scaled residual ``<= tol_inner``,
+    capped at ``max_inner`` sweeps).
 
     Returns:
-        (Ti_series, Tso_series, Tsi_series, T_field, days, Qin, Qout)
+        (Ti_series, Tso_series, Tsi_series, T_field, days, Qin, Qout,
+        day_error, inner_ok, inner_iters_max)
         Series of shape ``(nsteps,)`` (one value per ``Tsa_arr`` step).
+        ``day_error`` is the final day-to-day error ``C``; ``inner_ok`` is
+        False if any step hit ``max_inner`` without converging;
+        ``inner_iters_max`` is the largest sweep count observed.
     """
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
@@ -299,6 +380,8 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     days = 0
     Qin = Qout = 0.0
     C = 1.0e9
+    inner_ok = True
+    inner_max = 0
     while C > tol_day and days < max_days:
         for j in range(ny):
             for i in range(nx):
@@ -315,8 +398,14 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 for i in range(nx):
                     To[i, j] = T[i, j]
             Ti_old = Tint
-            _step_inner(k, rhoc, To, T, Tsa_arr[s], Tint, ho, hi, dt, dx, dy,
-                        a, b, c, d, P, Q, Tn, Tnew, tol_inner)
+            it_s, conv_s, _e = _step_inner(k, rhoc, To, T, Tsa_arr[s], Tint,
+                                           ho, hi, dt, dx, dy,
+                                           a, b, c, d, P, Q, Tn, Tnew,
+                                           tol_inner, max_inner, False)
+            if not conv_s:
+                inner_ok = False
+            if it_s > inner_max:
+                inner_max = it_s
             # indoor-air update (ONE dt, physically correct)
             flux = 0.0
             for i in range(nx):
@@ -341,7 +430,8 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
         C = C / nx / ny
         days += 1
 
-    return Ti_series, Tso_series, Tsi_series, T, days, Qin, Qout
+    return (Ti_series, Tso_series, Tsi_series, T, days, Qin, Qout,
+            C, inner_ok, inner_max)
 
 
 # =================================================================
@@ -361,13 +451,25 @@ _SIGMA = 5.6704e-8
 def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                 i1, j1, i2, j2, e22, E,
                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                a, b, c, d, P, Q, Tnew, tol):
-    """Inner loop of one step for a filler block with air cavity (wall)."""
+                a, b, c, d, P, Q, Tnew, tol, max_inner, legacy):
+    """Inner loop of one step for a filler block with air cavity (wall).
+
+    Stopping rule as in :func:`_step_inner`: ``legacy=True`` reproduces the
+    C's signed mean; ``legacy=False`` requires max node update AND max scaled
+    residual ``<= tol`` (°C), with a ``max_inner`` sweep cap.
+
+    Returns:
+        (iters, hh, converged, err).
+    """
     nx, ny = k.shape
     iters = 0
     hh = 1.0
+    converged = False
+    err = 1.0e30
+    dT = 1.0e30
     while True:
         iters += 1
+        res = 0.0
         # --- mean temperatures of the 4 walls (current T) ---
         tup = tdn = tlf = trt = 0.0
         for i in range(i1, i2):
@@ -453,6 +555,19 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                     if j == ny - 1:
                         aP += hi * dx; dd += hi * dx * Tint
                     a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
+                # scaled residual of the current T for this node
+                rr = d[i, j] - a[i, j] * T[i, j]
+                if i < nx - 1:
+                    rr += b[i, j] * T[i + 1, j]
+                if i > 0:
+                    rr += c[i, j] * T[i - 1, j]
+                rs = abs(rr) / a[i, j]
+                if rs > res:
+                    res = rs
+        if (not legacy) and dT <= tol and res <= tol:
+            converged = True
+            err = dT if dT > res else res
+            break
         # --- x TDMA per row ---
         for j in range(ny):
             P[0] = b[0, j] / a[0, j]
@@ -465,15 +580,31 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
             for i in range(nx - 2, -1, -1):
                 Tnew[i, j] = P[i] * Tnew[i + 1, j] + Q[i]
         # --- error and commit ---
-        error = 0.0
-        for j in range(ny):
-            for i in range(nx):
-                error += (T[i, j] - Tnew[i, j]) / T[i, j]
-                T[i, j] = Tnew[i, j]
-        error = error / nx / ny
-        if abs(error) <= tol:
+        if legacy:
+            error = 0.0
+            for j in range(ny):
+                for i in range(nx):
+                    error += (T[i, j] - Tnew[i, j]) / T[i, j]
+                    T[i, j] = Tnew[i, j]
+            error = error / nx / ny
+            err = error
+            if abs(error) <= tol:
+                converged = True
+                break
+        else:
+            dT = 0.0
+            for j in range(ny):
+                for i in range(nx):
+                    ad = T[i, j] - Tnew[i, j]
+                    if ad < 0.0:
+                        ad = -ad
+                    if ad > dT:
+                        dT = ad
+                    T[i, j] = Tnew[i, j]
+            err = dT
+        if iters >= max_inner:
             break
-    return iters, hh
+    return iters, hh, converged, err
 
 
 def _view_factors(a21, e22):
@@ -509,9 +640,10 @@ def solve_step_hueca(NT, k, rhoc, To, Tsa, Tint, Thueco, ho, hi, dt, dx, dy,
     cc = np.empty((nx, ny)); d = np.empty((nx, ny)); Tnew = np.empty((nx, ny))
     P = np.empty(nx); Q = np.empty(nx)
     vf = _view_factors(a21, e22)
-    iters, hh = _step_hueca(k, rhoc, To, T, Tsa, Ti, Th, ho, hi, dt, dx, dy,
-                            i1, j1, i2, j2, e22, E, *vf,
-                            a, b, cc, d, P, Q, Tnew, tol)
+    iters, hh, converged, _err = _step_hueca(
+        k, rhoc, To, T, Tsa, Ti, Th, ho, hi, dt, dx, dy,
+        i1, j1, i2, j2, e22, E, *vf,
+        a, b, cc, d, P, Q, Tnew, tol, 1000000000, True)
     # cavity air (lumped, single dt)
     Qh_hole = 0.0
     for i in range(i1, i2):
@@ -527,7 +659,8 @@ def solve_step_hueca(NT, k, rhoc, To, Tsa, Tint, Thueco, ho, hi, dt, dx, dy,
     Qh = float(np.sum(hi * dt * dx * (Tsurf - Ti)))
     Cair = rhoair * cair * La * X
     Tint_new = (Qh + (Cair / dt) * Ti) * dt / Cair
-    return {"T": T, "Tint": Tint_new, "Thueco": Th_new, "hh": hh, "iters": iters}
+    return {"T": T, "Tint": Tint_new, "Thueco": Th_new, "hh": hh,
+            "iters": iters, "converged": converged}
 
 
 @njit(cache=True)
@@ -574,10 +707,10 @@ def solve_day_hueca(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                     To[i, j] = T[i, j]
             Ti_old = Tint
             Th_old = Th
-            _, hh = _step_hueca(k, rhoc, To, T, Tsa_arr[s], Ti_old, Th_old,
+            _, hh, _, _ = _step_hueca(k, rhoc, To, T, Tsa_arr[s], Ti_old, Th_old,
                                 ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E,
                                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                                a, b, c, d, P, Q, Tnew, tol_inner)
+                                a, b, c, d, P, Q, Tnew, tol_inner, 1000000000, True)
             # cavity air
             qh = 0.0
             for i in range(i1, i2):
@@ -611,16 +744,18 @@ def solve_day_hueca(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
 def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                          rhoair, cair, T0, i1, j1, i2, j2, a21, e22, E,
                          Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                         tol_inner, tol_day, max_days):
+                         tol_inner, tol_day, max_days, max_inner):
     """
     **Production** version of the day with air cavity (hollow block / filler
     block with air). Same as :func:`solve_day_hueca` but with the Phase 5
     deliberate corrections: indoor air with a **single `dt`** and surfaces at
     `/(nx-1)`. The cavity physics (radiation + Nusselt + `Thueco`) is identical.
-    Also returns `Qin, Qout` (energy per unit indoor area, last day).
+    Also returns `Qin, Qout` (energy per unit indoor area, last day) and the
+    convergence diagnostics (``day_error, inner_ok, inner_iters_max``).
 
     Returns:
-        (Ti_series, Tso_series, Tsi_series, Th_series, T_field, days, Qin, Qout)
+        (Ti_series, Tso_series, Tsi_series, Th_series, T_field, days, Qin, Qout,
+        day_error, inner_ok, inner_iters_max)
     """
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
@@ -640,6 +775,8 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     days = 0
     C = 1.0e9
     Qin = Qout = 0.0
+    inner_ok = True
+    inner_max = 0
     while C > tol_day and days < max_days:
         for j in range(ny):
             for i in range(nx):
@@ -655,10 +792,15 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                     To[i, j] = T[i, j]
             Ti_old = Tint
             Th_old = Th
-            _, hh = _step_hueca(k, rhoc, To, T, Tsa_arr[s], Ti_old, Th_old,
+            it_s, hh, conv_s, _e = _step_hueca(
+                                k, rhoc, To, T, Tsa_arr[s], Ti_old, Th_old,
                                 ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E,
                                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                                a, b, c, d, P, Q, Tnew, tol_inner)
+                                a, b, c, d, P, Q, Tnew, tol_inner, max_inner, False)
+            if not conv_s:
+                inner_ok = False
+            if it_s > inner_max:
+                inner_max = it_s
             # cavity air (single dt, same as the faithful one — already correct)
             qh = 0.0
             for i in range(i1, i2):
@@ -690,7 +832,8 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 C += abs(Told[i, j] - T[i, j])
         C = C / nx / ny
         days += 1
-    return Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qin, Qout
+    return (Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qin, Qout,
+            C, inner_ok, inner_max)
 
 
 # =================================================================
@@ -740,16 +883,27 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
                kair, gr, beta_exp, nu, alphaair,
                Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-               a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol):
-    """Inner loop (line-by-line Gauss-Seidel) of one step for the N-cavity roof
-    slab. ``Th`` (n_cav) constant during the loop; returns ``iters`` and fills
-    ``hh`` (n_cav). Updates ``T`` in place."""
+               a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol,
+               max_inner, legacy):
+    """Inner loop (line-by-line, Jacobi-lagged) of one step for the N-cavity
+    roof slab. ``Th`` (n_cav) constant during the loop; fills ``hh`` (n_cav)
+    and updates ``T`` in place. Stopping rule as in :func:`_step_inner`
+    (``legacy=True`` → C's signed mean; ``legacy=False`` → max update AND max
+    scaled residual ``<= tol``, capped at ``max_inner`` sweeps).
+
+    Returns:
+        (iters, converged, err).
+    """
     nx, ny = k.shape
     sx = dx * E * _SIGMA
     sy = dy * E * _SIGMA
     iters = 0
+    converged = False
+    err = 1.0e30
+    dT = 1.0e30
     while True:
         iters += 1
+        res = 0.0
         # --- per cavity: mean wall temperatures, hh and net radiation ---
         for cidx in range(n_cav):
             ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]
@@ -830,6 +984,19 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                     if j == ny - 1:
                         aP += hi * dx; dd += hi * dx * Tint
                     a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
+                # scaled residual of the current T for this node
+                rr = d[i, j] - a[i, j] * T[i, j]
+                if i < nx - 1:
+                    rr += b[i, j] * T[i + 1, j]
+                if i > 0:
+                    rr += c[i, j] * T[i - 1, j]
+                rs = abs(rr) / a[i, j]
+                if rs > res:
+                    res = rs
+        if (not legacy) and dT <= tol and res <= tol:
+            converged = True
+            err = dT if dT > res else res
+            break
         # --- x TDMA per row ---
         for j in range(ny):
             P[0] = b[0, j] / a[0, j]
@@ -842,15 +1009,31 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
             for i in range(nx - 2, -1, -1):
                 Tnew[i, j] = P[i] * Tnew[i + 1, j] + Q[i]
         # --- error and commit ---
-        error = 0.0
-        for j in range(ny):
-            for i in range(nx):
-                error += (T[i, j] - Tnew[i, j]) / T[i, j]
-                T[i, j] = Tnew[i, j]
-        error = error / nx / ny
-        if abs(error) <= tol:
+        if legacy:
+            error = 0.0
+            for j in range(ny):
+                for i in range(nx):
+                    error += (T[i, j] - Tnew[i, j]) / T[i, j]
+                    T[i, j] = Tnew[i, j]
+            error = error / nx / ny
+            err = error
+            if abs(error) <= tol:
+                converged = True
+                break
+        else:
+            dT = 0.0
+            for j in range(ny):
+                for i in range(nx):
+                    ad = T[i, j] - Tnew[i, j]
+                    if ad < 0.0:
+                        ad = -ad
+                    if ad > dT:
+                        dT = ad
+                    T[i, j] = Tnew[i, j]
+            err = dT
+        if iters >= max_inner:
             break
-    return iters
+    return iters, converged, err
 
 
 @njit(cache=True)
@@ -858,13 +1041,14 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                         rhoair, cair, T0, cav_of, cav_i1, cav_i2, cj1, cj2,
                         cavity_width, e22, E, beta,
                         Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                        tol_inner, tol_day, max_days):
+                        tol_inner, tol_day, max_days, max_inner):
     """Full day (day-to-day convergence) of the N-air-cavity roof slab. Each cavity
     has its lumped node ``Th[c]``; production conventions (single dt, surfaces
     /(nx-1)). Wall/roof Nusselt according to ``beta``.
 
     Returns:
-        (Ti_series, Tso_series, Tsi_series, Th_mean_series, T_field, days, Qin, Qout)
+        (Ti_series, Tso_series, Tsi_series, Th_mean_series, T_field, days,
+        Qin, Qout, day_error, inner_ok, inner_iters_max)
     """
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
@@ -891,6 +1075,8 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     days = 0
     C = 1.0e9
     Qin = Qout = 0.0
+    inner_ok = True
+    inner_max = 0
     while C > tol_day and days < max_days:
         for j in range(ny):
             for i in range(nx):
@@ -905,11 +1091,17 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 for i in range(nx):
                     To[i, j] = T[i, j]
             Ti_old = Tint
-            _step_slab(k, rhoc, To, T, Tsa_arr[s], Ti_old, Th, ho, hi, dt, dx, dy,
+            it_s, conv_s, _e = _step_slab(
+                       k, rhoc, To, T, Tsa_arr[s], Ti_old, Th, ho, hi, dt, dx, dy,
                        NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
                        _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                       a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol_inner)
+                       a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright,
+                       tol_inner, max_inner, False)
+            if not conv_s:
+                inner_ok = False
+            if it_s > inner_max:
+                inner_max = it_s
             # air of each cavity (single dt)
             thsum = 0.0
             for cidx in range(n_cav):
@@ -945,7 +1137,8 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 C += abs(Told[i, j] - T[i, j])
         C = C / nx / ny
         days += 1
-    return Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qin, Qout
+    return (Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qin, Qout,
+            C, inner_ok, inner_max)
 
 
 def solve_step_slab(NT, k, rhoc, To, Tsa, Tint, Th0, ho, hi, dt, dx, dy,
@@ -972,10 +1165,12 @@ def solve_step_slab(NT, k, rhoc, To, Tsa, Tint, Th0, ho, hi, dt, dx, dy,
     vf = _view_factors(cavity_width, e22)
     alphaair = _K_AIR / rhoair / cair
     T = To.copy()
-    iters = _step_slab(k, rhoc, To, T, float(Tsa), float(Tint), Th, ho, hi, dt, dx, dy,
-                       NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, float(beta),
-                       _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair, *vf,
-                       a, b, cc, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol)
+    iters, converged, _err = _step_slab(
+        k, rhoc, To, T, float(Tsa), float(Tint), Th, ho, hi, dt, dx, dy,
+        NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, float(beta),
+        _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair, *vf,
+        a, b, cc, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol,
+        1000000000, True)
     Ch = rhoair * cair * cavity_width * e22
     for cidx in range(n_cav):
         ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]; hc = hh[cidx]
@@ -991,7 +1186,8 @@ def solve_step_slab(NT, k, rhoc, To, Tsa, Tint, Th0, ho, hi, dt, dx, dy,
     Cair = rhoair * cair * La * X
     flux = float(np.sum(hi * dx * (Tsurf - float(Tint))))
     Tint_new = float(Tint) + dt * flux / Cair
-    return {"T": T, "Tint": Tint_new, "Thueco": Th, "hh": hh, "iters": iters}
+    return {"T": T, "Tint": Tint_new, "Thueco": Th, "hh": hh,
+            "iters": iters, "converged": converged}
 
 
 # =================================================================
@@ -1007,9 +1203,11 @@ def solve_step_slab(NT, k, rhoc, To, Tsa, Tint, Th0, ho, hi, dt, dx, dy,
 
 @njit(cache=True)
 def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
-                    rhoair, cair, T0, Tset, tol_inner=1e-10, tol_day=5e-4, max_days=60):
+                    rhoair, cair, T0, Tset, tol_inner=1e-8, tol_day=5e-4,
+                    max_days=60, max_inner=10000):
     """AC for pure conduction (SOLID). Returns
-    (Ti_series(=Tset), Tso, Tsi, T_field, days, Qcool, Qheat)."""
+    (Ti_series(=Tset), Tso, Tsi, T_field, days, Qcool, Qheat,
+    day_error, inner_ok, inner_iters_max)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
     T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
@@ -1021,6 +1219,8 @@ def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     P = np.empty(nx); Q = np.empty(nx); Tn = np.empty(nx)
     Ti_s = np.empty(nsteps); Tso_s = np.empty(nsteps); Tsi_s = np.empty(nsteps)
     days = 0; Qcool = Qheat = 0.0; C = 1.0e9
+    inner_ok = True
+    inner_max = 0
     while C > tol_day and days < max_days:
         for j in range(ny):
             for i in range(nx):
@@ -1034,8 +1234,14 @@ def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             for j in range(ny):
                 for i in range(nx):
                     To[i, j] = T[i, j]
-            _step_inner(k, rhoc, To, T, Tsa_arr[s], Tset, ho, hi, dt, dx, dy,
-                        a, b, c, d, P, Q, Tn, Tnew, tol_inner)
+            it_s, conv_s, _e = _step_inner(k, rhoc, To, T, Tsa_arr[s], Tset,
+                                           ho, hi, dt, dx, dy,
+                                           a, b, c, d, P, Q, Tn, Tnew,
+                                           tol_inner, max_inner, False)
+            if not conv_s:
+                inner_ok = False
+            if it_s > inner_max:
+                inner_max = it_s
             flux = 0.0
             for i in range(nx):
                 flux += hi * dx * (T[i, ny - 1] - Tset)
@@ -1055,16 +1261,18 @@ def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 C += abs(Told[i, j] - T[i, j])
         C = C / nx / ny
         days += 1
-    return Ti_s, Tso_s, Tsi_s, T, days, Qcool, Qheat
+    return (Ti_s, Tso_s, Tsi_s, T, days, Qcool, Qheat,
+            C, inner_ok, inner_max)
 
 
 @njit(cache=True)
 def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                        rhoair, cair, T0, Tset, i1, j1, i2, j2, a21, e22, E,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                       tol_inner, tol_day, max_days):
+                       tol_inner, tol_day, max_days, max_inner):
     """AC for a wall with air cavity (Thueco floats, Tint=Tset fixed). Returns
-    (Ti(=Tset), Tso, Tsi, Th, T_field, days, Qcool, Qheat)."""
+    (Ti(=Tset), Tso, Tsi, Th, T_field, days, Qcool, Qheat,
+    day_error, inner_ok, inner_iters_max)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
     T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
@@ -1079,6 +1287,8 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
     Ch = rhoair * cair * a21 * e22
     days = 0; C = 1.0e9; Qcool = Qheat = 0.0
+    inner_ok = True
+    inner_max = 0
     while C > tol_day and days < max_days:
         for j in range(ny):
             for i in range(nx):
@@ -1093,10 +1303,15 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 for i in range(nx):
                     To[i, j] = T[i, j]
             Th_old = Th
-            _, hh = _step_hueca(k, rhoc, To, T, Tsa_arr[s], Tset, Th_old,
+            it_s, hh, conv_s, _e = _step_hueca(
+                                k, rhoc, To, T, Tsa_arr[s], Tset, Th_old,
                                 ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E,
                                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                                a, b, c, d, P, Q, Tnew, tol_inner)
+                                a, b, c, d, P, Q, Tnew, tol_inner, max_inner, False)
+            if not conv_s:
+                inner_ok = False
+            if it_s > inner_max:
+                inner_max = it_s
             qh = 0.0
             for i in range(i1, i2):
                 qh += hh * dx * (T[i, j1 - 1] - Th_old)
@@ -1124,7 +1339,8 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 C += abs(Told[i, j] - T[i, j])
         C = C / nx / ny
         days += 1
-    return Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qcool, Qheat
+    return (Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qcool, Qheat,
+            C, inner_ok, inner_max)
 
 
 @njit(cache=True)
@@ -1132,9 +1348,10 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                       rhoair, cair, T0, Tset, cav_of, cav_i1, cav_i2, cj1, cj2,
                       cavity_width, e22, E, beta,
                       Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                      tol_inner, tol_day, max_days):
+                      tol_inner, tol_day, max_days, max_inner):
     """AC for an N-cavity roof (Thueco[c] float, Tint=Tset fixed). Returns
-    (Ti(=Tset), Tso, Tsi, Th_mean, T_field, days, Qcool, Qheat)."""
+    (Ti(=Tset), Tso, Tsi, Th_mean, T_field, days, Qcool, Qheat,
+    day_error, inner_ok, inner_iters_max)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
     n_cav = cav_i1.shape[0]
@@ -1155,6 +1372,8 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     Ch = rhoair * cair * cavity_width * e22
     alphaair = _K_AIR / rhoair / cair
     days = 0; C = 1.0e9; Qcool = Qheat = 0.0
+    inner_ok = True
+    inner_max = 0
     while C > tol_day and days < max_days:
         for j in range(ny):
             for i in range(nx):
@@ -1168,11 +1387,17 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             for j in range(ny):
                 for i in range(nx):
                     To[i, j] = T[i, j]
-            _step_slab(k, rhoc, To, T, Tsa_arr[s], Tset, Th, ho, hi, dt, dx, dy,
+            it_s, conv_s, _e = _step_slab(
+                       k, rhoc, To, T, Tsa_arr[s], Tset, Th, ho, hi, dt, dx, dy,
                        NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
                        _K_AIR, _GR, _BETA_EXP, _NU_AIR, alphaair,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                       a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol_inner)
+                       a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright,
+                       tol_inner, max_inner, False)
+            if not conv_s:
+                inner_ok = False
+            if it_s > inner_max:
+                inner_max = it_s
             thsum = 0.0
             for cidx in range(n_cav):
                 ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]; hc = hh[cidx]
@@ -1205,5 +1430,6 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 C += abs(Told[i, j] - T[i, j])
         C = C / nx / ny
         days += 1
-    return Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qcool, Qheat
+    return (Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qcool, Qheat,
+            C, inner_ok, inner_max)
 

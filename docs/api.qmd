@@ -94,7 +94,10 @@ result attributes. Differences:
 | Attribute | Description |
 |---|---|
 | `setpoint` | AC setpoint override; `None` (default) → the neutrality temperature $T_n$ |
-| `days` | Day-to-day iterations used by the last solve; if it equals `config2d.max_days` the solution may not be fully periodic |
+| `days` | Day-to-day iterations used by the last solve |
+| `converged` | `True` if the last solve met `tol_day` **and** every inner step converged; a `RuntimeWarning` is emitted otherwise |
+| `day_error` | Final day-to-day error $C$ (°C) of the last solve |
+| `inner_iterations` | Largest inner sweep count observed in the last solve |
 
 - Section inspector (before solving):
 
@@ -175,7 +178,7 @@ Global singleton; changing it affects all subsequent computations.
 | `La` | `2.5` m | Indoor air depth |
 | `Nx` | `200` | 1D control volumes |
 | `ho` | `13` W/(m²·K) | Outdoor film coefficient (NOM) |
-| `hi` | `8.6` W/(m²·K) | Indoor film coefficient (NOM) |
+| `hi` | `8.1` W/(m²·K) | Indoor film coefficient (NOM, vertical-surface value) |
 | `dt` | `10` s | **Fixed** — assignments are ignored ([why](numerics.qmd#indoor-air-coupling-free-running-mode)) |
 | `AIR_DENSITY` | `1.18` kg/m³ | Indoor/cavity air density |
 | `AIR_HEAT_CAPACITY` | `1005` J/(kg·K) | Indoor/cavity air specific heat |
@@ -189,8 +192,9 @@ Global singleton; changing it affects all subsequent computations.
 |---|---|---|
 | `nx` | `80` | Nodes across the cell width (adiabatic sides) |
 | `ny` | `160` | Nodes through the thickness (outside → inside) |
-| `tol_inner` | `1e-10` | Inner line-by-line tolerance |
-| `tol_day` | `5e-4` | Day-to-day convergence tolerance |
+| `tol_inner` | `1e-8` °C | Inner-step tolerance: max node update **and** max scaled equation residual must both fall below it |
+| `tol_day` | `5e-4` °C | Day-to-day convergence tolerance |
 | `max_days` | `60` | Cap on day-to-day iterations |
+| `max_inner` | `10000` | Cap on inner sweeps per time step; if hit, the solve is flagged `converged = False` |
 
 **Methods**: `info()`, `to_dict()`, `reset()`.

@@ -40,13 +40,30 @@ $$ {#eq-harmonic}
 one pass of the Tridiagonal Matrix Algorithm (TDMA / Thomas algorithm). No inner
 iteration is needed.
 
-**2D.** Each time step is solved **line by line**: for every row $j$ (a line across the
-width) a TDMA solves the $x$-direction implicitly, while the $y$-neighbour terms use the
-latest available values (Gauss–Seidel lagging). Sweeps repeat until the mean relative
-change of the field is below `config2d.tol_inner` ($10^{-10}$ by default). The
-non-linear cavity physics — the convective coefficient $h_c(\Delta T)$ and the
-$T^4$ radiation exchange — is re-evaluated at the start of **every sweep**, so the
-converged step is consistent with the cavity state.
+**2D.** Each time step is solved **line by line** [@patankar1980]: for every row $j$ (a
+line across the width) a TDMA solves the $x$-direction implicitly, while the
+$y$-neighbour terms and the non-linear cavity physics — the convective coefficient
+$h_c(\Delta T)$ and the $T^4$ radiation exchange — are evaluated with the previous
+sweep's field (Jacobi lagging) and re-assembled at the start of **every sweep**.
+
+Sweeps repeat until **two non-cancellable criteria** hold simultaneously (both in °C,
+`config2d.tol_inner`, $10^{-8}$ by default):
+
+$$
+\max_P \left| T_P^{(r+1)} - T_P^{(r)} \right| \;\le\; \varepsilon_{in}
+\qquad\text{and}\qquad
+\max_P \frac{\left| a_P T_P - \textstyle\sum a_{nb} T_{nb} - b \right|}{a_P}
+\;\le\; \varepsilon_{in},
+$$ {#eq-inner}
+
+i.e. the largest node update of the last sweep **and** the largest scaled residual of
+the discrete equations (@eq-discrete), the residual being evaluated with the accepted
+field's own (re-assembled, non-linear) coefficients — the convergence monitor
+recommended by @patankar1980. A per-step cap `config2d.max_inner` ($10^4$ sweeps)
+guards against stalls; if it is hit, the solve completes but is flagged
+`converged = False` (see below). The default $\varepsilon_{in} = 10^{-8}$ °C keeps the
+worst-case accumulated inner error over one day (8640 steps × $10^{-8}$ ≈ $10^{-4}$ °C)
+below the day-to-day tolerance `tol_day`.
 
 ## Indoor-air coupling (free-running mode)
 
@@ -87,9 +104,13 @@ $$ {#eq-periodic}
 
 The tolerance is $C_s = 5\times10^{-4}$ °C in both solvers (hard-coded in 1D;
 `config2d.tol_day` in 2D). The 2D solver additionally caps the iteration at
-`config2d.max_days` (60 by default) and reports the number of days actually used in
-`System2D.days` — if it equals `max_days`, the returned solution may not be fully
-periodic and the tolerance/cap should be revisited.
+`config2d.max_days` (60 by default) and reports the convergence outcome explicitly:
+after a solve, `System2D.days` holds the days used, `System2D.day_error` the final
+$C$, `System2D.inner_iterations` the largest inner sweep count, and
+`System2D.converged` is `True` only when the day cycle met `tol_day` **and** every
+inner step converged within `max_inner`. A non-converged solve emits a
+`RuntimeWarning` instead of returning a result indistinguishable from a converged
+one.
 
 ## Differences with the 2016 paper
 
@@ -104,7 +125,7 @@ the deliberate differences (each entry verified against the code).
 | Long-wave factor $RF$ | 3.9 °C horizontal → 0 vertical, linear in tilt | **Binary**: 3.9 °C only for `tilt = 0`, else 0 |
 | Time step | 1 s | **10 s, fixed** (explicit air-node coupling, @eq-air-coupling) |
 | Mesh | 1D $N_x = 100$; 2D $160 \times 160$ | 1D $N_x = 200$; 2D $80 \times 160$ (`config2d`) |
-| Indoor film coefficient $h_i$ | 8.1 (wall); 9.4 / 6.6 (roof, by flux direction) | **8.6** W/m²·K (NOM-020/008-ENER), configurable |
+| Indoor film coefficient $h_i$ | 8.1 (wall); 9.4 / 6.6 (roof, by flux direction) | **8.1** W/m²·K (NOM vertical-surface value, constant for all orientations), configurable |
 | Periodic tolerance | $C_s = 10^{-5}$ °C | $C_s = 5\times10^{-4}$ °C (+ `max_days` cap in 2D) |
 | 2D geometries | Filled or hollow block (one cavity) | `HollowBlock` (walls) and `Slab` (roofs: N cavities, L-shaped rib), fill `AIR`/`SOLID` |
 | AC setpoint | Neutrality temperature $T_n$ | Same ($T_n$ constant); `DeltaTn` provided as data only |

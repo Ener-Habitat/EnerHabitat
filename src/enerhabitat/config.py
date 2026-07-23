@@ -63,7 +63,7 @@ class Config:
         self.__La = 2.5
         self.__Nx = 200
         self.__ho = 13
-        self.__hi = 8.6
+        self.__hi = 8.1
         self.__dt = 10
         self.__AIR_DENSITY = 1.1797660470258469
         self.__AIR_HEAT_CAPACITY = 1005.458757
@@ -223,9 +223,16 @@ class Config2D:
     Attributes:
         nx (int): nodes across the cell width (x direction, adiabatic sides).
         ny (int): nodes through the thickness (y direction, outside→inside).
-        tol_inner (float): inner-loop tolerance (line-by-line Gauss-Seidel).
-        tol_day (float): day-to-day convergence tolerance.
-        max_days (int): cap on the convergence iterations.
+        tol_inner (float): inner-loop tolerance in °C. A time step is accepted
+            when BOTH the largest node update of the last sweep and the largest
+            scaled residual of the discrete equations (|a_P·T_P − Σa_nb·T_nb −
+            b| / a_P) fall below it. 1e-8 °C by default: with 8640 steps/day the
+            worst-case accumulated error (8640 × tol_inner ≈ 1e-4 °C) stays
+            below ``tol_day``.
+        tol_day (float): day-to-day convergence tolerance (°C).
+        max_days (int): cap on the day-to-day convergence iterations.
+        max_inner (int): cap on inner sweeps per time step; exceeded → the
+            solve is flagged ``converged = False``.
     """
     def __init__(self):
         self.reset()
@@ -233,9 +240,10 @@ class Config2D:
     def reset(self):
         self.nx = 80
         self.ny = 160
-        self.tol_inner = 1e-10
+        self.tol_inner = 1e-8
         self.tol_day = 5e-4
         self.max_days = 60
+        self.max_inner = 10000
         self.version = 0
 
     def info(self):
@@ -245,10 +253,12 @@ class Config2D:
         print(f"tol_inner:   \t{self.tol_inner}")
         print(f"tol_day:     \t{self.tol_day}")
         print(f"max_days:    \t{self.max_days}")
+        print(f"max_inner:   \t{self.max_inner}")
 
     def to_dict(self):
         return {"nx": self.nx, "ny": self.ny, "tol_inner": self.tol_inner,
-                "tol_day": self.tol_day, "max_days": self.max_days}
+                "tol_day": self.tol_day, "max_days": self.max_days,
+                "max_inner": self.max_inner}
 
 
 # Global 2D configuration instance

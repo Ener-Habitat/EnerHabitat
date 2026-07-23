@@ -362,11 +362,12 @@ affects **all** subsequent computations.
 | `La`      | `2.5` m          | Depth of the indoor air volume |
 | `Nx`      | `200`            | Control volumes across the system thickness |
 | `ho`      | `13` W/(m²·K)    | Outdoor film coefficient |
-| `hi`      | `8.6` W/(m²·K)   | Indoor film coefficient |
+| `hi`      | `8.1` W/(m²·K)   | Indoor film coefficient |
 | `dt`      | `10` s *(fixed)* | Time step — **not configurable** (assignments are ignored) |
 
 The `ho`/`hi` defaults are the values prescribed by the Mexican standards
-**NOM-020-ENER** and **NOM-008-ENER**; they can be overridden at any time. `dt` is
+**NOM-008-ENER** and **NOM-020-ENER** (`hi = 8.1` is the vertical-surface value,
+applied to all orientations); they can be overridden at any time. `dt` is
 locked because of the explicit indoor-air coupling — see
 [the numerical method](numerics.qmd#indoor-air-coupling-free-running-mode).
 
@@ -389,9 +390,10 @@ The physics (`La`, `ho`, `hi`, `dt`, air properties) is shared with `config`;
 | ----------- | ------- | ----------- |
 | `nx`        | `80`    | mesh nodes across the cell width (adiabatic sides) |
 | `ny`        | `160`   | mesh nodes through the thickness (outside → inside) |
-| `tol_inner` | `1e-10` | inner (line-by-line) loop tolerance |
-| `tol_day`   | `5e-4`  | day-to-day convergence tolerance |
+| `tol_inner` | `1e-8` °C | inner-step tolerance (max node update **and** max equation residual) |
+| `tol_day`   | `5e-4` °C | day-to-day convergence tolerance |
 | `max_days`  | `60`    | cap on the day-to-day iterations |
+| `max_inner` | `10000` | cap on inner sweeps per step (hit → `converged = False`) |
 
 ```python
 from enerhabitat import config2d

@@ -725,6 +725,9 @@ class System2D:
         self.cooling_energy = None
         self.heating_energy = None
         self.days = None
+        self.day_error = None
+        self.converged = None
+        self.inner_iterations = None
         self.solve_dataframe = None
 
     # --- weather/solar: the 1D chain is reused ---
@@ -848,8 +851,9 @@ class System2D:
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
                 sec.cav_of, sec.cav_i1, sec.cav_i2, sec.info["cj1"], sec.info["cj2"],
                 g["cavity_width"], g["cavity"], elem.emissivity, float(self.tilt), *vf,
-                config2d.tol_inner, config2d.tol_day, config2d.max_days)
-            Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout = out
+                config2d.tol_inner, config2d.tol_day, config2d.max_days,
+                config2d.max_inner)
+            Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout, day_err, inner_ok, inner_max = out
         elif elem.fill_type is Fill.AIR:   # HollowBlock (wall)
             a, e = elem._ae()
             a21, e22 = a["a21"], e["e22"]
@@ -858,14 +862,16 @@ class System2D:
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
                 m.i1, m.j1, m.i2, m.j2, a21, e22, elem.emissivity, *vf,
-                config2d.tol_inner, config2d.tol_day, config2d.max_days)
-            Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout = out
+                config2d.tol_inner, config2d.tol_day, config2d.max_days,
+                config2d.max_inner)
+            Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout, day_err, inner_ok, inner_max = out
         else:  # SOLID (HollowBlock or Slab): pure conduction
             out = solve_day_2d(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
-                config2d.tol_inner, config2d.tol_day, config2d.max_days)
-            Ti, Tso, Tsi, Tfield, days, Qin, Qout = out
+                config2d.tol_inner, config2d.tol_day, config2d.max_days,
+                config2d.max_inner)
+            Ti, Tso, Tsi, Tfield, days, Qin, Qout, day_err, inner_ok, inner_max = out
             Th = _np.full_like(Ti, _np.nan)
 
         res = df.copy()
@@ -878,7 +884,23 @@ class System2D:
         self.energy_transfer, self.Qout = Qin, Qout
         self.cooling_energy = self.heating_energy = None
         self.days, self.Tfield = days, Tfield
+        self._store_convergence(day_err, inner_ok, inner_max, "solve")
         return res["Ti"]
+
+    def _store_convergence(self, day_err, inner_ok, inner_max, who):
+        """Store the convergence diagnostics and warn if the solve did not
+        converge (day cycle or inner sweeps)."""
+        self.day_error = float(day_err)
+        self.inner_iterations = int(inner_max)
+        self.converged = bool(inner_ok) and (day_err <= config2d.tol_day)
+        if not self.converged:
+            import warnings
+            warnings.warn(
+                f"System2D.{who}: not converged "
+                f"(day_error={day_err:.3e} °C, tol_day={config2d.tol_day}, "
+                f"inner_ok={bool(inner_ok)}, inner_iterations={inner_max}); "
+                f"results may not be periodic. Increase config2d.max_days / "
+                f"max_inner or relax the tolerances.", RuntimeWarning)
 
     def solveAC(self):
         """
@@ -914,8 +936,9 @@ class System2D:
                 m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
                 sec.cav_of, sec.cav_i1, sec.cav_i2, sec.info["cj1"], sec.info["cj2"],
                 g["cavity_width"], g["cavity"], elem.emissivity, float(self.tilt), *vf,
-                config2d.tol_inner, config2d.tol_day, config2d.max_days)
-            Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat = out
+                config2d.tol_inner, config2d.tol_day, config2d.max_days,
+                config2d.max_inner)
+            Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat, day_err, inner_ok, inner_max = out
         elif elem.fill_type is Fill.AIR:   # HollowBlock (wall)
             a, e = elem._ae()
             a21, e22 = a["a21"], e["e22"]
@@ -924,14 +947,16 @@ class System2D:
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
                 m.i1, m.j1, m.i2, m.j2, a21, e22, elem.emissivity, *vf,
-                config2d.tol_inner, config2d.tol_day, config2d.max_days)
-            Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat = out
+                config2d.tol_inner, config2d.tol_day, config2d.max_days,
+                config2d.max_inner)
+            Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat, day_err, inner_ok, inner_max = out
         else:  # SOLID (HollowBlock or Slab): pure conduction
             out = solve_day_2d_ac(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
-                config2d.tol_inner, config2d.tol_day, config2d.max_days)
-            Ti, Tso, Tsi, Tfield, days, Qcool, Qheat = out
+                config2d.tol_inner, config2d.tol_day, config2d.max_days,
+                config2d.max_inner)
+            Ti, Tso, Tsi, Tfield, days, Qcool, Qheat, day_err, inner_ok, inner_max = out
             Th = _np.full_like(Ti, _np.nan)
 
         res = df.copy()
@@ -944,6 +969,7 @@ class System2D:
         self.cooling_energy, self.heating_energy = Qcool, Qheat
         self.energy_transfer = None
         self.days, self.Tfield = days, Tfield
+        self._store_convergence(day_err, inner_ok, inner_max, "solveAC")
         return res["Ti"]
 
     # --- utilities mirroring System ---
