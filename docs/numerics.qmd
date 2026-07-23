@@ -84,33 +84,56 @@ $\mathrm{Fo}_a < 2$ for stability and $\mathrm{Fo}_a \lesssim 1$ to avoid oscill
 With the fixed $\Delta t = 10$ s, $\mathrm{Fo}_a \approx 0.03$ — far inside the stable
 region. This is why `config.dt` is **locked**: a user-enlarged $\Delta t$ would push the
 air node toward non-physical behaviour while buying almost no speed (the inner iterations
-grow to compensate). In the 2D solver the cavity-air nodes $T_h$ are advanced the same
-way, with equally small effective Fourier numbers.
+grow to compensate).
 
-In the **air-conditioned mode** none of this applies: $T_i$ is a constant setpoint, the
-scheme is purely implicit, and no stability criterion exists.
+In the 2D solver the cavity-air nodes $T_h$ are advanced the same way (forward Euler),
+and their stability parameter is **not** uniformly small:
+
+$$
+\lambda_h\,\Delta t \;=\; \frac{h_c\, P_{cav}\, \Delta t}{\rho_a\, c_a\, A_{cav}},
+$$ {#eq-cavity-coupling}
+
+with $P_{cav}$ and $A_{cav}$ the cavity perimeter and cross-section. It depends on the
+geometry and on the instantaneous $h_c$: at $\Delta t = 10$ s the documented example
+geometries give $\lambda_h\Delta t \approx 0.2$ for the hollow-block wall cavity but
+up to $\approx 1$ for the roof-slab cavities — stable ($< 2$) though not always in the
+monotone regime ($\le 1$).
+
+In the **air-conditioned mode** the indoor node is a fixed setpoint, so
+@eq-air-coupling does not apply to it — but the scheme is *not* purely implicit there:
+with `Fill.AIR` the cavity-air nodes $T_h$ keep advancing explicitly
+(@eq-cavity-coupling holds in AC mode too).
 
 ## Convergence to the periodic regime
 
 The boundary forcing ($T_{sa}$) is periodic with a 24 h period, so the physical solution
 of interest is the periodic one. Starting from a uniform field at the neutrality
 temperature $\overline{T_n}$, the day is simulated repeatedly — each day starting from
-the previous day's final state — until the field stops changing between consecutive
-days:
+the previous day's final state — until **every persisted state** stops changing
+between consecutive days: the solid field, the indoor-air node $T_i$ (free-running
+mode) and each cavity-air node $T_{h,c}$:
 
 $$
-C \;=\; \frac{1}{N}\sum_{\text{nodes}} \left| T^{day+1} - T^{day} \right| \;\le\; C_s.
+\text{day\_error} \;=\; \max\!\left(
+\frac{1}{N}\sum_{\text{nodes}} \left| T^{day+1} - T^{day} \right|,\;
+\left|\Delta T_i\right|,\;
+\max_c \left|\Delta T_{h,c}\right|
+\right) \;\le\; C_s.
 $$ {#eq-periodic}
 
 The tolerance is $C_s = 5\times10^{-4}$ °C in both solvers (hard-coded in 1D;
-`config2d.tol_day` in 2D). The 2D solver additionally caps the iteration at
-`config2d.max_days` (60 by default) and reports the convergence outcome explicitly:
-after a solve, `System2D.days` holds the days used, `System2D.day_error` the final
-$C$, `System2D.inner_iterations` the largest inner sweep count, and
-`System2D.converged` is `True` only when the day cycle met `tol_day` **and** every
-inner step converged within `max_inner`. A non-converged solve emits a
-`RuntimeWarning` instead of returning a result indistinguishable from a converged
-one.
+`config2d.tol_day` in 2D), and both cap the iteration: `config2d.max_days` (60) in 2D
+and the module constant `MAX_DAYS = 60` in 1D. Both solvers report the outcome
+explicitly: after a solve, `days` holds the days used, `day_error` the final value of
+@eq-periodic, and `converged` is `True` only when the day cycle met the tolerance
+(in 2D, additionally, only if every inner step converged within `max_inner`;
+`inner_iterations` records the largest sweep count). A non-converged solve emits a
+`RuntimeWarning` instead of returning a result indistinguishable from a converged one.
+
+As an independent physical check, the free-running solvers also expose
+`energy_imbalance` $= |Q_{in} - Q_{out}| / \max(Q_{in}, Q_{out})$: in a perfectly
+periodic regime the gross energy entering the indoor node over the day equals the
+gross energy leaving it, so this ratio should be close to zero.
 
 ## Differences with the 2016 paper
 

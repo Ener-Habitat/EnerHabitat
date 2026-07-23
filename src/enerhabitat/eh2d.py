@@ -728,6 +728,7 @@ class System2D:
         self.day_error = None
         self.converged = None
         self.inner_iterations = None
+        self.energy_imbalance = None
         self.solve_dataframe = None
 
     # --- weather/solar: the 1D chain is reused ---
@@ -884,6 +885,9 @@ class System2D:
         self.energy_transfer, self.Qout = Qin, Qout
         self.cooling_energy = self.heating_energy = None
         self.days, self.Tfield = days, Tfield
+        # Energy-closure diagnostic: in the periodic regime Qin == Qout.
+        qmax = max(Qin, Qout)
+        self.energy_imbalance = abs(Qin - Qout) / qmax if qmax > 0.0 else 0.0
         self._store_convergence(day_err, inner_ok, inner_max, "solve")
         return res["Ti"]
 
@@ -969,6 +973,7 @@ class System2D:
         self.cooling_energy, self.heating_energy = Qcool, Qheat
         self.energy_transfer = None
         self.days, self.Tfield = days, Tfield
+        self.energy_imbalance = None   # closure check only defined free-running
         self._store_convergence(day_err, inner_ok, inner_max, "solveAC")
         return res["Ti"]
 

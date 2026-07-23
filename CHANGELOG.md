@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Daily (periodic) convergence over all states** (P0-04): the day-to-day
+  criterion now closes **every persisted state** — the solid field, the indoor
+  air `T_i` (free-running) and each cavity air `T_h` — via
+  `day_error = max(C_solid, |ΔT_i|, max|ΔT_h|) ≤ tol_day`. The 1D solver gets a
+  `MAX_DAYS = 60` cap (its loop previously had none) and `System` (1D) now
+  exposes `days`, `day_error`, `converged` and `energy_imbalance`, warning with
+  a `RuntimeWarning` when not converged, like `System2D`.
+- **Energy-closure diagnostic**: free-running solves report
+  `energy_imbalance = |Qin − Qout| / max(Qin, Qout)` (≈ 0 in the periodic
+  regime) in both 1D and 2D.
+- **Docs**: the claim that the AC mode is "purely implicit" was corrected —
+  with `Fill.AIR` the cavity air still advances explicitly in AC mode; its
+  stability parameter `λ_h·Δt = h_c·P_cav·Δt/(ρ_a·c_a·A_cav)` is now documented
+  (≈ 0.2 wall cavity, up to ≈ 1 roof cavities at Δt = 10 s).
+
 - **2D inner convergence criterion** (P0-03 of the documentation review): the
   production solvers replace the C-inherited *signed* mean relative change —
   which can stop early by cancellation and divides by temperatures in °C —

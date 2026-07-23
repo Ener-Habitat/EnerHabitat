@@ -64,6 +64,10 @@ Read-only results (energy per unit surface area over the converged day, **J/(m²
 | `energy_transfer` | `solve()` | Energy delivered to the indoor air |
 | `cooling_energy` | `solveAC()` | Cooling demand to hold $T_n$ |
 | `heating_energy` | `solveAC()` | Heating demand to hold $T_n$ |
+| `days` | both | Day-to-day iterations used by the last solve (capped at 60) |
+| `day_error` | both | Final day-to-day error (°C): max of the solid-field mean change and the indoor-state change |
+| `converged` | both | `True` if the periodic regime was reached; otherwise a `RuntimeWarning` is emitted |
+| `energy_imbalance` | `solve()` | Energy-closure check $\|Q_{in}-Q_{out}\|/\max(Q_{in},Q_{out})$ (≈ 0 when periodic); `None` after `solveAC()` |
 
 **Methods**
 
@@ -96,8 +100,9 @@ result attributes. Differences:
 | `setpoint` | AC setpoint override; `None` (default) → the neutrality temperature $T_n$ |
 | `days` | Day-to-day iterations used by the last solve |
 | `converged` | `True` if the last solve met `tol_day` **and** every inner step converged; a `RuntimeWarning` is emitted otherwise |
-| `day_error` | Final day-to-day error $C$ (°C) of the last solve |
+| `day_error` | Final day-to-day error (°C) of the last solve: max over the solid field, $\|\Delta T_i\|$ and each cavity $\|\Delta T_h\|$ |
 | `inner_iterations` | Largest inner sweep count observed in the last solve |
+| `energy_imbalance` | Energy-closure check $\|Q_{in}-Q_{out}\|/\max(Q_{in},Q_{out})$ of the last free-running solve (≈ 0 when periodic); `None` after `solveAC()` |
 
 - Section inspector (before solving):
 

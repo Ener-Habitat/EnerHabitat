@@ -8,6 +8,11 @@ from datetime import datetime
 from .ehtools import *
 from .config import config
 
+# Cap on the day-to-day convergence iterations of the 1D solver (the daily
+# tolerance is 5e-4 °C, same as config2d.tol_day). Mirrors config2d.max_days.
+MAX_DAYS = 60
+
+
 class Location:
     """
     Location class to handle climate data from an EPW file.
@@ -334,6 +339,10 @@ class System():
         self.__energy_transfer = None
         self.__cooling_energy = None
         self.__heating_energy = None
+        self.__days = None
+        self.__day_error = None
+        self.__converged = None
+        self.__energy_imbalance = None
         self.__invalidate_cache()
         
     def Tsa(self,
@@ -608,12 +617,17 @@ class System():
         Ti_vals = SC_dataframe['Ti'].to_numpy(copy=True)
         n_steps = Tsa_vals.shape[0]
 
-        C = 1
+        tol_day = 5e-4          # °C, same as config2d.tol_day
+        days = 0
+        day_error = 1.0e9
 
         self.__solve_solver_version = config.version
-        
+
         if AC:  # AC = True
-            while C > 5e-4: 
+            # Periodic convergence over ALL persisted states: the solid field
+            # AND the indoor series Ti_vals (it feeds the next day's steps).
+            Ti_prev = Ti_vals.copy()
+            while day_error > tol_day and days < MAX_DAYS:
                 Told = T.copy()
                 Qcool = Qheat = 0.
                 for idx in range(n_steps):
@@ -625,16 +639,20 @@ class System():
                     if (T[Nx-1] < Ti):
                         Qheat += hi*dt*(Ti-T[Nx-1])
                     Ti_vals[idx] = Ti
-                Tnew = T.copy()
-                C = abs(Told - Tnew).mean()
+                C = np.abs(Told - T).mean()
+                dTi = np.abs(Ti_vals - Ti_prev).max()
+                Ti_prev = Ti_vals.copy()
+                day_error = max(C, dTi)
+                days += 1
 
             SC_dataframe['Ti'] = Ti_vals
-            
+
             self.__last_solve = 'ac'
             self.__energy_transfer = None
             self.__cooling_energy = Qcool
             self.__heating_energy = Qheat
-            
+            self.__store_convergence(days, day_error, tol_day, None, "solveAC")
+
             return SC_dataframe['Ti']
 
         else:
@@ -647,8 +665,11 @@ class System():
             # the same instant (tinn, before the update), integrating over dt.
             tint = float(Ti_vals[0])   # = Tn.mean(), initialized only once
             Qin = Qout = 0.0
-            while C > 5e-4:
+            # Periodic convergence over ALL persisted states: the solid field
+            # AND the indoor-air node tint (it carries over between days).
+            while day_error > tol_day and days < MAX_DAYS:
                 Told = T.copy()
+                tint_prev = tint
                 Qin = Qout = 0.0
                 for idx in range(n_steps):
                     tinn = tint
@@ -661,6 +682,9 @@ class System():
                     else:
                         Qout -= flux
                 C = np.abs(Told - T).mean()
+                dTi = abs(tint - tint_prev)
+                day_error = max(C, dTi)
+                days += 1
 
             SC_dataframe['Ti'] = Ti_vals
 
@@ -668,8 +692,25 @@ class System():
             self.__energy_transfer = Qin   # oscillatory steady state: Qin == Qout
             self.__cooling_energy = None
             self.__heating_energy = None
+            # Energy-closure diagnostic: in the periodic regime Qin == Qout.
+            qmax = max(Qin, Qout)
+            imbalance = abs(Qin - Qout) / qmax if qmax > 0.0 else 0.0
+            self.__store_convergence(days, day_error, tol_day, imbalance, "solve")
 
             return SC_dataframe['Ti']
+
+    def __store_convergence(self, days, day_error, tol_day, imbalance, who):
+        """Store the daily-convergence diagnostics and warn if not converged."""
+        self.__days = days
+        self.__day_error = float(day_error)
+        self.__converged = day_error <= tol_day
+        self.__energy_imbalance = imbalance
+        if not self.__converged:
+            warnings.warn(
+                f"System.{who}: not converged after {days} days "
+                f"(day_error={day_error:.3e} °C > tol {tol_day}); results may "
+                f"not be periodic. See enerhabitat.ehframe.MAX_DAYS.",
+                RuntimeWarning)
 
     def __invalidate_cache(self):
         self.__updated = True
@@ -753,4 +794,40 @@ class System():
         return self.__cooling_energy
     @cooling_energy.setter
     def cooling_energy(self, value):
+        pass
+
+    @property
+    def days(self):
+        """Day-to-day iterations used by the last solve."""
+        return self.__days
+    @days.setter
+    def days(self, value):
+        pass
+
+    @property
+    def day_error(self):
+        """Final day-to-day error (°C) of the last solve: max of the solid-field
+        mean change and the indoor-state change |ΔT_i|."""
+        return self.__day_error
+    @day_error.setter
+    def day_error(self, value):
+        pass
+
+    @property
+    def converged(self):
+        """True if the last solve reached the periodic regime (day_error ≤ 5e-4 °C)
+        within MAX_DAYS; a RuntimeWarning is emitted otherwise."""
+        return self.__converged
+    @converged.setter
+    def converged(self, value):
+        pass
+
+    @property
+    def energy_imbalance(self):
+        """Relative energy-closure diagnostic of the last free-running solve:
+        |Qin − Qout| / max(Qin, Qout) (0 = perfect periodic closure).
+        None after solveAC()."""
+        return self.__energy_imbalance
+    @energy_imbalance.setter
+    def energy_imbalance(self, value):
         pass

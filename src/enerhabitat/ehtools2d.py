@@ -379,13 +379,14 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     Cair = rhoair * cair * La * X
     days = 0
     Qin = Qout = 0.0
-    C = 1.0e9
+    day_err = 1.0e9
     inner_ok = True
     inner_max = 0
-    while C > tol_day and days < max_days:
+    while day_err > tol_day and days < max_days:
         for j in range(ny):
             for i in range(nx):
                 Told[i, j] = T[i, j]
+        Ti_prev_day = Tint
         Qin = Qout = 0.0
         for s in range(nsteps):
             # Tso: outer surface before solving, /(nx-1)
@@ -428,10 +429,15 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             for i in range(nx):
                 C += abs(Told[i, j] - T[i, j])
         C = C / nx / ny
+        # periodic closure of ALL persisted states: solid field + indoor air
+        dTi = Tint - Ti_prev_day
+        if dTi < 0.0:
+            dTi = -dTi
+        day_err = C if C > dTi else dTi
         days += 1
 
     return (Ti_series, Tso_series, Tsi_series, T, days, Qin, Qout,
-            C, inner_ok, inner_max)
+            day_err, inner_ok, inner_max)
 
 
 # =================================================================
@@ -773,14 +779,16 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     Cair = rhoair * cair * La * X
     Ch = rhoair * cair * a21 * e22
     days = 0
-    C = 1.0e9
+    day_err = 1.0e9
     Qin = Qout = 0.0
     inner_ok = True
     inner_max = 0
-    while C > tol_day and days < max_days:
+    while day_err > tol_day and days < max_days:
         for j in range(ny):
             for i in range(nx):
                 Told[i, j] = T[i, j]
+        Ti_prev_day = Tint
+        Th_prev_day = Th
         Qin = Qout = 0.0
         for s in range(nsteps):
             tso = 0.0
@@ -831,9 +839,21 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             for i in range(nx):
                 C += abs(Told[i, j] - T[i, j])
         C = C / nx / ny
+        # periodic closure of ALL persisted states: solid + indoor + cavity air
+        dTi = Tint - Ti_prev_day
+        if dTi < 0.0:
+            dTi = -dTi
+        dTh = Th - Th_prev_day
+        if dTh < 0.0:
+            dTh = -dTh
+        day_err = C
+        if dTi > day_err:
+            day_err = dTi
+        if dTh > day_err:
+            day_err = dTh
         days += 1
     return (Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qin, Qout,
-            C, inner_ok, inner_max)
+            day_err, inner_ok, inner_max)
 
 
 # =================================================================
@@ -1072,15 +1092,19 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     Cair = rhoair * cair * La * X
     Ch = rhoair * cair * cavity_width * e22
     alphaair = _K_AIR / rhoair / cair
+    Th_prev_day = np.empty(n_cav)
     days = 0
-    C = 1.0e9
+    day_err = 1.0e9
     Qin = Qout = 0.0
     inner_ok = True
     inner_max = 0
-    while C > tol_day and days < max_days:
+    while day_err > tol_day and days < max_days:
         for j in range(ny):
             for i in range(nx):
                 Told[i, j] = T[i, j]
+        Ti_prev_day = Tint
+        for cidx in range(n_cav):
+            Th_prev_day[cidx] = Th[cidx]
         Qin = Qout = 0.0
         for s in range(nsteps):
             tso = 0.0
@@ -1136,9 +1160,20 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             for i in range(nx):
                 C += abs(Told[i, j] - T[i, j])
         C = C / nx / ny
+        # periodic closure of ALL persisted states: solid + indoor + cavities
+        dTi = Tint - Ti_prev_day
+        if dTi < 0.0:
+            dTi = -dTi
+        day_err = C if C > dTi else dTi
+        for cidx in range(n_cav):
+            dTh = Th[cidx] - Th_prev_day[cidx]
+            if dTh < 0.0:
+                dTh = -dTh
+            if dTh > day_err:
+                day_err = dTh
         days += 1
     return (Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qin, Qout,
-            C, inner_ok, inner_max)
+            day_err, inner_ok, inner_max)
 
 
 def solve_step_slab(NT, k, rhoc, To, Tsa, Tint, Th0, ho, hi, dt, dx, dy,
@@ -1286,13 +1321,14 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     Ti_s = np.empty(nsteps); Tso_s = np.empty(nsteps)
     Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
     Ch = rhoair * cair * a21 * e22
-    days = 0; C = 1.0e9; Qcool = Qheat = 0.0
+    days = 0; day_err = 1.0e9; Qcool = Qheat = 0.0
     inner_ok = True
     inner_max = 0
-    while C > tol_day and days < max_days:
+    while day_err > tol_day and days < max_days:
         for j in range(ny):
             for i in range(nx):
                 Told[i, j] = T[i, j]
+        Th_prev_day = Th
         Qcool = Qheat = 0.0
         for s in range(nsteps):
             tso = 0.0
@@ -1338,9 +1374,14 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             for i in range(nx):
                 C += abs(Told[i, j] - T[i, j])
         C = C / nx / ny
+        # periodic closure: solid + cavity air (Tint is a fixed setpoint)
+        dTh = Th - Th_prev_day
+        if dTh < 0.0:
+            dTh = -dTh
+        day_err = C if C > dTh else dTh
         days += 1
     return (Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qcool, Qheat,
-            C, inner_ok, inner_max)
+            day_err, inner_ok, inner_max)
 
 
 @njit(cache=True)
@@ -1371,13 +1412,16 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     Tsi_s = np.empty(nsteps); Th_s = np.empty(nsteps)
     Ch = rhoair * cair * cavity_width * e22
     alphaair = _K_AIR / rhoair / cair
-    days = 0; C = 1.0e9; Qcool = Qheat = 0.0
+    Th_prev_day = np.empty(n_cav)
+    days = 0; day_err = 1.0e9; Qcool = Qheat = 0.0
     inner_ok = True
     inner_max = 0
-    while C > tol_day and days < max_days:
+    while day_err > tol_day and days < max_days:
         for j in range(ny):
             for i in range(nx):
                 Told[i, j] = T[i, j]
+        for cidx in range(n_cav):
+            Th_prev_day[cidx] = Th[cidx]
         Qcool = Qheat = 0.0
         for s in range(nsteps):
             tso = 0.0
@@ -1429,7 +1473,15 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             for i in range(nx):
                 C += abs(Told[i, j] - T[i, j])
         C = C / nx / ny
+        # periodic closure: solid + cavity air (Tint is a fixed setpoint)
+        day_err = C
+        for cidx in range(n_cav):
+            dTh = Th[cidx] - Th_prev_day[cidx]
+            if dTh < 0.0:
+                dTh = -dTh
+            if dTh > day_err:
+                day_err = dTh
         days += 1
     return (Ti_s, Tso_s, Tsi_s, Th_s, T, days, Qcool, Qheat,
-            C, inner_ok, inner_max)
+            day_err, inner_ok, inner_max)
 
