@@ -141,7 +141,9 @@ For a wall with air conditioning, call `wall.solveAC()` and read
 
 ### 2D systems
 
-`System2D` is used exactly like `System`; its `layers` list contains
+`System2D` is used like `System` (see the
+[API page](https://ener-habitat.github.io/EnerHabitat/api.html#system2d) for the
+differences); its `layers` list contains
 **exactly one** 2D element — a `HollowBlock` (walls, `tilt = 90`) or a `Slab`
 (joist-and-block roofs, `tilt = 0`). The materials named below (`Concreto`,
 `Mortero`, `Yeso`) must also be defined in your `materials.ini` (see the
@@ -180,7 +182,8 @@ joist-and-block roof, and the to-scale section inspector — are in the
 | `config` | Global parameters | `file`, `La`, `Nx`, `ho`, `hi`, `dt` *(fixed)* |
 | `config2d` | 2D mesh & convergence | `nx`, `ny`, `tol_inner`, `tol_day`, `max_days` |
 
-Defaults for `ho` (13) and `hi` (8.6 W/m²·K) are the NOM-020/008-ENER values;
+Defaults for `ho` (13) and `hi` (8.1 W/m²·K) are the NOM-008/020-ENER values
+(`hi` is the vertical-surface value, applied to all orientations);
 `dt` is fixed at 10 s (see
 [why](https://ener-habitat.github.io/EnerHabitat/numerics.html#indoor-air-coupling-free-running-mode)).
 Full reference:

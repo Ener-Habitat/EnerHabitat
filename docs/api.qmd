@@ -79,7 +79,9 @@ Read-only results (energy per unit surface area over the converged day, **J/(m²
   `cooling_energy`/`heating_energy`.
 - `add_layer(material, width)` / `remove_layer(index)` — edit the stack (appends at
   the inside).
-- `copy()`, `info()`, `flag()`.
+- `copy()` — re-creates the `Location` from the EPW file, so the `meanDay()`
+  selection must be re-applied on the copy (`System2D.copy()` shares the
+  `Location` instead), `info()`, `flag()`.
 
 > `Tsa` depends on `absortance`, `tilt`, `azimuth`, `meanDay` (month) and `Location`;
 > it is recomputed automatically when any of these change (results are cached
@@ -98,6 +100,19 @@ result attributes. Differences:
   2D element: a [`HollowBlock`](#hollowblock) or a [`Slab`](#slab). The element's
   thickness is derived from its `geometry`.
 - Orientation is validated: `HollowBlock` requires `tilt = 90`, `Slab` `tilt = 0`.
+- `setpoint` exists **only** in 2D; the 1D `System` always uses the mean neutrality
+  temperature as the AC setpoint.
+- `flag()` is not available (1D only).
+- `copy()` **shares** the `Location` instance — a later `meanDay()` affects the
+  original and the copy alike (the 1D `System.copy()` re-creates it instead).
+- Result attributes are plain writable attributes, not read-only properties as in
+  the 1D `System`.
+- `solve()` and `solveAC()` results are cached **separately**, so alternating modes
+  is free; the 1D `System` keeps one cache tagged by the last mode and recomputes
+  when alternating.
+- Additional outputs beyond the 1D set: `Qout`, `Tfield`, `solve_dataframe`
+  (columns `Ti, Tso, Tsi, Thueco`) and the inspectors `preview()` /
+  `section_report()`.
 - Extra attributes:
 
 | Attribute | Description |

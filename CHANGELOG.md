@@ -21,7 +21,11 @@
   place bypasses the **solver** cache invalidation — assign the list or use
   `add_layer()`/`remove_layer()`. `config.reset()` is now documented as
   restoring the *numeric* defaults only: `file`/`materials` are user-provided
-  and are kept.
+  and are kept. The `System2D` ↔ `System` differences are now spelled out
+  (2D-only `setpoint`, missing `flag()`, `copy()` shares the `Location` in 2D
+  but re-creates it in 1D, writable vs read-only result attributes, per-mode
+  caches, extra 2D outputs); README no longer claims the interfaces are
+  identical.
 
 - **Cavity radiation solved with radiosity** (P0-02): the grey diffuse
   enclosure of each cavity is now solved exactly via Gebhart transfer factors
