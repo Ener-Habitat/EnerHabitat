@@ -22,6 +22,12 @@
   now silent and leaves `config.materials == {}`; the `file` getter no longer
   performs I/O nor returns `None`.
 
+- **Documentation examples regenerated** with the final physics (radiosity,
+  1D layer mapping, air viscosity, Xamán wall constant), default 80×160 mesh:
+  hollow-block wall free −0.20 % (`energy_transfer` 47,705 → 47,610), wall AC
+  `cooling_energy` −2.26 % (1,611,252 → 1,574,884) and `heating_energy`
+  −3.66 %, roof slab free −0.61 % (27,041 → 26,877) J/(m²·day); all converged
+  in 2–6 days. `usage.qmd` re-rendered from the new CSVs.
 - **Wall-cavity convective constant corrected and de-hardcoded**: the wall
   correlation is the dimensional reduction of Xamán et al. (2005) Eq. (11)
   (turbulent, A = 20, `Nu = 0.0857·Ra^0.3033` — the exponent of `d`,
