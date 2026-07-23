@@ -68,9 +68,9 @@ snippets as-is (values are typical/illustrative — replace with your own data):
 
 ```ini
 [Adobe]
-k   = 0.58    # Thermal conductivity, W/m·K
+k   = 0.58    # Thermal conductivity, W/(m·K)
 rho = 1500    # Density, kg/m³
-c   = 1480    # Specific heat, J/kg·K
+c   = 1480    # Specific heat, J/(kg·K)
 
 [Mortero]     ; cement mortar / render
 k   = 0.70

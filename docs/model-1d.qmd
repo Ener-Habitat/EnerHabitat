@@ -19,8 +19,8 @@ correspond to that converged, periodic day.
 
 The constructive system is a stack of $N$ homogeneous layers, ordered from outside
 ($x = 0$) to inside ($x = L$). Each layer $j$ is described by three constant properties:
-thermal conductivity $k_j$ (W/m·K), density $\rho_j$ (kg/m³) and specific heat $c_j$
-(J/kg·K).
+thermal conductivity $k_j$ (W/(m·K)), density $\rho_j$ (kg/m³) and specific heat $c_j$
+(J/(kg·K)).
 
 ![1D domain: multilayer wall/roof with its boundary conditions and the indoor-air
 node.](img/domain_1d.png){#fig-domain}
@@ -31,7 +31,7 @@ The model assumes:
   homogeneous, so there is no in-plane heat flow.
 - **Constant thermal properties** per layer (no temperature dependence, no moisture).
 - **Convective boundary conditions** with fixed film coefficients $h_o$ (outdoor) and
-  $h_i$ (indoor). The defaults, $h_o = 13$ and $h_i = 8.1$ W/m²·K, are the values
+  $h_i$ (indoor). The defaults, $h_o = 13$ and $h_i = 8.1$ W/(m²·K), are the values
   prescribed by the Mexican standards NOM-008-ENER and NOM-020-ENER ($h_i = 8.1$
   is the vertical-surface value, applied here to all orientations); both are
   configurable.
@@ -120,7 +120,7 @@ L_a\, \rho_a\, c_a\, \frac{dT_i}{dt} \;=\; h_i \left( T_{x=L} - T_i \right),
 $$ {#eq-air}
 
 with $L_a = 2.5$ m by default (`config.La`). The air properties are
-$\rho_a \approx 1.18$ kg/m³ and $c_a \approx 1005$ J/kg·K (`config.AIR_DENSITY`,
+$\rho_a \approx 1.18$ kg/m³ and $c_a \approx 1005$ J/(kg·K) (`config.AIR_DENSITY`,
 `config.AIR_HEAT_CAPACITY`). Because @eq-air is integrated in time alongside the wall,
 the time step is constrained by this coupling — see the
 [numerical method](numerics.qmd#indoor-air-coupling-free-running-mode) for why

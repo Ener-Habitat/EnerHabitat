@@ -154,7 +154,7 @@ def set_k_rhoc(cs, nx):
       **centre** (reference/reporting value; the solver uses ``Gf``).
     - ``rhoc_array[i]``: thickness-weighted average of ρc over the cell, so the
       total thermal mass ``Σ ρc_j·L_j`` is conserved exactly.
-    - ``Gf[f]``: face conductance per unit area (W/m²K) between the centres of
+    - ``Gf[f]``: face conductance per unit area (W/(m²·K)) between the centres of
       cells ``f`` and ``f+1``, from the exact series resistance
       ``∫ dx'/k(x')`` across the span. Material interfaces may fall anywhere
       inside a cell, and layers thinner than ``Δx`` (metal sheets, membranes)
@@ -231,7 +231,7 @@ def prepare_static_coefficients(k_array, rhoc_array, dx, dt, ho, hi,
         ho (float): Outdoor convective coefficient.
         hi (float): Indoor convective coefficient.
         interface_cond (numpy.ndarray, optional): Face conductances per unit
-            area (W/m²K), shape (nx-1,) — e.g. the interface-aware ``Gf`` from
+            area (W/(m²·K)), shape (nx-1,) — e.g. the interface-aware ``Gf`` from
             :func:`set_k_rhoc`. If ``None``, falls back to the harmonic mean of
             the neighbouring cell conductivities (exact only when the material
             interface lies on the face).

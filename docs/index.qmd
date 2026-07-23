@@ -33,9 +33,9 @@ EnerHabitat ships **no** materials: create a `materials.ini` in your working dir
 
 ```ini
 [Adobe]
-k   = 0.58    # W/m·K
+k   = 0.58    # W/(m·K)
 rho = 1500    # kg/m³
-c   = 1480    # J/kg·K
+c   = 1480    # J/(kg·K)
 ```
 
 ```python

@@ -110,7 +110,7 @@ Ra = \frac{g\, \beta\, \Delta T\, d^3}{\nu\, \alpha},
 $$ {#eq-nu-roof}
 
 where $[\,\cdot\,]^{+}$ keeps the positive part and the air properties are evaluated at
-ambient conditions ($k_{air} = 0.0262$ W/m·K, $\nu = 1.11\times10^{-5}$ m²/s,
+ambient conditions ($k_{air} = 0.0262$ W/(m·K), $\nu = 1.11\times10^{-5}$ m²/s,
 $\beta = 1/300$ K⁻¹). Because $h_c$ depends on the wall temperatures, it is re-evaluated
 inside the iteration of every time step (see the
 [numerical method](numerics.qmd#solution-algorithm)).

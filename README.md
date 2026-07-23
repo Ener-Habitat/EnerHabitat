@@ -33,8 +33,8 @@ Full documentation lives at **<https://ener-habitat.github.io/EnerHabitat/>**:
 EnerHabitat models the heat transfer through opaque constructive systems
 **without windows, ventilation, infiltration or internal heat gains**. Each
 layer is described by a material name and three properties: thermal
-conductivity `k` (W/m·K), density `rho` (kg/m³) and specific heat `c`
-(J/kg·K) — supplied by a user `materials.ini` file (no defaults are bundled).
+conductivity `k` (W/(m·K)), density `rho` (kg/m³) and specific heat `c`
+(J/(kg·K)) — supplied by a user `materials.ini` file (no defaults are bundled).
 
 Given an EPW file and a constructive system, EnerHabitat computes the outdoor
 (`Ta`), sun–air (`Tsa`), indoor (`Ti`) and neutrality (`Tn`) temperatures,
@@ -106,9 +106,9 @@ minimal file for this example:
 
 ```ini
 [Adobe]
-k   = 0.58    # W/m·K
+k   = 0.58    # W/(m·K)
 rho = 1500    # kg/m³
-c   = 1480    # J/kg·K
+c   = 1480    # J/(kg·K)
 ```
 
 ```python
@@ -182,7 +182,7 @@ joist-and-block roof, and the to-scale section inspector — are in the
 | `config` | Global parameters | `file`, `La`, `Nx`, `ho`, `hi`, `dt` *(fixed)* |
 | `config2d` | 2D mesh & convergence | `nx`, `ny`, `tol_inner`, `tol_day`, `max_days` |
 
-Defaults for `ho` (13) and `hi` (8.1 W/m²·K) are the NOM-008/020-ENER values
+Defaults for `ho` (13) and `hi` (8.1 W/(m²·K)) are the NOM-008/020-ENER values
 (`hi` is the vertical-surface value, applied to all orientations);
 `dt` is fixed at 10 s (see
 [why](https://ener-habitat.github.io/EnerHabitat/numerics.html#indoor-air-coupling-free-running-mode)).

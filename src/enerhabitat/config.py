@@ -42,11 +42,11 @@ class Config:
         file (str): Path to the materials configuration file.
         La (float): Length of the dummy frame (m).
         Nx (int): Number of discretization elements.
-        ho (float): Outdoor convective coefficient (W/m²K).
-        hi (float): Indoor convective coefficient (W/m²K).
+        ho (float): Outdoor convective coefficient (W/(m²·K)).
+        hi (float): Indoor convective coefficient (W/(m²·K)).
         dt (float): Time step (seconds). Fixed at 10 s, not configurable.
         AIR_DENSITY (float): Density of air (kg/m³).
-        AIR_HEAT_CAPACITY (float): Heat capacity of air (J/kgK).
+        AIR_HEAT_CAPACITY (float): Heat capacity of air (J/(kg·K)).
         
     Methods:
         materials_list(): Returns the list of materials in the configuration file.
@@ -84,11 +84,11 @@ class Config:
         print(f"Materials file: \t\t\t{self.__materials_file}")
         print(f"La (Length of dummy frame): \t\t{self.La} m")
         print(f"Nx (Number of discretization elements):\t{self.Nx}")
-        print(f"ho (Outdoor convective coefficient): \t{self.ho} W/m²K")
-        print(f"hi (Indoor convective coefficient): \t{self.hi} W/m²K")
+        print(f"ho (Outdoor convective coefficient): \t{self.ho} W/(m²·K)")
+        print(f"hi (Indoor convective coefficient): \t{self.hi} W/(m²·K)")
         print(f"dt (Time step): \t\t\t{self.dt} seconds")
         print(f"\nAIR_DENSITY: \t\t\t\t{self.AIR_DENSITY} kg/m³")
-        print(f"AIR_HEAT_CAPACITY: \t\t\t{self.AIR_HEAT_CAPACITY} J/kgK")
+        print(f"AIR_HEAT_CAPACITY: \t\t\t{self.AIR_HEAT_CAPACITY} J/(kg·K)")
     
     def to_dict(self):
         return {

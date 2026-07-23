@@ -51,7 +51,9 @@
   start of each step, `Ti`/`Tsi` at the end), `Tfield` and `Qout` are now
   documented as public API. "Color" is no longer used as a synonym of solar
   absorptance: it remains once, as intuition with a caveat (same-color
-  coatings can differ in absorptance).
+  coatings can differ in absorptance). Unit notation unified across docs,
+  README and docstrings to the parenthesized SI form: `W/(m·K)`, `W/(m²·K)`,
+  `J/(kg·K)`, `J/(m²·day)`.
 
 - **Cavity radiation solved with radiosity** (P0-02): the grey diffuse
   enclosure of each cavity is now solved exactly via Gebhart transfer factors
