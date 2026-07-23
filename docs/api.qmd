@@ -53,7 +53,7 @@ wall = eh.System(location=loc, tilt=90, azimuth=0, absortance=0.8, layers=[])
 | `location` | `Location` | Climate source |
 | `tilt` | `float` | Degrees from horizontal: `0` roof, `90` vertical wall |
 | `azimuth` | `float` | Surface azimuth, pvlib convention (N=0, E=90, S=180, W=270) |
-| `absortance` | `float` | Solar absorptance of the outdoor surface, `[0, 1]` |
+| `absortance` | `float` | Solar absorptance of the outdoor surface, `[0, 1]` — **validated**: values outside the range raise `ValueError` |
 | `layers` | `list[tuple[str, float]]` | `(material, thickness_m)`, **outside → inside** |
 
 Read-only results (energy per unit surface area over the converged day, **J/(m²·day)**
@@ -217,6 +217,11 @@ Global singleton; changing it affects all subsequent computations.
 `materials_dict()`; `config.materials` is a read-only dict of material properties
 (`.k`, `.rho`, `.c`).
 
+Setters **validate** (raising `ValueError`): `La`, `ho`, `hi` and the air properties
+must be > 0; `Nx` must be an integer ≥ 3; materials must have `k`, `rho`, `c` > 0
+(checked when the `.ini` is loaded; on failure the previous materials are kept).
+Layer thicknesses must be > 0 (checked at solve time).
+
 ## `config2d` (2D)
 
 | Attribute | Default | Description |
@@ -228,4 +233,8 @@ Global singleton; changing it affects all subsequent computations.
 | `max_days` | `60` | Cap on day-to-day iterations |
 | `max_inner` | `10000` | Cap on inner sweeps per time step; if hit, the solve is flagged `converged = False` |
 
-**Methods**: `info()`, `to_dict()`, `reset()`.
+**Methods**: `info()`, `to_dict()`, `reset()`, `validate()`.
+
+The attributes are plain (assignment is not checked); `validate()` runs at the start
+of every `System2D` solve and raises `ValueError` if `nx`/`ny` are not integers ≥ 3,
+a tolerance is ≤ 0, or `max_days`/`max_inner` are not integers ≥ 1.

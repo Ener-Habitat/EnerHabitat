@@ -756,6 +756,16 @@ class System2D:
                 "(HollowBlock or Slab).")
         return elems[0]
 
+    @property
+    def absortance(self):
+        return self._absortance
+
+    @absortance.setter
+    def absortance(self, value):
+        if not (0.0 <= value <= 1.0):
+            raise ValueError(f"absortance must be in [0, 1], got {value!r}")
+        self._absortance = value
+
     def _validate(self):
         if len(self.layers) > 7:
             raise ValueError("at most 7 layers (including the 2D element).")
@@ -765,6 +775,14 @@ class System2D:
             raise ValueError(
                 f"{type(elem).__name__} is only for tilt={rt}° "
                 f"(this system has tilt={self.tilt}°).")
+        for i, l in enumerate(self.layers):
+            if not isinstance(l, _ELEMENT_TYPES):
+                name, Lv = l
+                if not (Lv > 0):
+                    raise ValueError(
+                        f"layer {i + 1} ({name!r}): thickness must be > 0 m, "
+                        f"got {Lv!r}")
+        config2d.validate()
 
     def _build_section(self):
         layers = self.layers

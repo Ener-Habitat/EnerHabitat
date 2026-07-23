@@ -126,6 +126,13 @@ def set_construction(materials, layers):
     """
     cs = {}
     for i, (material, L) in enumerate(layers, start=1):
+        if material not in materials:
+            raise KeyError(
+                f"material {material!r} not found in config.materials "
+                f"(available: {sorted(materials)}; check config.file)")
+        if not (L > 0):
+            raise ValueError(
+                f"layer {i} ({material!r}): thickness must be > 0 m, got {L!r}")
         layer = f"L{i}"
         cs[layer] = {
             "L": L,

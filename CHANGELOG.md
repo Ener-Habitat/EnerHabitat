@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Targeted range validation (P1)**: physically corrupting inputs now raise
+  `ValueError` instead of being accepted silently — `absortance` outside
+  `[0, 1]` (1D and 2D), `config.La/ho/hi`/air properties ≤ 0, non-integer or
+  < 3 `Nx`, layer thicknesses ≤ 0, materials with `k/rho/c` ≤ 0 (rejected at
+  `.ini` load, keeping the previous materials), and `config2d.validate()`
+  (mesh/tolerances/caps) run at the start of every 2D solve. Missing layer
+  materials now raise a `KeyError` that lists the available names.
 - **Explicit errors for the materials file (P1)**: assigning a missing path to
   `config.file` now raises `FileNotFoundError` (it used to print and continue,
   leaving internal attributes unset and crashing later with a cryptic

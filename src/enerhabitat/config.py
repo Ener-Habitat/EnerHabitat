@@ -145,6 +145,11 @@ class Config:
             k = float(materials_data[material_i]['k'])
             rho = float(materials_data[material_i]['rho'])
             c = float(materials_data[material_i]['c'])
+            for prop, val in (("k", k), ("rho", rho), ("c", c)):
+                if not (val > 0):
+                    raise ValueError(
+                        f"material {material_i!r} in {new_file!r}: "
+                        f"{prop} must be > 0, got {val}")
             new_materials_dict[material_i] = Material(k, rho, c)
 
         # Commit only after a successful parse (rollback semantics)
@@ -163,22 +168,28 @@ class Config:
         return self.__La
     @La.setter
     def La(self, value):
+        if not (value > 0):
+            raise ValueError(f"La must be > 0 m, got {value!r}")
         self.__La = value
         self.version += 1
-        
+
     @property
     def Nx(self):
         return self.__Nx
     @Nx.setter
     def Nx(self, value):
-        self.__Nx = value
+        if int(value) != value or int(value) < 3:
+            raise ValueError(f"Nx must be an integer >= 3, got {value!r}")
+        self.__Nx = int(value)
         self.version += 1
-        
+
     @property
     def ho(self):
         return self.__ho
     @ho.setter
     def ho(self, value):
+        if not (value > 0):
+            raise ValueError(f"ho must be > 0 W/(m2K), got {value!r}")
         self.__ho = value
         self.version += 1
         
@@ -187,6 +198,8 @@ class Config:
         return self.__hi
     @hi.setter
     def hi(self, value):
+        if not (value > 0):
+            raise ValueError(f"hi must be > 0 W/(m2K), got {value!r}")
         self.__hi = value
         self.version += 1
         
@@ -206,6 +219,8 @@ class Config:
         return self.__AIR_DENSITY
     @AIR_DENSITY.setter
     def AIR_DENSITY(self, value):
+        if not (value > 0):
+            raise ValueError(f"AIR_DENSITY must be > 0 kg/m3, got {value!r}")
         self.__AIR_DENSITY = value
         self.version += 1
         
@@ -214,6 +229,9 @@ class Config:
         return self.__AIR_HEAT_CAPACITY
     @AIR_HEAT_CAPACITY.setter
     def AIR_HEAT_CAPACITY(self, value):
+        if not (value > 0):
+            raise ValueError(
+                f"AIR_HEAT_CAPACITY must be > 0 J/(kgK), got {value!r}")
         self.__AIR_HEAT_CAPACITY = value
         self.version += 1
     
@@ -252,6 +270,25 @@ class Config2D:
         self.max_days = 60
         self.max_inner = 10000
         self.version = 0
+
+    def validate(self):
+        """Raise ``ValueError`` if any 2D numeric parameter is out of range.
+        Called by ``System2D`` at the start of every solve (the attributes are
+        plain, so assignment itself is not validated)."""
+        for name in ("nx", "ny"):
+            v = getattr(self, name)
+            if int(v) != v or int(v) < 3:
+                raise ValueError(f"config2d.{name} must be an integer >= 3, "
+                                 f"got {v!r}")
+        for name in ("tol_inner", "tol_day"):
+            v = getattr(self, name)
+            if not (v > 0):
+                raise ValueError(f"config2d.{name} must be > 0, got {v!r}")
+        for name in ("max_days", "max_inner"):
+            v = getattr(self, name)
+            if int(v) != v or int(v) < 1:
+                raise ValueError(f"config2d.{name} must be an integer >= 1, "
+                                 f"got {v!r}")
 
     def info(self):
         print("<enerhabitat.Config2D -- 2D solver parameters>")

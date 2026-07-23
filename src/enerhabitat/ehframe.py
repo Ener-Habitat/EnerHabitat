@@ -773,7 +773,12 @@ class System():
     def absortance(self, value:float):
         """
         Surface absortance of the system's external material.
+
+        Raises:
+            ValueError: if ``value`` is outside ``[0, 1]``.
         """
+        if not (0.0 <= value <= 1.0):
+            raise ValueError(f"absortance must be in [0, 1], got {value!r}")
         if value != getattr(self, "__absortance", None):
             self.__absortance = value
             self.__invalidate_cache()
