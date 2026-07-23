@@ -23,7 +23,9 @@ class Location:
         latitude (float): Latitude of the location.
         longitude (float): Longitude of the location.
         altitude (float): Altitude of the location in meters.
-        timezone (pytz.timezone): Timezone of the location.
+        timezone (pytz.FixedOffset): Fixed-offset timezone built from the EPW
+            header's decimal UTC offset (local standard time, no DST rules;
+            fractional offsets such as +5.5 or +5.75 are preserved).
              
 
     Methods:
@@ -127,10 +129,12 @@ class Location:
         epw_data = self.__epw_format_data(year=year)
 
         dia_promedio = pd.date_range(start=f1, end=f2, freq='1s',tz=self.timezone)
-        location = pvlib.location.Location(latitude = self.latitude, 
-                                           longitude= self.longitude, 
+        # tz="UTC" is inert here: get_solarposition uses the tz-aware index
+        # above (pvlib's Location.tz cannot hold fractional UTC offsets).
+        location = pvlib.location.Location(latitude = self.latitude,
+                                           longitude= self.longitude,
                                            altitude= self.altitude,
-                                           tz=self.timezone)
+                                           tz="UTC")
 
         dia_promedio = location.get_solarposition(dia_promedio)
         del dia_promedio['apparent_zenith']
@@ -251,8 +255,11 @@ class Location:
         self.__longitude = float(datos[7])
         self.__altitude = float(datos[9])
         
-        tmz = int(datos[8].split('.')[0])
-        self.__timezone = pytz.timezone('Etc/GMT'+f'{(-tmz):+}')
+        # EPW field 8 is the decimal UTC offset (e.g. -6.0, +5.5, +5.75).
+        # A fixed offset preserves fractional zones exactly; 'Etc/GMT±N' only
+        # exists for integer offsets (and used to truncate +5.5 → +5).
+        tmz = float(datos[8])
+        self.__timezone = pytz.FixedOffset(round(tmz * 60))
         
         self.__invalidate_cache()
     

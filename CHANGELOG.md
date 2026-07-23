@@ -22,6 +22,13 @@
   now silent and leaves `config.materials == {}`; the `file` getter no longer
   performs I/O nor returns `None`.
 
+- **Fractional UTC offsets fixed (P2)**: the EPW header's decimal UTC offset
+  is now preserved via `pytz.FixedOffset` — it used to be truncated
+  (`+5.5 → +5`, up to 45 min of solar-time error in half/quarter-hour zones
+  such as India, Nepal or Newfoundland) and encoded as `Etc/GMT±N`, which
+  cannot represent fractions at all. Integer-offset EPWs (e.g. Mexico) are
+  bit-identical. `Location.timezone` is documented as a fixed-offset zone
+  (local standard time, no DST).
 - **API-accuracy doc fixes (P1 series)**: `solve()`/`solveAC()` return a
   `pandas.Series` named `"Ti"`, not a DataFrame — corrected in usage/api/
   model-1d pages, 1D docstrings and type annotations (which also promised a

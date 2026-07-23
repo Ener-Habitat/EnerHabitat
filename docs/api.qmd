@@ -27,7 +27,7 @@ header. The rest are read-only, recovered from the EPW header:
 | `city` | `str` | City, from the EPW header |
 | `latitude`, `longitude` | `float` | Degrees |
 | `altitude` | `float` | Metres |
-| `timezone` | `pytz.timezone` | Built from the EPW UTC offset |
+| `timezone` | `pytz.FixedOffset` | Fixed offset built from the EPW decimal UTC offset (local standard time, no DST; fractional offsets like +5.5/+5.75 preserved) |
 
 **Methods**
 
