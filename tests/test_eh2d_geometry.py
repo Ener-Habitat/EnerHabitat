@@ -22,6 +22,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 GOLDEN = os.path.join(HERE, "golden", "2d")
 INP = os.path.join(HERE, "..", "legacy_eh", "2dTfree", "standalone", "conduction.e.inp")
 
+# Las fuentes C de referencia (legacy_eh/) no viven en main: están archivadas
+# en el tag `archive/0.2.0-dev` y en el repositorio de validación. Para
+# restaurarlas localmente:  git archive archive/0.2.0-dev legacy_eh | tar -x
+HAS_LEGACY = os.path.isfile(INP)
+LEGACY_REASON = ("requiere las fuentes C de referencia (legacy_eh/): "
+                 "restaurar con `git archive archive/0.2.0-dev legacy_eh | tar -x`")
+try:
+    import pytest
+    pytestmark = pytest.mark.skipif(not HAS_LEGACY, reason=LEGACY_REASON)
+except ImportError:
+    pass
+
 
 # --- lectura de archivos legacy ------------------------------------------------
 
@@ -179,6 +191,8 @@ def _demo():
 
 
 if __name__ == "__main__":
+    if not HAS_LEGACY:
+        raise SystemExit(f"SKIP: {LEGACY_REASON}")
     for fn in (test_mesh_matches_c, test_NT_exact, test_k_rhoc):
         fn()
     _demo()

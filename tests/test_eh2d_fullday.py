@@ -23,7 +23,8 @@ import numpy as np
 
 from enerhabitat.ehtools2d import solve_step_2d
 
-from test_eh2d_geometry import read_inp, read_field, section_from_inp, INP, GOLDEN
+from test_eh2d_geometry import (read_inp, read_field, section_from_inp, INP,
+                                GOLDEN, HAS_LEGACY, LEGACY_REASON)
 from c_boundary import Boundary
 
 PY_SERIES = os.path.join(GOLDEN, "py_day_5_1.csv")
@@ -233,6 +234,10 @@ def _demo():
 
 
 if __name__ == "__main__":
+    # Regenerar la caché requiere el .inp del C; los tests (pytest) solo
+    # comparan la caché commiteada contra el golden y no lo necesitan.
+    if not HAS_LEGACY:
+        raise SystemExit(f"SKIP (solo regeneración): {LEGACY_REASON}")
     run_and_cache()
     test_series_vs_c()
     test_indices_vs_c()

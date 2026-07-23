@@ -22,6 +22,13 @@
   now silent and leaves `config.materials == {}`; the `file` getter no longer
   performs I/O nor returns `None`.
 
+- **Legacy C reference archived**: the original C sources (`legacy_eh/`,
+  removed from `main` at "cleaning repo") and the full 0.2.0 development
+  history are preserved in the tag `archive/0.2.0-dev`; the C reference will
+  live in the validation repository. The four golden tests that need it now
+  **skip with a clear message** (and a one-line restore command) instead of
+  crashing when `legacy_eh/` is absent; the cached full-day comparison keeps
+  running from the committed CSVs.
 - **Documentation examples regenerated** with the final physics (radiosity,
   1D layer mapping, air viscosity, Xamán wall constant), default 80×160 mesh:
   hollow-block wall free −0.20 % (`energy_transfer` 47,705 → 47,610), wall AC

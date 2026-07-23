@@ -19,7 +19,15 @@ import numpy as np
 from enerhabitat.eh2d import Section2D, Fill
 from enerhabitat.ehtools2d import calculate_coefficients_2d
 
-from test_eh2d_geometry import read_inp, read_meta, read_field, section_from_inp, INP, GOLDEN
+from test_eh2d_geometry import (read_inp, read_meta, read_field,
+                                section_from_inp, INP, GOLDEN,
+                                HAS_LEGACY, LEGACY_REASON)
+
+try:
+    import pytest
+    pytestmark = pytest.mark.skipif(not HAS_LEGACY, reason=LEGACY_REASON)
+except ImportError:
+    pass
 
 RTOL = 1e-10
 
@@ -114,6 +122,8 @@ def _demo():
 
 
 if __name__ == "__main__":
+    if not HAS_LEGACY:
+        raise SystemExit(f"SKIP: {LEGACY_REASON}")
     for fn in (test_coef_a, test_coef_b, test_coef_c, test_coef_d):
         fn()
     _demo()
