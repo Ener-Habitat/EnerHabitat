@@ -130,6 +130,26 @@ h_c \;=\; 0.4005\; \frac{\left| T_{out} - T_{in} \right|^{0.3033}}{d^{\,0.0901}}
 \qquad \left[\mathrm{W/m^2\,K}\right].
 $$ {#eq-nu-wall}
 
+::: {.callout-important title="PENDIENTE DE REVISIÓN (GBV) — procedencia de @eq-nu-wall. Nota interna: retirar antes de publicar."}
+La forma dimensional de @eq-nu-wall **no aparece así en Xamán et al. (2005)**
+(el artículo reporta ajustes adimensionales $Nu(Ra)$). El álgebra demuestra que
+es la reducción de un ajuste $Nu = C\,Ra^{n}$ con propiedades de aire fijas:
+sustituyendo $Ra = g\beta\Delta T d^3/\nu\alpha$ y $Nu = h_c d/k_{air}$ se
+obtiene $h_c = C\,k_{air}(g\beta/\nu\alpha)^{n}\,\Delta T^{n}\,d^{\,3n-1}$; con
+$n = 0.3033$ el exponente de $d$ da $3n-1 = -0.0901$, **exactamente** el del
+código. Despejando con las propiedades del código, la correlación subyacente es
+$Nu \approx 0.052\,Ra^{0.3033}$.
+
+**Por revisar:** ¿de cuál ajuste de Xamán 2005 sale (¿régimen turbulento?,
+¿qué relación de aspecto: 20, 40, 80?) y quién hizo la reducción (¿equipo
+EnerHabitat, 2016?). Documentarlo aquí como «derivada de Xamán ec. X con
+propiedades de aire de Incropera a 300 K». La constante vive en
+`src/enerhabitat/ehtools2d.py:491` (muro, `_step_hueca`) y `:937` (`_slab_hh`
+con `beta = 90`). Ojo: el rango de Xamán es cavidades altas (A = 20–80,
+$Ra$ 10²–10⁸); la cavidad del bloque documentado (0.16 × 0.08 m) queda fuera —
+declarar extrapolación mientras la campaña de validación no diga otra cosa.
+:::
+
 For a **roof** (`tilt = 0`, horizontal cavity) the regime is Rayleigh–Bénard. If the
 lower face is not hotter than the upper one the air stratifies stably and only conducts,
 $h_c = k_{air}/d$. Otherwise convection sets in, described by the correlation of
@@ -150,6 +170,23 @@ ambient conditions ($k_{air} = 0.0262$ W/(m·K), $\nu = 1.11\times10^{-5}$ m²/s
 $\beta = 1/300$ K⁻¹). Because $h_c$ depends on the wall temperatures, it is re-evaluated
 inside the iteration of every time step (see the
 [numerical method](numerics.qmd#solution-algorithm)).
+
+::: {.callout-important title="PENDIENTE DE CORRECCIÓN Y VERIFICACIÓN (GBV) — viscosidad ν. Nota interna: retirar antes de publicar."}
+Las propiedades del aire provienen de **Incropera** (tabla A.4). A ~300 K
+concuerdan $k_{air} = 0.0262$ W/(m·K), $\beta = 1/300$ K⁻¹ y
+$\alpha = k_{air}/(\rho_a c_a) \approx 2.21\times10^{-5}$ m²/s — pero
+$\nu = 1.11\times10^{-5}$ m²/s **no**: Incropera a 300 K da
+$1.589\times10^{-5}$; el valor del código corresponde a aire a ~240 K
+(−33 °C). Probable errata heredada del código C.
+
+**Dónde está:** `src/enerhabitat/ehtools2d.py:928` (`_NU_AIR = 1.11e-5`),
+usada solo en `_slab_hh` (`:938-947`) para el $Ra$ de Hollands — es decir,
+**solo afecta techos** (`Slab` con `Fill.AIR`); la correlación de muro
+(@eq-nu-wall) no usa $\nu$. Efecto: $Ra \propto 1/\nu$ sobreestimado ~43 % →
+$h_c$ de cavidades de techo algo mayor. **Corregir a $1.589\times10^{-5}$
+implica re-verificar los resultados 2D de techos** (batería AC + regeneración
+de ejemplos) — hacerlo antes de N1-5 para regenerar una sola vez.
+:::
 
 ### Radiation between cavity surfaces
 
