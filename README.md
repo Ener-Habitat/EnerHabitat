@@ -75,7 +75,8 @@ and two solution modes exist:
 
 For 2D systems, `System2D` solves the same problem on the unit's
 cross-section, adding the cavity physics: radiation between the cavity walls
-and temperature-dependent Nusselt convection with a lumped cavity-air node.
+(solved as a radiosity enclosure) and temperature-dependent Nusselt convection
+with a lumped cavity-air node.
 
 The equations are discretised with implicit **finite control volumes** and
 solved with the **TDMA**; the average day is iterated until the solution is
@@ -89,8 +90,7 @@ validation record are in the
 pip install enerhabitat
 ```
 
-With [uv](https://docs.astral.sh/uv/) (we love it and warmly encourage its
-use — fast, reproducible, and our recommended way to install EnerHabitat):
+With [uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv add enerhabitat
@@ -168,6 +168,10 @@ wall.Tsa()
 ti = wall.solve()
 ```
 
+> ⏱ A 2D solve at the default mesh (80×160) takes **~10–20 minutes** (the 1D
+> ones take seconds). For a quick smoke test, reduce the mesh first — e.g.
+> `eh.config2d.nx, eh.config2d.ny = 24, 60` — and check `wall.converged`.
+
 All the examples — the full 1D/2D × free-running/AC matrix, the
 joist-and-block roof, and the to-scale section inspector — are in the
 [Usage page](https://ener-habitat.github.io/EnerHabitat/usage.html).
@@ -177,11 +181,11 @@ joist-and-block roof, and the to-scale section inspector — are in the
 | Object | Purpose | Key methods / attributes |
 | ------ | ------- | ------------------------ |
 | `Location` | Reads an EPW file, builds the average day | `meanDay(month, year)` |
-| `System` | 1D multilayer wall/roof | `layers`, `Tsa()`, `solve()`, `solveAC()`, `energy_transfer`, `cooling_energy`, `heating_energy` |
-| `System2D` | 2D heterogeneous wall/roof | same interface as `System`, plus `preview()`, `section_report()`, `days` |
+| `System` | 1D multilayer wall/roof | `layers`, `Tsa()`, `solve()`, `solveAC()`, `energy_transfer`, `cooling_energy`, `heating_energy`, `days`, `converged` |
+| `System2D` | 2D heterogeneous wall/roof | mirror of `System` (see the [API page](https://ener-habitat.github.io/EnerHabitat/api.html#system2d) for the differences), plus `preview()`, `section_report()`, `solve_dataframe`, `Tfield` |
 | `HollowBlock` / `Slab` | The 2D element inside `System2D.layers` | `material(s)`, `fill_type` (`Fill.AIR`/`Fill.SOLID`), `geometry` |
 | `config` | Global parameters | `file`, `La`, `Nx`, `ho`, `hi`, `dt` *(fixed)* |
-| `config2d` | 2D mesh & convergence | `nx`, `ny`, `tol_inner`, `tol_day`, `max_days` |
+| `config2d` | 2D mesh & convergence | `nx`, `ny`, `tol_inner`, `tol_day`, `max_days`, `max_inner` |
 
 Defaults for `ho` (13) and `hi` (8.1 W/(m²·K)) are the NOM-008/020-ENER values
 (`hi` is the vertical-surface value, applied to all orientations);
