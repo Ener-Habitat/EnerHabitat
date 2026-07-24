@@ -1,0 +1,65 @@
+---
+title: "Usage — 1D"
+lightbox: true
+---
+
+The [workflow](usage.qmd) applied to a homogeneous layer stack, in both modes —
+free-running and air-conditioned. The examples show **real results** for the average
+day of May in Cuernavaca, Mexico (the EPW and `materials.ini` used here live in
+`docs/data/` in the repository), and are executed when this documentation is
+rendered.
+
+Setup shared by all the examples:
+
+{{< include _usage-setup.qmd >}}
+
+## 1D wall, free-running
+
+```{python}
+wall = eh.System(eh.Location(epw_file))
+wall.azimuth = 90                    # east-facing
+wall.absortance = 0.3
+wall.layers = [("Mortero", 0.025), ("Ladrillo", 0.10)]
+wall.location.meanDay(month=5, year=2025)
+wall.Tsa()
+
+data = wall.solve()                  # free-running Ti
+data = pd.concat([data, wall.Tsa()], axis=1)
+
+print(f"energy_transfer = {wall.energy_transfer:,.0f} J/(m²·day)"
+      f"  = {wall.energy_transfer/3600:,.0f} Wh/(m²·day)")
+```
+
+```{python}
+plot_day(data, title="Mortero + Ladrillo wall, east, free-running — May, Cuernavaca")
+```
+
+The indoor temperature `Ti` oscillates with a smaller amplitude than the sun–air
+temperature `Tsa` and lags behind it — the damping and the delay are the thermal
+mass at work.
+
+## 1D wall, air-conditioned
+
+Same wall; `solveAC()` holds `Ti` at the neutrality temperature `Tn` and reports the
+energy needed to do so:
+
+```{python}
+dataAC = wall.solveAC()
+dataAC = pd.concat([dataAC, wall.Tsa()], axis=1)
+
+print(f"cooling_energy = {wall.cooling_energy:,.0f} J/(m²·day)"
+      f"  = {wall.cooling_energy/3600:,.0f} Wh/(m²·day)")
+print(f"heating_energy = {wall.heating_energy:,.0f} J/(m²·day)"
+      f"  = {wall.heating_energy/3600:,.0f} Wh/(m²·day)")
+```
+
+```{python}
+plot_day(dataAC, title="Same wall, air-conditioned (Ti = Tn) — May, Cuernavaca")
+```
+
+## Where to go next
+
+For systems whose section is not a simple layer stack — hollow blocks,
+joist-and-block slabs — continue with [Usage — 2D](usage-2d.qmd). The global
+parameters (`La`, `ho`, `hi`, `Nx`) are documented in
+[the configuration](usage.qmd#configuration).

@@ -1,0 +1,434 @@
+---
+title: "Usage — 2D"
+lightbox: true
+---
+
+The 2D model resolves constructive systems whose section is **not** a simple stack of
+homogeneous layers: hollow blocks (`HollowBlock`, walls) and joist-and-block slabs
+(`Slab`, roofs). [The workflow](usage.qmd) is the same as in 1D — the
+differences are the class (`System2D`), that `tilt` must be `90` (`HollowBlock`) or
+`0` (`Slab`), and that the 2D element goes **inside** the layer stack.
+
+As in [Usage — 1D](usage-1d.qmd), the examples show **real results** for the average day of May in
+Cuernavaca. Building the systems and inspecting their sections is executed live when
+this documentation is rendered; the solves are **pre-computed** — a default-mesh 2D
+solve takes ~10–20 minutes in a modern laptop — by
+[`docs/run_examples.py`](https://github.com/Ener-Habitat/EnerHabitat/blob/main/docs/run_examples.py),
+whose outputs (in `docs/data/results/`) this page reads and plots. Regenerate them
+with `uv run docs/run_examples.py`.
+
+## 2D geometries
+
+The 2D elements — `HollowBlock` for walls, `Slab` for joist-and-block roofs — are
+defined by a `geometry` dict (measures in **metres**). The schemes below name every
+key, drawn to scale with the same values used in the examples further down
+(shown in mm for readability):
+
+```{python}
+#| echo: false
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+
+SOLID = "#a9c0e0"     # shell / filler block
+RIB = "#5b83b8"       # joist (L-shaped rib)
+TOPPING = "#7fa3cc"   # compression topping
+AIR = "#dcefff"       # air cavity
+DIM = "#374151"       # dimension lines and labels
+
+def hdim(ax, x0, x1, y, label):
+    """Horizontal dimension arrow with its parameter name below."""
+    ax.annotate("", xy=(x0, y), xytext=(x1, y),
+                arrowprops=dict(arrowstyle="<->", color=DIM, lw=0.9))
+    ax.text((x0 + x1) / 2, y + 6, label, ha="center", va="top",
+            fontsize=8, color=DIM)
+
+def vdim(ax, y0, y1, x, label, side="right"):
+    """Vertical dimension arrow with its parameter name beside it."""
+    ax.annotate("", xy=(x, y0), xytext=(x, y1),
+                arrowprops=dict(arrowstyle="<->", color=DIM, lw=0.9))
+    dx, ha = (6, "left") if side == "right" else (-6, "right")
+    ax.text(x + dx, (y0 + y1) / 2, label, ha=ha, va="center",
+            fontsize=8, color=DIM)
+```
+
+```{python}
+#| echo: false
+web, block_width = 20, 160                      # mm — same as the 2D wall example
+cover_top, cavity, cover_bottom = 20, 80, 20
+X = 2 * web + block_width
+Y = cover_top + cavity + cover_bottom
+
+fig, ax = plt.subplots(figsize=(6.4, 4.2))
+ax.add_patch(Rectangle((0, 0), X, Y, facecolor=SOLID, edgecolor="k", lw=1))
+ax.add_patch(Rectangle((web, cover_top), block_width, cavity,
+                       facecolor=AIR, edgecolor="k", lw=0.8, ls="--"))
+ax.text(X / 2, cover_top + cavity / 2, "cavity (air or fill)",
+        ha="center", va="center", fontsize=9, color=DIM)
+ax.text(X / 2, -12, "OUTSIDE", ha="center", va="bottom", fontsize=9, color="#b91c1c")
+ax.text(X / 2, Y + 42, "INSIDE", ha="center", va="top", fontsize=9, color="#1d4ed8")
+
+hdim(ax, 0, web, Y + 14, "web")
+hdim(ax, web, web + block_width, Y + 14, "block_width")
+hdim(ax, web + block_width, X, Y + 14, "web")
+vdim(ax, 0, cover_top, X + 14, "cover_top")
+vdim(ax, cover_top, cover_top + cavity, X + 14, "cavity")
+vdim(ax, cover_top + cavity, Y, X + 14, "cover_bottom")
+
+ax.set_xlim(-15, X + 95)
+ax.set_ylim(Y + 55, -25)          # inverted: outside on top
+ax.set_aspect("equal")
+ax.axis("off")
+ax.set_title("HollowBlock — geometry parameters (one cell)", fontsize=10)
+fig.tight_layout()
+plt.show()
+```
+
+```{python}
+#| echo: false
+web, foot, shoulder = 25, 25, 50                # mm — same as the roof example
+n_cavities, cavity_width = 3, 103
+topping, topping_cap = 100, 50
+cover_top, cavity, cover_bottom = 30, 40, 30
+X = 2 * (web + foot) + (n_cavities + 1) * shoulder + n_cavities * cavity_width
+Y = topping + cover_top + cavity + cover_bottom
+
+fig, ax = plt.subplots(figsize=(9.0, 4.6))
+# filler block body, then topping band, then the two L-shaped ribs on top
+ax.add_patch(Rectangle((0, topping), X, Y - topping, facecolor=SOLID, edgecolor="none"))
+ax.add_patch(Rectangle((0, 0), X, topping, facecolor=TOPPING, edgecolor="none"))
+for x0, sign in ((0, 1), (X, -1)):
+    ax.add_patch(Rectangle((min(x0, x0 + sign * web), topping_cap),
+                           web, Y - topping_cap, facecolor=RIB, edgecolor="none"))
+    ax.add_patch(Rectangle((min(x0, x0 + sign * (web + foot)), Y - cover_bottom),
+                           web + foot, cover_bottom, facecolor=RIB, edgecolor="none"))
+x0 = web + foot + shoulder
+for c in range(n_cavities):
+    xs = x0 + c * (cavity_width + shoulder)
+    ax.add_patch(Rectangle((xs, topping + cover_top), cavity_width, cavity,
+                           facecolor=AIR, edgecolor="k", lw=0.8, ls="--"))
+ax.add_patch(Rectangle((0, 0), X, Y, facecolor="none", edgecolor="k", lw=1))
+ax.text(X / 2, topping / 2, "topping", ha="center", va="center",
+        fontsize=9, color="white")
+ax.text(X / 2, topping + cover_top + cavity / 2, f"n_cavities = {n_cavities}",
+        ha="center", va="center", fontsize=9, color=DIM)
+ax.text(web / 2, (topping_cap + Y) / 2, "rib", ha="center", va="center",
+        fontsize=8, color="white", rotation=90)
+ax.text(X / 2, -12, "OUTSIDE", ha="center", va="bottom", fontsize=9, color="#b91c1c")
+ax.text(X / 2, Y + 42, "INSIDE", ha="center", va="top", fontsize=9, color="#1d4ed8")
+
+hdim(ax, 0, web, Y + 14, "web")
+hdim(ax, web, web + foot, Y + 34, "foot")
+hdim(ax, web + foot, web + foot + shoulder, Y + 14, "shoulder")
+hdim(ax, x0, x0 + cavity_width, Y + 14, "cavity_width")
+vdim(ax, 0, topping_cap, -14, "topping_cap", side="left")
+vdim(ax, 0, topping, X + 14, "topping")
+vdim(ax, topping, topping + cover_top, X + 14, "cover_top")
+vdim(ax, topping + cover_top, topping + cover_top + cavity, X + 14, "cavity")
+vdim(ax, topping + cover_top + cavity, Y, X + 14, "cover_bottom")
+
+ax.set_xlim(-100, X + 110)
+ax.set_ylim(Y + 60, -25)          # inverted: outside on top
+ax.set_aspect("equal")
+ax.axis("off")
+ax.set_title("Slab — geometry parameters (one cell)", fontsize=10)
+fig.tight_layout()
+plt.show()
+```
+
+The rib is an **L**: its `web` rises through the whole element (stopping below the
+full-width `topping_cap`) and its `foot` widens it only along the `cover_bottom`
+band, forming the ledge the filler block rests on.
+
+## Examples
+
+Free-running and air-conditioned, for a hollow-block wall and a joist-and-block
+roof. Setup shared by all the examples (the materials are defined in the
+[materials file](usage.qmd#materials-file)):
+
+{{< include _usage-setup.qmd >}}
+
+### 2D hollow-block wall, free-running
+
+A concrete block with one air cavity per cell. The 2D element goes **inside** the
+layer stack; finishes are ordinary 1D layers around it. Building the system is
+instantaneous (only `solve()` is expensive), so this cell runs live:
+
+```{python}
+block = eh.HollowBlock(
+    material   = "Concreto",          # single material of the block
+    emissivity = 0.9,                 # cavity-wall emissivity (radiation)
+    geometry   = {                    # cell measures, in metres
+        "web":          0.02,         # half web (rib) thickness
+        "block_width":  0.16,         # cavity width
+        "cover_top":    0.02,         # outer shell
+        "cavity":       0.08,         # cavity height
+        "cover_bottom": 0.02,         # inner shell
+    },
+)
+
+wall2d = eh.System2D(eh.Location(epw_file))
+wall2d.tilt = 90                      # walls only (required for HollowBlock)
+wall2d.azimuth = 90
+wall2d.absortance = 0.6
+wall2d.layers = [("Mortero", 0.02), block, ("Yeso", 0.01)]
+# 2D stacks accept at most 7 layers INCLUDING the 2D element (fixed slots
+# inherited from the C engine); exceeding it raises ValueError. 1D has no limit.
+```
+
+The section scheme, to scale — outside on top:
+
+```{python}
+wall2d.preview(field="materials");
+```
+
+```python
+import numpy as np
+
+wall2d.location.meanDay(month=5, year=2025)
+wall2d.Tsa()
+
+wall2d.solve()                        # free-running — ~10–20 min (default mesh)
+print(wall2d.energy_transfer)         # J/(m²·day), per unit indoor area
+
+# A 2D solve is expensive: SAVE the results, so you pay that time only once.
+# solve_dataframe holds Ti, Tso, Tsi, Thueco + the whole Tsa grid;
+# Tfield is the (nx, ny) °C field of the last (converged) day.
+wall2d.solve_dataframe.to_csv("data/results/hollow_free.csv")
+np.save("data/results/hollow_free_Tfield.npy", wall2d.Tfield)
+```
+
+Reading the stored files back follows the **same workflow** — same columns, same
+plots, no re-solving. That is exactly what this page does (its files were written
+by `docs/run_examples.py` with the code above):
+
+```{python}
+# The 2D results were computed and saved beforehand by docs/run_examples.py;
+# json reads the stored summary (energies, convergence days, runtimes).
+import json
+
+RES = "data/results"
+summary = json.load(open(f"{RES}/summary.json"))
+
+hollow = pd.read_csv(f"{RES}/hollow_free.csv", index_col=0, parse_dates=True)
+s = summary["hollow_free"]
+print(f"energy_transfer = {s['energy_transfer']:,.0f} J/(m²·day)"
+      f"  = {s['energy_transfer']/3600:,.0f} Wh/(m²·day)"
+      f"  ·  converged in {s['days']} days"
+      f"  ·  solve time ≈ {s['runtime_s']/60:.0f} min")
+plot_day(hollow, title="Hollow-block wall (2D), east, free-running — May, Cuernavaca")
+```
+
+Besides `Ti`, the 2D solver keeps the full **temperature field** of the last
+(converged) day — `wall2d.Tfield`, an `(nx, ny)` array in °C on the section mesh,
+with the same orientation as `preview()` (outside on top):
+
+```{python}
+import numpy as np
+
+T = np.load(f"{RES}/hollow_free_Tfield.npy")
+s = summary["hollow_free"]
+fig, ax = plt.subplots(figsize=(7.0, 3.8))
+im = ax.imshow(T.T, extent=[0, s["X_mm"], s["Y_mm"], 0], aspect="equal",
+               cmap="inferno", interpolation="nearest")
+fig.colorbar(im, ax=ax, label="T (°C)")
+ax.set_xlabel("width [mm]")
+ax.set_ylabel("thickness [mm]")
+ax.set_title("Tfield — hollow-block wall, end of the converged day", fontsize=10)
+fig.tight_layout()
+plt.show()
+```
+
+### 2D hollow-block wall, air-conditioned
+
+```python
+wall2d.solveAC()                      # Ti held at Tn
+print(wall2d.cooling_energy, wall2d.heating_energy)
+
+wall2d.solve_dataframe.to_csv("data/results/hollow_ac.csv")   # save, as before
+```
+
+```{python}
+hollowAC = pd.read_csv(f"{RES}/hollow_ac.csv", index_col=0, parse_dates=True)
+s = summary["hollow_ac"]
+print(f"cooling_energy = {s['cooling_energy']:,.0f} J/(m²·day)"
+      f"  = {s['cooling_energy']/3600:,.0f} Wh/(m²·day)")
+print(f"heating_energy = {s['heating_energy']:,.0f} J/(m²·day)"
+      f"  = {s['heating_energy']/3600:,.0f} Wh/(m²·day)")
+plot_day(hollowAC, title="Hollow-block wall (2D), air-conditioned — May, Cuernavaca")
+```
+
+### Joist-and-block roof (`Slab`)
+
+Three solids (compression topping, L-shaped rib, filler block) plus N equal cavities
+that can be air (`Fill.AIR`) or a solid fill (`Fill.SOLID`).
+
+```{python}
+slab = eh.Slab(
+    rib_material     = "ConcretoAltaDensidad",   # joist/rib (L-shaped: web + foot)
+    block_material   = "Bovedilla",              # filler block around the cavities
+    topping_material = "Concreto",               # compression topping
+    fill_type        = eh.Fill.AIR,      # or eh.Fill.SOLID (+ fill_material)
+    emissivity       = 0.9,              # required if AIR
+    geometry = {
+        "web":          0.025,   # rib web
+        "foot":         0.025,   # rib foot
+        "shoulder":     0.050,   # block between rib and cavities
+        "n_cavities":   3,
+        "cavity_width": 0.103,
+        "topping":      0.100,   # compression topping
+        "topping_cap":  0.050,   # topping above the rib web
+        "cover_top":    0.030,   # block above the cavity
+        "cavity":       0.040,   # cavity height
+        "cover_bottom": 0.030,   # block below the cavity
+    },
+)
+
+roof = eh.System2D(eh.Location(epw_file))
+roof.tilt = 0                            # roofs only (required for Slab)
+roof.absortance = 0.3
+roof.layers = [("Impermeabilizante", 0.003), slab, ("Yeso", 0.015)]
+```
+
+```{python}
+roof.preview(field="materials");
+```
+
+```python
+roof.location.meanDay(month=5, year=2025)
+roof.Tsa()
+
+roof.solve()                             # or roof.solveAC()
+
+# Same recommendation as with the wall: save, then analyse from the files.
+roof.solve_dataframe.to_csv("data/results/slab_free.csv")
+np.save("data/results/slab_free_Tfield.npy", roof.Tfield)
+```
+
+Recovered from the stored files:
+
+```{python}
+slab_df = pd.read_csv(f"{RES}/slab_free.csv", index_col=0, parse_dates=True)
+s = summary["slab_free"]
+print(f"energy_transfer = {s['energy_transfer']:,.0f} J/(m²·day)"
+      f"  = {s['energy_transfer']/3600:,.0f} Wh/(m²·day)"
+      f"  ·  converged in {s['days']} days")
+plot_day(slab_df, title="Joist-and-block roof (2D), free-running — May, Cuernavaca")
+```
+
+Note how the roof's `Tsa` drops **below** `Ta` at night: that is the long-wave
+radiation factor ($RF = 3.9$ °C for horizontal surfaces) at work — the roof sees the
+cold sky (see [the 1D model](model-1d.qmd#outdoor-the-sunair-temperature)).
+
+The 2D results go beyond `Ti`: `solve_dataframe` also stores the **surface
+temperatures** — `Tso` (outdoor surface), `Tsi` (indoor surface) and `Thueco`
+(cavity air) — on the same time grid, plotted here alongside `Ti`:
+
+```{python}
+fig, ax = plt.subplots(figsize=(7.2, 3.6))
+ax.plot(slab_df["Tso"],    color="#eb6834", lw=2, label="Tso (outdoor surface)")
+ax.plot(slab_df["Thueco"], color="#9467bd", lw=2, label="Thueco (cavity air)")
+ax.plot(slab_df["Tsi"],    color="#0d9488", lw=2, label="Tsi (indoor surface)")
+ax.plot(slab_df["Ti"],     color="#2a78d6", lw=2, label="Ti (indoor air)")
+ax.xaxis.set_major_locator(mdates.HourLocator(byhour=[0, 6, 12, 18], tz=slab_df.index.tz))
+ax.xaxis.set_major_formatter(mdates.DateFormatter("%H", tz=slab_df.index.tz))
+ax.set_xlabel("hour of the average day")
+ax.set_ylabel("temperature (°C)")
+ax.set_title("Roof surfaces: the cavity damps the outdoor swing", fontsize=10)
+ax.legend(frameon=False, fontsize=9, loc="upper left")
+ax.grid(alpha=0.25, lw=0.5)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+fig.tight_layout()
+plt.show()
+```
+
+And its temperature field — note the joists acting as thermal bridges through the
+cavity band:
+
+```{python}
+T = np.load(f"{RES}/slab_free_Tfield.npy")
+s = summary["slab_free"]
+fig, ax = plt.subplots(figsize=(8.5, 3.8))
+im = ax.imshow(T.T, extent=[0, s["X_mm"], s["Y_mm"], 0], aspect="equal",
+               cmap="inferno", interpolation="nearest")
+fig.colorbar(im, ax=ax, label="T (°C)")
+ax.set_xlabel("width [mm]")
+ax.set_ylabel("thickness [mm]")
+ax.set_title("Tfield — joist-and-block roof, end of the converged day", fontsize=10)
+fig.tight_layout()
+plt.show()
+```
+
+### Filled cavities (`Fill.SOLID`)
+
+The cavity of a `HollowBlock` (or the cavities of a `Slab`) can be filled with a solid
+material instead of air — e.g. an insulating core:
+
+```python
+block = eh.HollowBlock(
+    material      = "Concreto",
+    fill_type     = eh.Fill.SOLID,
+    fill_material = "EPS",
+    geometry      = {"web": 0.02, "block_width": 0.16,
+                     "cover_top": 0.02, "cavity": 0.08, "cover_bottom": 0.02},
+)
+```
+
+Filling with the *same* material as the shell makes the unit homogeneous — equivalent
+to a 1D layer (this is one of the package's validation checks).
+
+### Inspecting the section
+
+Before solving you can inspect, **to scale**, how materials and node types are laid
+out on the 2D mesh — the section schemes shown with each example above were drawn
+by `preview(field="materials")`. `section_report()` prints the verification table:
+
+```{python}
+wall2d.section_report()            # table: node types + materials (k, ρc, y-range)
+```
+
+The default `preview()` draws three panels: the **node types** (the finite-volume
+classification each mesh node gets — interior, cavity walls, corners, air), and the
+`k` and `ρc` fields actually assigned to the mesh:
+
+```{python}
+wall2d.preview();
+```
+
+matplotlib is an optional extra (`pip install enerhabitat[viz]`); without it —
+or with `backend="ascii"` — the inspector falls back to a **to-scale ASCII
+drawing**, handy on a remote terminal. Note that the drawing is a *resampling* of
+the mesh, not the mesh itself: one character is **not** one node — each character
+shows the node nearest to its position, and the header states the resolution
+(chars vs. mesh nodes, and the size in mm each character covers):
+
+```{python}
+roof.preview(field="materials", backend="ascii")
+```
+
+The raw arrays are also available: `sec = wall2d.section()` returns the node-type,
+`k` and `ρc` fields together with the mesh.
+
+## `config2d` (2D mesh and convergence)
+
+The physics (`La`, `ho`, `hi`, `dt`, air properties) is shared with the global
+[`config`](usage.qmd#configuration); `config2d` holds the 2D-only parameters:
+
+| Attribute   | Default | Description |
+| ----------- | ------- | ----------- |
+| `nx`        | `80`    | mesh nodes across the cell width (adiabatic sides) |
+| `ny`        | `160`   | mesh nodes through the thickness (outside → inside) |
+| `tol_inner` | `1e-8` °C | inner-step tolerance (max node update **and** max equation residual) |
+| `tol_day`   | `5e-4` °C | day-to-day convergence tolerance |
+| `max_days`  | `60`    | cap on the day-to-day iterations |
+| `max_inner` | `10000` | cap on inner sweeps per step (hit → `converged = False`) |
+
+```python
+from enerhabitat import config2d
+config2d.nx, config2d.ny = 120, 160
+```
+
+> Each solve is single-threaded. For volume (many configurations), parallelise at the
+> **process level** — run independent `solve()` calls in separate processes
+> (`multiprocessing`, `joblib`); this scales near-linearly (≈6× at 8 processes). See
+> [Performance](numerics.qmd#performance).

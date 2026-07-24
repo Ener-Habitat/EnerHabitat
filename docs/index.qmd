@@ -7,12 +7,12 @@ subtitle: "Thermal simulation of opaque constructive systems (walls and roofs) f
 systems (walls and roofs) driven by EPW weather data. It solves the time-dependent heat
 conduction equation across multi-layer systems — in **1D** for homogeneous layers
 (`System`) and in **2D** for units that are heterogeneous across their width, such as
-concrete hollow-block walls and joist-and-block (*vigueta y bovedilla*) roofs
+concrete hollow-block walls and joist-and-block  roofs
 (`System2D`) — and produces indoor temperatures and air-conditioning energy demands for
 an *average day* of a chosen month [@barrios2016].
 
 The model considers a single opaque envelope component: no windows, no ventilation, no
-infiltration, no internal gains — so any difference in the results is caused by the
+infiltration, no internal gains, so any difference in the results is caused by the
 constructive system alone. Two solution modes are available: **free-running** (the
 indoor temperature evolves with the system's dynamics) and **air-conditioned** (the
 indoor temperature is held at a comfort setpoint and the energy demands are reported).
@@ -30,7 +30,7 @@ Requires **Python ≥ 3.10**. The section inspector plots are an optional extra:
 
 ## Quickstart
 
-EnerHabitat ships **no** materials: create a `materials.ini` in your working directory
+EnerHabitat ships **no** materials: create a plain text file `materials.ini` in your working directory
 (or point `eh.config.file` to one) before running anything:
 
 ```ini
@@ -47,29 +47,28 @@ eh.config.file = "./materials.ini"           # 1) materials (required)
 loc = eh.Location("./epw/example.epw")       # 2) location from an EPW
 
 wall = eh.System(location=loc)               # 3) constructive system
-wall.azimuth = 90                            #    east-facing wall
-wall.absortance = 0.3
-wall.layers = [("Adobe", 0.20)]              #    outside → inside
+wall.azimuth = 90                            #    east-facing wall, 0 North, 90 East, 180 South, 270 West
+wall.absortance = 0.3                        #    fraction of incident long-wavelength radiant energy absorbed
+wall.layers = [("Adobe", 0.20)]              #    (material, width in meters) outside → inside
 
-loc.meanDay(month=5, year=2025)              # 4) average day of May
+loc.meanDay(month=5, year=2025)              # 4) average day of May, year to assign to datetime results
 wall.Tsa()                                   #    sun–air temperature
 
-ti = wall.solve()                            # 5) free-running indoor temperature
+ti = wall.solve()                            # 5) solves for the free-running indoor temperature and returns pandas series Ti
 print(wall.energy_transfer)                  #    J/(m²·day)
 ```
 
 ## Where to go next
 
-- [Usage](usage.qmd) — the full workflow, executable examples (1D and 2D, free-running
-  and air-conditioned), materials and configuration.
+- [Usage — workflow and setup](usage.qmd) — the workflow, the materials file and the
+  global configuration.
+- [Usage — 1D](usage-1d.qmd) — the workflow applied to a homogeneous wall,
+  free-running and air-conditioned, executed live.
+- [Usage — 2D](usage-2d.qmd) — hollow blocks and joist-and-block slabs: geometry
+  schemes, section inspection, temperature fields and `config2d`.
 - Theory — [1D model](model-1d.qmd) (physical problem, equations, boundary
   conditions), [2D model](model-2d.qmd) (cavities, hollow blocks, slabs),
   [numerical method](numerics.qmd) (discretisation, convergence, validation) and
   [assumptions and limits](assumptions.qmd).
 - [API reference](api.qmd) — every class and parameter.
 - [About](about.qmd) — how to cite, changelog, authors.
-
-## References
-
-::: {#refs}
-:::

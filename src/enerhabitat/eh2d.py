@@ -1197,9 +1197,15 @@ def plot_section(section, fields, layer_bounds_mm, materials_dict, save=None):
                                edgecolor="k", lw=1.2, ls="--"))
         ax.set_title(field)
         ax.set_xlabel("width [mm]")
-        ax.set_ylabel("thickness [mm] (out→in)")
-        ax.legend(handles=[Patch(color=c, label=t) for (t, _), c in zip(cats, colors)],
-                  fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.13))
+        ax.set_ylabel("thickness [mm]")
+        ax.text(1.02, 1.0, "OUTSIDE", transform=ax.transAxes, va="top",
+                ha="left", fontsize=8, color="#b91c1c", rotation=90)
+        ax.text(1.02, 0.0, "INSIDE", transform=ax.transAxes, va="bottom",
+                ha="left", fontsize=8, color="#1d4ed8", rotation=90)
+        handles = [Patch(color=c, label=t) for (t, _), c in zip(cats, colors)]
+        # below the x-label (clear of it); two columns when the legend is long
+        ax.legend(handles=handles, fontsize=6, loc="upper center",
+                  bbox_to_anchor=(0.5, -0.22), ncol=2 if len(handles) > 8 else 1)
     fig.suptitle("2D section to scale — material assignment")
     fig.tight_layout()
     if save is not None:
@@ -1208,7 +1214,13 @@ def plot_section(section, fields, layer_bounds_mm, materials_dict, save=None):
 
 
 def ascii_section(section, field, materials_dict, target_cols=60):
-    """**To-scale** ASCII drawing of a section field (fallback without matplotlib)."""
+    """**To-scale** ASCII drawing of a section field (fallback without matplotlib).
+
+    The drawing is a *resampling*, not the mesh itself: the ``nx×ny`` nodes are
+    mapped to at most ``target_cols`` columns (rows keep the real X:Y proportion,
+    compensating the ~2:1 height:width aspect of a terminal character) and each
+    character shows the **nearest node** — so one character is NOT one node.
+    """
     lab, cats = _categorize(section, field, materials_dict)
     nx, ny = lab.shape
     m = section.mesh
@@ -1224,11 +1236,17 @@ def ascii_section(section, field, materials_dict, target_cols=60):
             gmap.append(glyphs[gi % len(glyphs)])
             gi += 1
     out = [f"  [{field}]  to-scale cut  X={m.X*1000:.0f}mm × Y={m.Y*1000:.0f}mm "
-           f"(outside on top)"]
+           f"(outside on top)",
+           f"  {cols}×{rows} chars resampled from the {nx}×{ny} mesh "
+           f"(1 char ≈ {m.X*1000/cols:.1f}×{m.Y*1000/rows:.1f} mm, nearest node)"]
     for r in range(rows):
         j = min(ny - 1, int((r + 0.5) * ny / rows))
         row = "".join(gmap[lab[min(nx - 1, int((c + 0.5) * nx / cols)), j]]
                       for c in range(cols))
+        if r == 0:
+            row += "   ← OUTSIDE"
+        elif r == rows - 1:
+            row += "   ← INSIDE"
         out.append("  " + row)
     out.append("  legend:")
     for (txt, _), g in zip(cats, gmap):

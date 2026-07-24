@@ -1,0 +1,45 @@
+<!-- Shared setup for the Usage pages (included by usage.qmd and usage-2d.qmd). -->
+
+```{python}
+#| code-fold: false
+import enerhabitat as eh
+import pandas as pd
+
+eh.config.file = "data/materials.ini"
+epw_file = "data/MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-2018.epw"
+```
+
+```{python}
+#| code-fold: true
+#| code-summary: "Plot helper used by the examples (click to show)"
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+EH_COLORS = {"Ti": "#2a78d6", "Tsa": "#eb6834", "Ta": "#008300", "Tn": "#6b7280"}
+
+def plot_day(df, title=""):
+    """Temperatures of the average day, with the comfort zone Tn ± DeltaTn."""
+    fig, ax = plt.subplots(figsize=(7.2, 3.6))
+
+    # comfort zone: Tn and DeltaTn are columns (constant along the day)
+    ax.fill_between(df.index, df["Tn"] - df["DeltaTn"], df["Tn"] + df["DeltaTn"],
+                    color=EH_COLORS["Tn"], alpha=0.12, lw=0)
+    ax.plot(df["Tn"], color=EH_COLORS["Tn"], ls="--", lw=1, label="Tn ± ΔTn")
+
+    ax.plot(df["Ta"],  color=EH_COLORS["Ta"],  lw=2, label="Ta")
+    ax.plot(df["Tsa"], color=EH_COLORS["Tsa"], lw=2, label="Tsa")
+    ax.plot(df["Ti"],  color=EH_COLORS["Ti"],  lw=2, label="Ti")
+
+    # tz=... keeps the labels in local time (matplotlib defaults to UTC)
+    ax.xaxis.set_major_locator(mdates.HourLocator(byhour=[0, 6, 12, 18], tz=df.index.tz))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%H", tz=df.index.tz))
+    ax.set_xlabel("hour of the average day")
+    ax.set_ylabel("temperature (°C)")
+    ax.set_title(title, fontsize=10)
+    ax.legend(frameon=False, fontsize=9, loc="upper left")
+    ax.grid(alpha=0.25, lw=0.5)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    fig.tight_layout()
+    plt.show()
+```

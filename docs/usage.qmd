@@ -1,14 +1,12 @@
 ---
-title: "Usage"
+title: "Usage — workflow and setup"
 ---
 
-All the examples on this page show **real results** for the average day of May in
-Cuernavaca, Mexico (the EPW and `materials.ini` used here live in `docs/data/` in the
-repository). The 1D examples are executed when the site is rendered; the 2D ones are
-**pre-computed** — a default-mesh 2D solve takes ~10–20 minutes — by
-[`docs/run_examples.py`](https://github.com/Ener-Habitat/EnerHabitat/blob/main/docs/run_examples.py),
-whose outputs (in `docs/data/results/`) the page reads and plots. Regenerate them with
-`uv run python docs/run_examples.py`.
+This page covers everything that comes **before** simulating: the workflow, the
+project layout, the materials file and the global configuration. The workflow is
+then applied, with executable examples, in [Usage — 1D](usage-1d.qmd) (homogeneous
+layer stacks) and [Usage — 2D](usage-2d.qmd) (hollow blocks and joist-and-block
+slabs).
 
 ## Workflow
 
@@ -29,8 +27,7 @@ To simulate a wall (or roof) you need to:
 
 Both solvers return a `pandas.Series` named `"Ti"`, indexed by time of day on the same
 time grid as `Tsa()` — so results concatenate directly
-(`pd.concat([data, wall.Tsa()], axis=1)` promotes the named Series to a column; no
-resampling, no NaN). When a `DataFrame` is required, convert with
+(`pd.concat([data, wall.Tsa()], axis=1)` promotes the named Series to a column. When a `DataFrame` is required, convert with
 `wall.solve().to_frame("Ti")`.
 
 > `Tsa` depends on `absortance`, `tilt`, `azimuth`, the month (`meanDay`) and the
@@ -38,15 +35,11 @@ resampling, no NaN). When a `DataFrame` is required, convert with
 > cache and the next call to `Tsa()` or to a solver recomputes automatically; a
 > prior manual `Tsa()` call is optional (useful to inspect the forcing before
 > solving).
->
-> One caveat: mutating the stack in place (`wall.layers.append(...)`) bypasses the
-> setters, so a later `solve()` can return the cached result of the *previous*
-> stack. Assign the full list (`wall.layers = [...]`) or use
-> `add_layer()`/`remove_layer()`, which invalidate correctly.
+
 
 ## Recommended folder structure
 
-`materials.ini` is **required** — EnerHabitat ships with no default materials.
+A plain text file named `materials.ini` is **required** — EnerHabitat ships with no default materials.
 
 ```
 project/
@@ -64,7 +57,8 @@ header and `k`, `rho`, `c` the keys (case-sensitive, no Greek letters). Inline c
 (`#` or `;`) are allowed. By default the package looks for `materials.ini` in the
 working directory; otherwise set `eh.config.file`.
 
-The file below defines **every material used in these docs**, so you can run all the
+The file below defines **every material used in these docs**
+([Usage — 1D](usage-1d.qmd) and [Usage — 2D](usage-2d.qmd)), so you can run all the
 snippets as-is (values are typical/illustrative — replace with your own data):
 
 ```ini
@@ -83,10 +77,15 @@ k   = 0.85
 rho = 1600
 c   = 840
 
-[Concreto]    ; structural concrete (ribs, topping, hollow block)
+[Concreto]    ; structural concrete (topping, hollow block)
 k   = 1.80
 rho = 2200
 c   = 880
+
+[ConcretoAltaDensidad]   ; high-density structural concrete (joist/rib)
+k   = 2.00
+rho = 2400
+c   = 920
 
 [Bovedilla]   ; lightweight filler block
 k   = 0.50
@@ -115,261 +114,7 @@ the previously loaded materials (and path) are kept untouched. If the default
 `materials` starts empty (`{}`) — solving then fails because the layer materials
 cannot be resolved — so set `config.file` before building systems.
 
-## Examples
-
-The examples form the **system × mode** matrix: 1D/2D, free-running and
-air-conditioned. Setup shared by all of them:
-
-```{python}
-#| code-fold: false
-import enerhabitat as eh
-import pandas as pd
-
-eh.config.file = "data/materials.ini"
-epw_file = "data/MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-2018.epw"
-```
-
-```{python}
-#| code-fold: true
-#| code-summary: "Plot helper used by the examples (click to show)"
-import matplotlib.pyplot as plt
-
-EH_COLORS = {"Ti": "#2a78d6", "Tsa": "#eb6834", "Ta": "#008300", "Tn": "#6b7280"}
-INK = "#374151"
-
-def plot_day(df, cols=("Ta", "Tsa", "Ti"), title=""):
-    """Temperatures of the average day, with the comfort zone Tn ± DeltaTn."""
-    fig, ax = plt.subplots(figsize=(7.2, 3.6))
-    hours = (df.index - df.index[0]).total_seconds() / 3600
-    if "Tn" in df and "DeltaTn" in df:
-        tn, dtn = float(df["Tn"].iloc[0]), float(df["DeltaTn"].iloc[0])
-        ax.axhspan(tn - dtn, tn + dtn, color=EH_COLORS["Tn"], alpha=0.12, lw=0)
-        ax.axhline(tn, color=EH_COLORS["Tn"], ls="--", lw=1)
-        ax.annotate("comfort  Tn ± ΔTn", xy=(0.4, tn + dtn), va="bottom",
-                    fontsize=8, color=INK)
-    # end-of-line labels, dodged vertically if two lines end too close
-    ends = {c: float(df[c].iloc[-1]) for c in cols}
-    span = df[list(cols)].to_numpy()
-    min_sep = 0.06 * (span.max() - span.min())
-    ypos = dict(ends)
-    order = sorted(cols, key=ends.get)
-    for a, b in zip(order, order[1:]):
-        if ypos[b] - ypos[a] < min_sep:
-            ypos[b] = ypos[a] + min_sep
-    for c in cols:
-        ax.plot(hours, df[c], color=EH_COLORS[c], lw=2, label=c)
-        ax.annotate(c, xy=(hours[-1] + 0.4, ypos[c]),
-                    va="center", fontsize=9, color=INK)
-    ax.set_xlim(0, 26)
-    ax.set_xticks([0, 6, 12, 18, 24])
-    ax.set_xlabel("hour of the average day")
-    ax.set_ylabel("temperature (°C)")
-    if title:
-        ax.set_title(title, fontsize=10)
-    ax.legend(frameon=False, fontsize=9, loc="upper left")
-    ax.grid(alpha=0.25, lw=0.5)
-    for s in ("top", "right"):
-        ax.spines[s].set_visible(False)
-    fig.tight_layout()
-    plt.show()
-```
-
-### 1D wall, free-running
-
-```{python}
-wall = eh.System(eh.Location(epw_file))
-wall.azimuth = 90                    # east-facing
-wall.absortance = 0.3
-wall.layers = [("Mortero", 0.025), ("Ladrillo", 0.10)]
-wall.location.meanDay(month=5, year=2025)
-wall.Tsa()
-
-data = wall.solve()                  # free-running Ti
-data = pd.concat([data, wall.Tsa()], axis=1)
-
-print(f"energy_transfer = {wall.energy_transfer:,.0f} J/(m²·day)"
-      f"  = {wall.energy_transfer/3600:,.0f} Wh/(m²·day)")
-```
-
-```{python}
-plot_day(data, title="Mortero + Ladrillo wall, east, free-running — May, Cuernavaca")
-```
-
-The indoor temperature `Ti` oscillates with a smaller amplitude than the sun–air
-temperature `Tsa` and lags behind it — the damping and the delay are the thermal
-mass at work.
-
-### 1D wall, air-conditioned
-
-Same wall; `solveAC()` holds `Ti` at the neutrality temperature `Tn` and reports the
-energy needed to do so:
-
-```{python}
-dataAC = wall.solveAC()
-dataAC = pd.concat([dataAC, wall.Tsa()], axis=1)
-
-print(f"cooling_energy = {wall.cooling_energy:,.0f} J/(m²·day)"
-      f"  = {wall.cooling_energy/3600:,.0f} Wh/(m²·day)")
-print(f"heating_energy = {wall.heating_energy:,.0f} J/(m²·day)"
-      f"  = {wall.heating_energy/3600:,.0f} Wh/(m²·day)")
-```
-
-```{python}
-plot_day(dataAC, title="Same wall, air-conditioned (Ti = Tn) — May, Cuernavaca")
-```
-
-### 2D hollow-block wall, free-running
-
-A concrete block with one air cavity per cell. The 2D element goes **inside** the
-layer stack; finishes are ordinary 1D layers around it.
-
-```python
-block = eh.HollowBlock(
-    material   = "Concreto",          # single material of the block
-    emissivity = 0.9,                 # cavity-wall emissivity (radiation)
-    geometry   = {                    # cell measures, in metres
-        "web":          0.02,         # half web (rib) thickness
-        "block_width":  0.16,         # cavity width
-        "cover_top":    0.02,         # outer shell
-        "cavity":       0.08,         # cavity height
-        "cover_bottom": 0.02,         # inner shell
-    },
-)
-
-wall2d = eh.System2D(eh.Location(epw_file))
-wall2d.tilt = 90                      # walls only (required for HollowBlock)
-wall2d.azimuth = 90
-wall2d.absortance = 0.6
-wall2d.layers = [("Mortero", 0.02), block, ("Yeso", 0.01)]
-# 2D stacks accept at most 7 layers INCLUDING the 2D element (fixed slots
-# inherited from the C engine); exceeding it raises ValueError. 1D has no limit.
-
-wall2d.location.meanDay(month=5, year=2025)
-wall2d.Tsa()
-
-ti = wall2d.solve()                   # free-running
-# Full results: wall2d.solve_dataframe (Ti, Tso, Tsi, Thueco, °C, on the Tsa grid),
-# wall2d.Tfield ((nx, ny) °C field of the last day), wall2d.Qout (J/(m²·day)).
-print(wall2d.energy_transfer)         # J/(m²·day), per unit indoor area
-```
-
-Pre-computed result of that exact code:
-
-```{python}
-import json
-
-RES = "data/results"
-summary = json.load(open(f"{RES}/summary.json"))
-
-hollow = pd.read_csv(f"{RES}/hollow_free.csv", index_col=0, parse_dates=True)
-s = summary["hollow_free"]
-print(f"energy_transfer = {s['energy_transfer']:,.0f} J/(m²·day)"
-      f"  ·  converged in {s['days']} days"
-      f"  ·  solve time ≈ {s['runtime_s']/60:.0f} min")
-plot_day(hollow, title="Hollow-block wall (2D), east, free-running — May, Cuernavaca")
-```
-
-### 2D hollow-block wall, air-conditioned
-
-```python
-wall2d.solveAC()                      # Ti held at Tn
-print(wall2d.cooling_energy, wall2d.heating_energy)
-```
-
-```{python}
-hollowAC = pd.read_csv(f"{RES}/hollow_ac.csv", index_col=0, parse_dates=True)
-s = summary["hollow_ac"]
-print(f"cooling_energy = {s['cooling_energy']:,.0f} J/(m²·day)"
-      f"  = {s['cooling_energy']/3600:,.0f} Wh/(m²·day)")
-print(f"heating_energy = {s['heating_energy']:,.0f} J/(m²·day)"
-      f"  = {s['heating_energy']/3600:,.0f} Wh/(m²·day)")
-plot_day(hollowAC, title="Hollow-block wall (2D), air-conditioned — May, Cuernavaca")
-```
-
-### Joist-and-block roof (`Slab`)
-
-Three solids (compression topping, L-shaped rib, filler block) plus N equal cavities
-that can be air (`Fill.AIR`) or a solid fill (`Fill.SOLID`).
-
-```python
-slab = eh.Slab(
-    rib_material     = "Concreto",       # joist/rib (L-shaped: web + foot)
-    block_material   = "Bovedilla",      # filler block around the cavities
-    topping_material = "Concreto",       # compression topping
-    fill_type        = eh.Fill.AIR,      # or eh.Fill.SOLID (+ fill_material)
-    emissivity       = 0.9,              # required if AIR
-    geometry = {
-        "web":          0.025,   # rib web
-        "foot":         0.025,   # rib foot
-        "shoulder":     0.050,   # block between rib and cavities
-        "n_cavities":   3,
-        "cavity_width": 0.103,
-        "topping":      0.100,   # compression topping
-        "topping_cap":  0.050,   # topping above the rib web
-        "cover_top":    0.030,   # block above the cavity
-        "cavity":       0.040,   # cavity height
-        "cover_bottom": 0.030,   # block below the cavity
-    },
-)
-
-roof = eh.System2D(eh.Location(epw_file))
-roof.tilt = 0                            # roofs only (required for Slab)
-roof.absortance = 0.3
-roof.layers = [("Impermeabilizante", 0.003), slab, ("Yeso", 0.015)]
-roof.location.meanDay(month=5, year=2025)
-roof.Tsa()
-
-roof.solve()                             # or roof.solveAC()
-```
-
-```{python}
-slab_df = pd.read_csv(f"{RES}/slab_free.csv", index_col=0, parse_dates=True)
-s = summary["slab_free"]
-print(f"energy_transfer = {s['energy_transfer']:,.0f} J/(m²·day)"
-      f"  ·  converged in {s['days']} days")
-plot_day(slab_df, title="Joist-and-block roof (2D), free-running — May, Cuernavaca")
-```
-
-Note how the roof's `Tsa` drops **below** `Ta` at night: that is the long-wave
-radiation factor ($RF = 3.9$ °C for horizontal surfaces) at work — the roof sees the
-cold sky (see [the 1D model](model-1d.qmd#outdoor-the-sunair-temperature)).
-
-### Filled cavities (`Fill.SOLID`)
-
-The cavity of a `HollowBlock` (or the cavities of a `Slab`) can be filled with a solid
-material instead of air — e.g. an insulating core:
-
-```python
-block = eh.HollowBlock(
-    material      = "Concreto",
-    fill_type     = eh.Fill.SOLID,
-    fill_material = "EPS",
-    geometry      = {"web": 0.02, "block_width": 0.16,
-                     "cover_top": 0.02, "cavity": 0.08, "cover_bottom": 0.02},
-)
-```
-
-Filling with the *same* material as the shell makes the unit homogeneous — equivalent
-to a 1D layer (this is one of the package's validation checks).
-
-### Inspecting the section
-
-Before solving you can inspect, **to scale**, how materials and node types are laid
-out on the 2D mesh:
-
-```python
-wall2d.section_report()            # table: node types + materials (k, ρc, y-range)
-wall2d.preview()                   # to-scale panels (node type, k, ρc)
-wall2d.preview(field="materials", backend="ascii")   # terminal fallback
-sec = wall2d.section()             # NT / k / rhoc arrays + mesh
-```
-
-matplotlib is an optional extra (`pip install enerhabitat[viz]`); without it the
-inspector falls back to a to-scale ASCII drawing.
-
 ## Configuration
-
-### `config` (global)
 
 `config` is a global singleton shared by every `Location` and `System`. Changing it
 affects **all** subsequent computations.
@@ -400,26 +145,12 @@ eh.config.reset()          # restore the numeric defaults (La, Nx, ho, hi, dt, a
 `config.materials` is a read-only dict keyed by material name
 (`eh.config.materials["Adobe"].k`, `.rho`, `.c`).
 
-### `config2d` (2D mesh and convergence)
+The 2D-only parameters (mesh and convergence) live in `config2d` — see
+[Usage — 2D](usage-2d.qmd#config2d-2d-mesh-and-convergence).
 
-The physics (`La`, `ho`, `hi`, `dt`, air properties) is shared with `config`;
-`config2d` holds the 2D-only parameters:
+## Apply it
 
-| Attribute   | Default | Description |
-| ----------- | ------- | ----------- |
-| `nx`        | `80`    | mesh nodes across the cell width (adiabatic sides) |
-| `ny`        | `160`   | mesh nodes through the thickness (outside → inside) |
-| `tol_inner` | `1e-8` °C | inner-step tolerance (max node update **and** max equation residual) |
-| `tol_day`   | `5e-4` °C | day-to-day convergence tolerance |
-| `max_days`  | `60`    | cap on the day-to-day iterations |
-| `max_inner` | `10000` | cap on inner sweeps per step (hit → `converged = False`) |
-
-```python
-from enerhabitat import config2d
-config2d.nx, config2d.ny = 120, 160
-```
-
-> Each solve is single-threaded. For volume (many configurations), parallelise at the
-> **process level** — run independent `solve()` calls in separate processes
-> (`multiprocessing`, `joblib`); this scales near-linearly (≈6× at 8 processes). See
-> [Performance](numerics.qmd#performance).
+- [Usage — 1D](usage-1d.qmd) — the workflow on a homogeneous wall, free-running and
+  air-conditioned, executed live.
+- [Usage — 2D](usage-2d.qmd) — hollow blocks and joist-and-block slabs: geometry
+  schemes, section inspection, temperature fields.

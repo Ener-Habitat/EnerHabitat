@@ -43,7 +43,7 @@ def _slab_roof():
     import enerhabitat as eh
     eh.config.file = str(DATA / "materials.ini")
     slab = eh.Slab(
-        rib_material="Concreto", block_material="Bovedilla",
+        rib_material="ConcretoAltaDensidad", block_material="Bovedilla",
         topping_material="Concreto", fill_type=eh.Fill.AIR, emissivity=0.9,
         geometry={"web": 0.025, "foot": 0.025, "shoulder": 0.050,
                   "n_cavities": 3, "cavity_width": 0.103,
@@ -60,23 +60,28 @@ def _slab_roof():
 
 
 def run_case(name):
-    import pandas as pd
+    import numpy as np
     t0 = time.perf_counter()
     sys2d = _hollow_wall() if name.startswith("hollow") else _slab_roof()
     if name.endswith("_ac"):
-        ti = sys2d.solveAC()
+        sys2d.solveAC()
         extra = {"cooling_energy": float(sys2d.cooling_energy),
                  "heating_energy": float(sys2d.heating_energy)}
     else:
-        ti = sys2d.solve()
+        sys2d.solve()
         extra = {"energy_transfer": float(sys2d.energy_transfer)}
     runtime = time.perf_counter() - t0
-    df = pd.concat([ti, sys2d.Tsa()], axis=1)
     OUT.mkdir(parents=True, exist_ok=True)
-    df.to_csv(OUT / f"{name}.csv")
+    # full results: Ti, Tso, Tsi, Thueco + the whole Tsa grid, and the (nx, ny)
+    # temperature field of the last (converged) day, with the mesh extent in mm
+    sys2d.solve_dataframe.to_csv(OUT / f"{name}.csv")
+    np.save(OUT / f"{name}_Tfield.npy", sys2d.Tfield)
+    mesh = sys2d.section().mesh
     days = sys2d.days
     return name, {"runtime_s": round(runtime, 1),
-                  "days": None if days is None else int(days), **extra}
+                  "days": None if days is None else int(days),
+                  "X_mm": round(mesh.X * 1000.0, 1),
+                  "Y_mm": round(mesh.Y * 1000.0, 1), **extra}
 
 
 if __name__ == "__main__":

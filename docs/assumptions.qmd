@@ -12,8 +12,8 @@ restate the subset relevant to each solver.
 
 | Assumption | Consequence |
 |---|---|
-| A single **opaque envelope component** is simulated: no windows, no ventilation, no infiltration, no internal gains, no latent loads, no HVAC equipment model | The energies quantify the component alone, per unit of its surface area — differences between results isolate the effect of the constructive system |
-| The forcing is a **synthetic monthly average day**, iterated to a periodic regime | Results characterise a typical day of the month — not an annual simulation nor any real weather sequence; extreme days are outside the scope |
+| A single **opaque envelope component** is simulated: no windows, no ventilation, no infiltration, no internal gains, no latent loads, no HVAC equipment model | The energies quantify the component alone, per unit of its surface area, differences between results isolate the effect of the constructive system  if the constructive system is the only change|
+| The forcing is a **synthetic monthly average day** from an EPW file, iterated to a periodic regime | Results characterise a typical day of the month, not an annual simulation nor any real weather sequence; extreme days are outside the scope unless an EPW is constructed |
 | In the air-conditioned mode the setpoint is **constant and ideal** (the adaptive neutrality temperature $T_n$, or `System2D.setpoint`) | No thermostat dynamics, schedules, equipment capacity or efficiency; demands are ideal sensible loads |
 
 ## Materials and geometry
@@ -24,26 +24,21 @@ restate the subset relevant to each solver.
 | **Perfect thermal contact** between layers (zero contact resistance) | Real assemblies with air gaps or poor contact will transfer less heat than modelled |
 | No moisture transport, condensation, rain wetting or internal heat generation | Purely dry, sensible heat conduction |
 | 1D: heat flows **perpendicular** to the component, per unit area | Edge effects, thermal bridges and 2D/3D paths are not captured (use the 2D model for in-width heterogeneity) |
-| 2D: the cross-section is **invariant out of plane** and the lateral cuts of the repeating cell lie on **mirror-symmetry planes** (adiabatic) | Valid for the periodic `HollowBlock`/`Slab` patterns; not a general periodic boundary condition |
+| 2D: the cross-section is **invariant out of plane** and the lateral cuts of the repeating cell lie on **mirror-symmetry planes** (adiabatic) | Valid for the periodic `HollowBlock`/`Slab` patterns |
 
 ## Surfaces and forcing
 
 | Assumption | Consequence |
 |---|---|
-| **Constant film coefficients**: $h_o = 13$, $h_i = 8.1$ W/(m²·K) by default (NOM values; $h_i$ is the vertical-surface value applied to all orientations) | No wind or flow-direction dependence; configurable via `config.ho`/`config.hi` |
-| Solar and long-wave loads enter through the **sun–air temperature**, with the empirical factor $RF$ linear in tilt (3.9 → 0 °C between 0° and 90°) | No explicit sky/surroundings radiative balance, no shading, no urban context |
+| **Constant film coefficients** : $h_o = 13$, $h_i = 8.1$ W/(m²·K) by default (NOM-008/020-ENER values; $h_i$ is the vertical-surface value applied to all orientations) | No wind or flow-direction dependence; configurable via `config.ho`/`config.hi` |
+| Solar and long-wave loads enter through the **sun–air temperature**, with the empirical factor $RF$ linear in tilt (3.9 → 0 °C between 0° and 90°) | No shading, no urban context |
 | The plane-of-array irradiance uses the **isotropic-sky** transposition with ground **albedo 0.25** (pvlib defaults) | Anisotropic sky models or site-specific albedo are not applied |
-| The indoor air is a **single well-mixed node** of depth $L_a$ per unit area (free-running mode) | No furniture or other-surface thermal mass; $L_a$ is a volume-to-area ratio, not a room depth |
+| The indoor air is a **single well-mixed node** of depth $L_a=2.5\,m$ per unit area (free-running mode) | No furniture or other-surface thermal mass; $L_a$ is a volume-to-area ratio, not a room depth |
 
 ## Cavities (2D, `Fill.AIR`)
 
 | Assumption | Consequence |
 |---|---|
 | The air of each cavity is **well mixed** (one temperature per cavity) and radiatively non-participating, with constant properties | Stratification inside a cavity is not resolved |
-| One **uniform** $h_c$ per cavity, from the correlations of Xamán (walls) or Hollands (roofs), evaluated with the mean face temperatures | Local convection patterns are not resolved; the applicability ranges of the correlations to these cavity aspect ratios are under review in the validation campaign |
+| One **uniform** $h_c$ per cavity, from the correlations of Xamán (walls) or Hollands (roofs), evaluated with the mean face temperatures | Local convection patterns are not resolved |
 | Cavity surfaces are **grey and diffuse**, each emitting at its mean temperature, with uniform emissivity | The radiosity (Gebhart) solution is exact *within* these assumptions; spectral or specular effects are not modelled |
-
-## References
-
-::: {#refs}
-:::

@@ -225,7 +225,7 @@ If you use EnerHabitat in academic work, please cite the reference paper:
 The repository also ships a [`CITATION.cff`](https://github.com/Ener-Habitat/EnerHabitat/blob/main/CITATION.cff)
 (GitHub's *Cite this repository* button) covering the software itself.
 
-## Authors
+## Authors of the package
 
 Developed at the **Instituto de Energías Renovables, UNAM**.
 

@@ -1,18 +1,24 @@
 {
   "hollow_free": {
-    "runtime_s": 1534.0,
+    "runtime_s": 1550.2,
     "days": 4,
+    "X_mm": 200.0,
+    "Y_mm": 150.0,
     "energy_transfer": 47609.999357313616
   },
   "hollow_ac": {
-    "runtime_s": 771.7,
+    "runtime_s": 734.5,
     "days": 2,
+    "X_mm": 200.0,
+    "Y_mm": 150.0,
     "cooling_energy": 1574884.4239185017,
     "heating_energy": 287568.39500298304
   },
   "slab_free": {
-    "runtime_s": 1173.9,
+    "runtime_s": 1129.8,
     "days": 6,
-    "energy_transfer": 26876.848129618647
+    "X_mm": 609.0,
+    "Y_mm": 218.0,
+    "energy_transfer": 26548.29906179595
   }
 }

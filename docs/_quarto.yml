@@ -9,7 +9,11 @@ website:
   navbar:
     left:
       - {href: index.qmd, text: Home}
-      - {href: usage.qmd, text: Usage}
+      - text: Usage
+        menu:
+          - {href: usage.qmd, text: "Workflow and setup"}
+          - {href: usage-1d.qmd, text: "Usage — 1D"}
+          - {href: usage-2d.qmd, text: "Usage — 2D"}
       - text: Theory
         menu:
           - {href: model-1d.qmd, text: "1D model"}
