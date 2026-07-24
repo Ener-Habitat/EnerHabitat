@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Usage — 1D – EnerHabitat</title>
+<title>Usage — workflow and setup – EnerHabitat</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -78,9 +78,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="site_libs/bootstrap/bootstrap-158031087360bce0ff56dc785ce39e06.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
-<script src="site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
-<link href="site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
-<link href="site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -169,6 +166,10 @@ window.Quarto = {
     <ul class="dropdown-menu" aria-labelledby="nav-menu-usage">    
         <li>
     <a class="dropdown-item" href="./usage.html">
+ <span class="dropdown-text">Workflow and setup</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./usage-1d.html">
  <span class="dropdown-text">Usage — 1D</span></a>
   </li>  
         <li>
@@ -234,12 +235,8 @@ window.Quarto = {
   <li><a href="#workflow" id="toc-workflow" class="nav-link active" data-scroll-target="#workflow">Workflow</a></li>
   <li><a href="#recommended-folder-structure" id="toc-recommended-folder-structure" class="nav-link" data-scroll-target="#recommended-folder-structure">Recommended folder structure</a></li>
   <li><a href="#materials-file" id="toc-materials-file" class="nav-link" data-scroll-target="#materials-file">Materials file</a></li>
-  <li><a href="#examples" id="toc-examples" class="nav-link" data-scroll-target="#examples">Examples</a>
-  <ul class="collapse">
-  <li><a href="#d-wall-free-running" id="toc-d-wall-free-running" class="nav-link" data-scroll-target="#d-wall-free-running">1D wall, free-running</a></li>
-  <li><a href="#d-wall-air-conditioned" id="toc-d-wall-air-conditioned" class="nav-link" data-scroll-target="#d-wall-air-conditioned">1D wall, air-conditioned</a></li>
-  </ul></li>
   <li><a href="#configuration" id="toc-configuration" class="nav-link" data-scroll-target="#configuration">Configuration</a></li>
+  <li><a href="#apply-it" id="toc-apply-it" class="nav-link" data-scroll-target="#apply-it">Apply it</a></li>
   </ul>
 </nav>
     </div>
@@ -248,7 +245,7 @@ window.Quarto = {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Usage — 1D</h1>
+<h1 class="title">Usage — workflow and setup</h1>
 </div>
 
 
@@ -265,7 +262,7 @@ window.Quarto = {
 </header>
 
 
-<p>All the examples on this page show <strong>real results</strong> for the average day of May in Cuernavaca, Mexico (the EPW and <code>materials.ini</code> used here live in <code>docs/data/</code> in the repository), and are executed when this documentation is rendered. This page covers the workflow, the materials file, the <strong>1D</strong> examples and the global configuration; the 2D constructive systems (hollow block, joist-and-block) have their own page: <a href="./usage-2d.html">Usage — 2D</a>.</p>
+<p>This page covers everything that comes <strong>before</strong> simulating: the workflow, the project layout, the materials file and the global configuration. The workflow is then applied, with executable examples, in <a href="./usage-1d.html">Usage — 1D</a> (homogeneous layer stacks) and <a href="./usage-2d.html">Usage — 2D</a> (hollow blocks and joist-and-block slabs).</p>
 <section id="workflow" class="level2">
 <h2 class="anchored" data-anchor-id="workflow">Workflow</h2>
 <p>To simulate a wall (or roof) you need to:</p>
@@ -299,7 +296,7 @@ window.Quarto = {
 <section id="materials-file" class="level2">
 <h2 class="anchored" data-anchor-id="materials-file">Materials file</h2>
 <p>Material properties are declared in an <code>.ini</code> file: the material name is the section header and <code>k</code>, <code>rho</code>, <code>c</code> the keys (case-sensitive, no Greek letters). Inline comments (<code>#</code> or <code>;</code>) are allowed. By default the package looks for <code>materials.ini</code> in the working directory; otherwise set <code>eh.config.file</code>.</p>
-<p>The file below defines <strong>every material used in these docs</strong> (this page and <a href="./usage-2d.html">Usage — 2D</a>), so you can run all the snippets as-is (values are typical/illustrative — replace with your own data):</p>
+<p>The file below defines <strong>every material used in these docs</strong> (<a href="./usage-1d.html">Usage — 1D</a> and <a href="./usage-2d.html">Usage — 2D</a>), so you can run all the snippets as-is (values are typical/illustrative — replace with your own data):</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[Adobe]</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">k   </span><span class="ot">=</span><span class="st"> 0.58    # Thermal conductivity, W/(m·K)</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dt">rho </span><span class="ot">=</span><span class="st"> 1500    # Density, kg/m³</span></span>
@@ -345,111 +342,6 @@ window.Quarto = {
 <span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a><span class="dt">rho </span><span class="ot">=</span><span class="st"> </span><span class="dv">1100</span></span>
 <span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a><span class="dt">c   </span><span class="ot">=</span><span class="st"> </span><span class="dv">1000</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Assigning a missing path to <code>config.file</code> raises <code>FileNotFoundError</code> immediately, and the previously loaded materials (and path) are kept untouched. If the default <code>materials.ini</code> is not present in the working directory when EnerHabitat is imported, <code>materials</code> starts empty (<code>{}</code>) — solving then fails because the layer materials cannot be resolved — so set <code>config.file</code> before building systems.</p>
-</section>
-<section id="examples" class="level2">
-<h2 class="anchored" data-anchor-id="examples">Examples</h2>
-<p>Both modes — free-running and air-conditioned — for the same 1D wall. Setup shared by all the examples:</p>
-<!-- Shared setup for the Usage pages (included by usage.qmd and usage-2d.qmd). -->
-<div id="688f0ee2" class="cell" data-execution_count="1">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> enerhabitat <span class="im">as</span> eh</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"data/materials.ini"</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>epw_file <span class="op">=</span> <span class="st">"data/MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-2018.epw"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-<div id="7fb28723" class="cell" data-execution_count="2">
-<details class="code-fold">
-<summary>Plot helper used by the examples (click to show)</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.dates <span class="im">as</span> mdates</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>EH_COLORS <span class="op">=</span> {<span class="st">"Ti"</span>: <span class="st">"#2a78d6"</span>, <span class="st">"Tsa"</span>: <span class="st">"#eb6834"</span>, <span class="st">"Ta"</span>: <span class="st">"#008300"</span>, <span class="st">"Tn"</span>: <span class="st">"#6b7280"</span>}</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> plot_day(df, title<span class="op">=</span><span class="st">""</span>):</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Temperatures of the average day, with the comfort zone Tn ± DeltaTn."""</span></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">7.2</span>, <span class="fl">3.6</span>))</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># comfort zone: Tn and DeltaTn are columns (constant along the day)</span></span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    ax.fill_between(df.index, df[<span class="st">"Tn"</span>] <span class="op">-</span> df[<span class="st">"DeltaTn"</span>], df[<span class="st">"Tn"</span>] <span class="op">+</span> df[<span class="st">"DeltaTn"</span>],</span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>                    color<span class="op">=</span>EH_COLORS[<span class="st">"Tn"</span>], alpha<span class="op">=</span><span class="fl">0.12</span>, lw<span class="op">=</span><span class="dv">0</span>)</span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    ax.plot(df[<span class="st">"Tn"</span>], color<span class="op">=</span>EH_COLORS[<span class="st">"Tn"</span>], ls<span class="op">=</span><span class="st">"--"</span>, lw<span class="op">=</span><span class="dv">1</span>, label<span class="op">=</span><span class="st">"Tn ± ΔTn"</span>)</span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    ax.plot(df[<span class="st">"Ta"</span>],  color<span class="op">=</span>EH_COLORS[<span class="st">"Ta"</span>],  lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Ta"</span>)</span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    ax.plot(df[<span class="st">"Tsa"</span>], color<span class="op">=</span>EH_COLORS[<span class="st">"Tsa"</span>], lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Tsa"</span>)</span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    ax.plot(df[<span class="st">"Ti"</span>],  color<span class="op">=</span>EH_COLORS[<span class="st">"Ti"</span>],  lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Ti"</span>)</span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="co"># tz=... keeps the labels in local time (matplotlib defaults to UTC)</span></span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    ax.xaxis.set_major_locator(mdates.HourLocator(byhour<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">6</span>, <span class="dv">12</span>, <span class="dv">18</span>], tz<span class="op">=</span>df.index.tz))</span>
-<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    ax.xaxis.set_major_formatter(mdates.DateFormatter(<span class="st">"%H"</span>, tz<span class="op">=</span>df.index.tz))</span>
-<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    ax.set_xlabel(<span class="st">"hour of the average day"</span>)</span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    ax.set_ylabel(<span class="st">"temperature (°C)"</span>)</span>
-<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>    ax.set_title(title, fontsize<span class="op">=</span><span class="dv">10</span>)</span>
-<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>    ax.legend(frameon<span class="op">=</span><span class="va">False</span>, fontsize<span class="op">=</span><span class="dv">9</span>, loc<span class="op">=</span><span class="st">"upper left"</span>)</span>
-<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>    ax.grid(alpha<span class="op">=</span><span class="fl">0.25</span>, lw<span class="op">=</span><span class="fl">0.5</span>)</span>
-<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>    ax.spines[<span class="st">"top"</span>].set_visible(<span class="va">False</span>)</span>
-<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>    ax.spines[<span class="st">"right"</span>].set_visible(<span class="va">False</span>)</span>
-<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>    fig.tight_layout()</span>
-<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</details>
-</div>
-<section id="d-wall-free-running" class="level3">
-<h3 class="anchored" data-anchor-id="d-wall-free-running">1D wall, free-running</h3>
-<div id="03cf9dcf" class="cell" data-execution_count="3">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>wall <span class="op">=</span> eh.System(eh.Location(epw_file))</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>wall.azimuth <span class="op">=</span> <span class="dv">90</span>                    <span class="co"># east-facing</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>wall.absortance <span class="op">=</span> <span class="fl">0.3</span></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>wall.layers <span class="op">=</span> [(<span class="st">"Mortero"</span>, <span class="fl">0.025</span>), (<span class="st">"Ladrillo"</span>, <span class="fl">0.10</span>)]</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>wall.location.meanDay(month<span class="op">=</span><span class="dv">5</span>, year<span class="op">=</span><span class="dv">2025</span>)</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>wall.Tsa()</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> wall.solve()                  <span class="co"># free-running Ti</span></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> pd.concat([data, wall.Tsa()], axis<span class="op">=</span><span class="dv">1</span>)</span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"energy_transfer = </span><span class="sc">{</span>wall<span class="sc">.</span>energy_transfer<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>energy_transfer<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>energy_transfer = 31,973 J/(m²·day)  = 9 Wh/(m²·day)</code></pre>
-</div>
-</div>
-<div id="04f3562a" class="cell" data-execution_count="4">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>plot_day(data, title<span class="op">=</span><span class="st">"Mortero + Ladrillo wall, east, free-running — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display">
-<div>
-<figure class="figure">
-<p><a href="usage_files/figure-html/cell-5-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1"><img src="usage_files/figure-html/cell-5-output-1.png" width="681" height="336" class="figure-img"></a></p>
-</figure>
-</div>
-</div>
-</div>
-<p>The indoor temperature <code>Ti</code> oscillates with a smaller amplitude than the sun–air temperature <code>Tsa</code> and lags behind it — the damping and the delay are the thermal mass at work.</p>
-</section>
-<section id="d-wall-air-conditioned" class="level3">
-<h3 class="anchored" data-anchor-id="d-wall-air-conditioned">1D wall, air-conditioned</h3>
-<p>Same wall; <code>solveAC()</code> holds <code>Ti</code> at the neutrality temperature <code>Tn</code> and reports the energy needed to do so:</p>
-<div id="e44071e9" class="cell" data-execution_count="5">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>dataAC <span class="op">=</span> wall.solveAC()</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>dataAC <span class="op">=</span> pd.concat([dataAC, wall.Tsa()], axis<span class="op">=</span><span class="dv">1</span>)</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"cooling_energy = </span><span class="sc">{</span>wall<span class="sc">.</span>cooling_energy<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>cooling_energy<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"heating_energy = </span><span class="sc">{</span>wall<span class="sc">.</span>heating_energy<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>heating_energy<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>cooling_energy = 943,968 J/(m²·day)  = 262 Wh/(m²·day)
-heating_energy = 386,936 J/(m²·day)  = 107 Wh/(m²·day)</code></pre>
-</div>
-</div>
-<div id="c21eed84" class="cell" data-execution_count="6">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>plot_day(dataAC, title<span class="op">=</span><span class="st">"Same wall, air-conditioned (Ti = Tn) — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-display">
-<div>
-<figure class="figure">
-<p><a href="usage_files/figure-html/cell-7-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2"><img src="usage_files/figure-html/cell-7-output-1.png" width="681" height="336" class="figure-img"></a></p>
-</figure>
-</div>
-</div>
-</div>
-</section>
 </section>
 <section id="configuration" class="level2">
 <h2 class="anchored" data-anchor-id="configuration">Configuration</h2>
@@ -501,13 +393,20 @@ heating_energy = 386,936 J/(m²·day)  = 107 Wh/(m²·day)</code></pre>
 </tbody>
 </table>
 <p>The <code>ho</code>/<code>hi</code> defaults are the values prescribed by the Mexican standards <strong>NOM-008-ENER</strong> and <strong>NOM-020-ENER</strong> (<code>hi = 8.1</code> is the vertical-surface value, applied to all orientations); they can be overridden at any time. <code>dt</code> is locked because of the explicit indoor-air coupling — see <a href="./numerics.html#indoor-air-coupling-free-running-mode">the numerical method</a>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"./materials.ini"</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>eh.config.La <span class="op">=</span> <span class="fl">2.0</span></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>eh.config.ho <span class="op">=</span> <span class="dv">12</span>          <span class="co"># override the NOM defaults if needed</span></span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>eh.config.reset()          <span class="co"># restore the numeric defaults (La, Nx, ho, hi, dt, air);</span></span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>                           <span class="co"># config.file / materials are user-provided and are kept</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"./materials.ini"</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>eh.config.La <span class="op">=</span> <span class="fl">2.0</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>eh.config.ho <span class="op">=</span> <span class="dv">12</span>          <span class="co"># override the NOM defaults if needed</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>eh.config.reset()          <span class="co"># restore the numeric defaults (La, Nx, ho, hi, dt, air);</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>                           <span class="co"># config.file / materials are user-provided and are kept</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><code>config.materials</code> is a read-only dict keyed by material name (<code>eh.config.materials["Adobe"].k</code>, <code>.rho</code>, <code>.c</code>).</p>
 <p>The 2D-only parameters (mesh and convergence) live in <code>config2d</code> — see <a href="./usage-2d.html#config2d-2d-mesh-and-convergence">Usage — 2D</a>.</p>
+</section>
+<section id="apply-it" class="level2">
+<h2 class="anchored" data-anchor-id="apply-it">Apply it</h2>
+<ul>
+<li><a href="./usage-1d.html">Usage — 1D</a> — the workflow on a homogeneous wall, free-running and air-conditioned, executed live.</li>
+<li><a href="./usage-2d.html">Usage — 2D</a> — hollow blocks and joist-and-block slabs: geometry schemes, section inspection, temperature fields.</li>
+</ul>
 
 
 </section>
@@ -914,38 +813,6 @@ heating_energy = 386,936 J/(m²·day)  = 107 Wh/(m²·day)</code></pre>
   });
   </script>
 </div> <!-- /content -->
-<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
-(function() {
-  let previousOnload = window.onload;
-  window.onload = () => {
-    if (previousOnload) {
-      previousOnload();
-    }
-    lightboxQuarto.on('slide_before_load', (data) => {
-      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
-      const href = trigger.getAttribute('href');
-      if (href !== null) {
-        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
-        if (imgEl !== null) {
-          const srcAttr = imgEl.getAttribute("src");
-          if (srcAttr && srcAttr.startsWith("data:")) {
-            slideConfig.href = srcAttr;
-          }
-        }
-      } 
-    });
-  
-    lightboxQuarto.on('slide_after_load', (data) => {
-      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
-      if (window.Quarto?.typesetMath) {
-        window.Quarto.typesetMath(slideNode);
-      }
-    });
-  
-  };
-  
-})();
-          </script>
 
 
 

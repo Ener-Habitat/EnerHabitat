@@ -169,6 +169,10 @@ window.Quarto = {
     <ul class="dropdown-menu" aria-labelledby="nav-menu-usage">    
         <li>
     <a class="dropdown-item" href="./usage.html">
+ <span class="dropdown-text">Workflow and setup</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./usage-1d.html">
  <span class="dropdown-text">Usage — 1D</span></a>
   </li>  
         <li>
@@ -266,12 +270,12 @@ window.Quarto = {
 </header>
 
 
-<p>The 2D model resolves constructive systems whose section is <strong>not</strong> a simple stack of homogeneous layers: hollow blocks (<code>HollowBlock</code>, walls) and joist-and-block slabs (<code>Slab</code>, roofs). The workflow is the same as in <a href="./usage.html">Usage — 1D</a> — the differences are the class (<code>System2D</code>), that <code>tilt</code> must be <code>90</code> (<code>HollowBlock</code>) or <code>0</code> (<code>Slab</code>), and that the 2D element goes <strong>inside</strong> the layer stack.</p>
-<p>As on the 1D page, the examples show <strong>real results</strong> for the average day of May in Cuernavaca. Building the systems and inspecting their sections is executed live when this documentation is rendered; the solves are <strong>pre-computed</strong> — a default-mesh 2D solve takes ~10–20 minutes in a modern laptop — by <a href="https://github.com/Ener-Habitat/EnerHabitat/blob/main/docs/run_examples.py"><code>docs/run_examples.py</code></a>, whose outputs (in <code>docs/data/results/</code>) this page reads and plots. Regenerate them with <code>uv run docs/run_examples.py</code>.</p>
+<p>The 2D model resolves constructive systems whose section is <strong>not</strong> a simple stack of homogeneous layers: hollow blocks (<code>HollowBlock</code>, walls) and joist-and-block slabs (<code>Slab</code>, roofs). <a href="./usage.html">The workflow</a> is the same as in 1D — the differences are the class (<code>System2D</code>), that <code>tilt</code> must be <code>90</code> (<code>HollowBlock</code>) or <code>0</code> (<code>Slab</code>), and that the 2D element goes <strong>inside</strong> the layer stack.</p>
+<p>As in <a href="./usage-1d.html">Usage — 1D</a>, the examples show <strong>real results</strong> for the average day of May in Cuernavaca. Building the systems and inspecting their sections is executed live when this documentation is rendered; the solves are <strong>pre-computed</strong> — a default-mesh 2D solve takes ~10–20 minutes in a modern laptop — by <a href="https://github.com/Ener-Habitat/EnerHabitat/blob/main/docs/run_examples.py"><code>docs/run_examples.py</code></a>, whose outputs (in <code>docs/data/results/</code>) this page reads and plots. Regenerate them with <code>uv run docs/run_examples.py</code>.</p>
 <section id="d-geometries" class="level2">
 <h2 class="anchored" data-anchor-id="d-geometries">2D geometries</h2>
 <p>The 2D elements — <code>HollowBlock</code> for walls, <code>Slab</code> for joist-and-block roofs — are defined by a <code>geometry</code> dict (measures in <strong>metres</strong>). The schemes below name every key, drawn to scale with the same values used in the examples further down (shown in mm for readability):</p>
-<div id="304a1734" class="cell" data-execution_count="2">
+<div id="11e1de65" class="cell" data-execution_count="2">
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -280,7 +284,7 @@ window.Quarto = {
 </div>
 </div>
 </div>
-<div id="4d10351d" class="cell" data-execution_count="3">
+<div id="22067645" class="cell" data-execution_count="3">
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -295,14 +299,14 @@ window.Quarto = {
 <h2 class="anchored" data-anchor-id="examples">Examples</h2>
 <p>Free-running and air-conditioned, for a hollow-block wall and a joist-and-block roof. Setup shared by all the examples (the materials are defined in the <a href="./usage.html#materials-file">materials file</a>):</p>
 <!-- Shared setup for the Usage pages (included by usage.qmd and usage-2d.qmd). -->
-<div id="d767efb3" class="cell" data-execution_count="4">
+<div id="146465bd" class="cell" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> enerhabitat <span class="im">as</span> eh</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"data/materials.ini"</span></span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>epw_file <span class="op">=</span> <span class="st">"data/MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-2018.epw"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="cc343840" class="cell" data-execution_count="5">
+<div id="17a934b4" class="cell" data-execution_count="5">
 <details class="code-fold">
 <summary>Plot helper used by the examples (click to show)</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
@@ -340,7 +344,7 @@ window.Quarto = {
 <section id="d-hollow-block-wall-free-running" class="level3">
 <h3 class="anchored" data-anchor-id="d-hollow-block-wall-free-running">2D hollow-block wall, free-running</h3>
 <p>A concrete block with one air cavity per cell. The 2D element goes <strong>inside</strong> the layer stack; finishes are ordinary 1D layers around it. Building the system is instantaneous (only <code>solve()</code> is expensive), so this cell runs live:</p>
-<div id="82045185" class="cell" data-execution_count="6">
+<div id="e33217c6" class="cell" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>block <span class="op">=</span> eh.HollowBlock(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    material   <span class="op">=</span> <span class="st">"Concreto"</span>,          <span class="co"># single material of the block</span></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    emissivity <span class="op">=</span> <span class="fl">0.9</span>,                 <span class="co"># cavity-wall emissivity (radiation)</span></span>
@@ -362,7 +366,7 @@ window.Quarto = {
 <span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="co"># inherited from the C engine); exceeding it raises ValueError. 1D has no limit.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>The section scheme, to scale — outside on top:</p>
-<div id="ad153557" class="cell" data-execution_count="7">
+<div id="4883f7cd" class="cell" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>wall2d.preview(field<span class="op">=</span><span class="st">"materials"</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -372,15 +376,21 @@ window.Quarto = {
 </div>
 </div>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>wall2d.location.meanDay(month<span class="op">=</span><span class="dv">5</span>, year<span class="op">=</span><span class="dv">2025</span>)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>wall2d.Tsa()</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>ti <span class="op">=</span> wall2d.solve()                   <span class="co"># free-running</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Full results: wall2d.solve_dataframe (Ti, Tso, Tsi, Thueco, °C, on the Tsa grid),</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co"># wall2d.Tfield ((nx, ny) °C field of the last day), wall2d.Qout (J/(m²·day)).</span></span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(wall2d.energy_transfer)         <span class="co"># J/(m²·day), per unit indoor area</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Pre-computed result of that exact code:</p>
-<div id="f0bb6e95" class="cell" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>wall2d.location.meanDay(month<span class="op">=</span><span class="dv">5</span>, year<span class="op">=</span><span class="dv">2025</span>)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>wall2d.Tsa()</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>wall2d.solve()                        <span class="co"># free-running — ~10–20 min (default mesh)</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(wall2d.energy_transfer)         <span class="co"># J/(m²·day), per unit indoor area</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co"># A 2D solve is expensive: SAVE the results, so you pay that time only once.</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co"># solve_dataframe holds Ti, Tso, Tsi, Thueco + the whole Tsa grid;</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Tfield is the (nx, ny) °C field of the last (converged) day.</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>wall2d.solve_dataframe.to_csv(<span class="st">"data/results/hollow_free.csv"</span>)</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>np.save(<span class="st">"data/results/hollow_free_Tfield.npy"</span>, wall2d.Tfield)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Reading the stored files back follows the <strong>same workflow</strong> — same columns, same plots, no re-solving. That is exactly what this page does (its files were written by <code>docs/run_examples.py</code> with the code above):</p>
+<div id="b6438134" class="cell" data-execution_count="8">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># The 2D results were computed and saved beforehand by docs/run_examples.py;</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co"># json reads the stored summary (energies, convergence days, runtimes).</span></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
@@ -407,7 +417,7 @@ window.Quarto = {
 </div>
 </div>
 <p>Besides <code>Ti</code>, the 2D solver keeps the full <strong>temperature field</strong> of the last (converged) day — <code>wall2d.Tfield</code>, an <code>(nx, ny)</code> array in °C on the section mesh, with the same orientation as <code>preview()</code> (outside on top):</p>
-<div id="52fb580d" class="cell" data-execution_count="9">
+<div id="5976ed6c" class="cell" data-execution_count="9">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>T <span class="op">=</span> np.load(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/hollow_free_Tfield.npy"</span>)</span>
@@ -433,8 +443,10 @@ window.Quarto = {
 <section id="d-hollow-block-wall-air-conditioned" class="level3">
 <h3 class="anchored" data-anchor-id="d-hollow-block-wall-air-conditioned">2D hollow-block wall, air-conditioned</h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>wall2d.solveAC()                      <span class="co"># Ti held at Tn</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(wall2d.cooling_energy, wall2d.heating_energy)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div id="cbe12dbd" class="cell" data-execution_count="10">
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(wall2d.cooling_energy, wall2d.heating_energy)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>wall2d.solve_dataframe.to_csv(<span class="st">"data/results/hollow_ac.csv"</span>)   <span class="co"># save, as before</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="3a442f50" class="cell" data-execution_count="10">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>hollowAC <span class="op">=</span> pd.read_csv(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/hollow_ac.csv"</span>, index_col<span class="op">=</span><span class="dv">0</span>, parse_dates<span class="op">=</span><span class="va">True</span>)</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> summary[<span class="st">"hollow_ac"</span>]</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"cooling_energy = </span><span class="sc">{</span>s[<span class="st">'cooling_energy'</span>]<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
@@ -458,7 +470,7 @@ heating_energy = 287,568 J/(m²·day)  = 80 Wh/(m²·day)</code></pre>
 <section id="joist-and-block-roof-slab" class="level3">
 <h3 class="anchored" data-anchor-id="joist-and-block-roof-slab">Joist-and-block roof (<code>Slab</code>)</h3>
 <p>Three solids (compression topping, L-shaped rib, filler block) plus N equal cavities that can be air (<code>Fill.AIR</code>) or a solid fill (<code>Fill.SOLID</code>).</p>
-<div id="f8621bc6" class="cell" data-execution_count="11">
+<div id="d1461a1e" class="cell" data-execution_count="11">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>slab <span class="op">=</span> eh.Slab(</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    rib_material     <span class="op">=</span> <span class="st">"ConcretoAltaDensidad"</span>,   <span class="co"># joist/rib (L-shaped: web + foot)</span></span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    block_material   <span class="op">=</span> <span class="st">"Bovedilla"</span>,              <span class="co"># filler block around the cavities</span></span>
@@ -484,7 +496,7 @@ heating_energy = 287,568 J/(m²·day)  = 80 Wh/(m²·day)</code></pre>
 <span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>roof.absortance <span class="op">=</span> <span class="fl">0.3</span></span>
 <span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>roof.layers <span class="op">=</span> [(<span class="st">"Impermeabilizante"</span>, <span class="fl">0.003</span>), slab, (<span class="st">"Yeso"</span>, <span class="fl">0.015</span>)]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="43c0782f" class="cell" data-execution_count="12">
+<div id="20140654" class="cell" data-execution_count="12">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>roof.preview(field<span class="op">=</span><span class="st">"materials"</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -497,8 +509,13 @@ heating_energy = 287,568 J/(m²·day)  = 80 Wh/(m²·day)</code></pre>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>roof.location.meanDay(month<span class="op">=</span><span class="dv">5</span>, year<span class="op">=</span><span class="dv">2025</span>)</span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>roof.Tsa()</span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>roof.solve()                             <span class="co"># or roof.solveAC()</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div id="4a685327" class="cell" data-execution_count="13">
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>roof.solve()                             <span class="co"># or roof.solveAC()</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Same recommendation as with the wall: save, then analyse from the files.</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>roof.solve_dataframe.to_csv(<span class="st">"data/results/slab_free.csv"</span>)</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>np.save(<span class="st">"data/results/slab_free_Tfield.npy"</span>, roof.Tfield)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Recovered from the stored files:</p>
+<div id="f695010c" class="cell" data-execution_count="13">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>slab_df <span class="op">=</span> pd.read_csv(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/slab_free.csv"</span>, index_col<span class="op">=</span><span class="dv">0</span>, parse_dates<span class="op">=</span><span class="va">True</span>)</span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> summary[<span class="st">"slab_free"</span>]</span>
 <span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"energy_transfer = </span><span class="sc">{</span>s[<span class="st">'energy_transfer'</span>]<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
@@ -517,23 +534,24 @@ heating_energy = 287,568 J/(m²·day)  = 80 Wh/(m²·day)</code></pre>
 </div>
 </div>
 <p>Note how the roof’s <code>Tsa</code> drops <strong>below</strong> <code>Ta</code> at night: that is the long-wave radiation factor (<span class="math inline">\(RF = 3.9\)</span> °C for horizontal surfaces) at work — the roof sees the cold sky (see <a href="./model-1d.html#outdoor-the-sunair-temperature">the 1D model</a>).</p>
-<p>The 2D results go beyond <code>Ti</code>: <code>solve_dataframe</code> also stores the <strong>surface temperatures</strong> — <code>Tso</code> (outdoor surface), <code>Tsi</code> (indoor surface) and <code>Thueco</code> (cavity air) — on the same time grid:</p>
-<div id="c715c11a" class="cell" data-execution_count="14">
+<p>The 2D results go beyond <code>Ti</code>: <code>solve_dataframe</code> also stores the <strong>surface temperatures</strong> — <code>Tso</code> (outdoor surface), <code>Tsi</code> (indoor surface) and <code>Thueco</code> (cavity air) — on the same time grid, plotted here alongside <code>Ti</code>:</p>
+<div id="8ef4c298" class="cell" data-execution_count="14">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">7.2</span>, <span class="fl">3.6</span>))</span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>ax.plot(slab_df[<span class="st">"Tso"</span>],    color<span class="op">=</span><span class="st">"#eb6834"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Tso (outdoor surface)"</span>)</span>
 <span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>ax.plot(slab_df[<span class="st">"Thueco"</span>], color<span class="op">=</span><span class="st">"#9467bd"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Thueco (cavity air)"</span>)</span>
-<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>ax.plot(slab_df[<span class="st">"Tsi"</span>],    color<span class="op">=</span><span class="st">"#2a78d6"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Tsi (indoor surface)"</span>)</span>
-<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>ax.xaxis.set_major_locator(mdates.HourLocator(byhour<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">6</span>, <span class="dv">12</span>, <span class="dv">18</span>], tz<span class="op">=</span>slab_df.index.tz))</span>
-<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>ax.xaxis.set_major_formatter(mdates.DateFormatter(<span class="st">"%H"</span>, tz<span class="op">=</span>slab_df.index.tz))</span>
-<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"hour of the average day"</span>)</span>
-<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">"temperature (°C)"</span>)</span>
-<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">"Roof surfaces: the cavity damps the outdoor swing"</span>, fontsize<span class="op">=</span><span class="dv">10</span>)</span>
-<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>ax.legend(frameon<span class="op">=</span><span class="va">False</span>, fontsize<span class="op">=</span><span class="dv">9</span>, loc<span class="op">=</span><span class="st">"upper left"</span>)</span>
-<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>ax.grid(alpha<span class="op">=</span><span class="fl">0.25</span>, lw<span class="op">=</span><span class="fl">0.5</span>)</span>
-<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>ax.spines[<span class="st">"top"</span>].set_visible(<span class="va">False</span>)</span>
-<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>ax.spines[<span class="st">"right"</span>].set_visible(<span class="va">False</span>)</span>
-<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()</span>
-<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>ax.plot(slab_df[<span class="st">"Tsi"</span>],    color<span class="op">=</span><span class="st">"#0d9488"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Tsi (indoor surface)"</span>)</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>ax.plot(slab_df[<span class="st">"Ti"</span>],     color<span class="op">=</span><span class="st">"#2a78d6"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Ti (indoor air)"</span>)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>ax.xaxis.set_major_locator(mdates.HourLocator(byhour<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">6</span>, <span class="dv">12</span>, <span class="dv">18</span>], tz<span class="op">=</span>slab_df.index.tz))</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>ax.xaxis.set_major_formatter(mdates.DateFormatter(<span class="st">"%H"</span>, tz<span class="op">=</span>slab_df.index.tz))</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"hour of the average day"</span>)</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">"temperature (°C)"</span>)</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">"Roof surfaces: the cavity damps the outdoor swing"</span>, fontsize<span class="op">=</span><span class="dv">10</span>)</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>ax.legend(frameon<span class="op">=</span><span class="va">False</span>, fontsize<span class="op">=</span><span class="dv">9</span>, loc<span class="op">=</span><span class="st">"upper left"</span>)</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>ax.grid(alpha<span class="op">=</span><span class="fl">0.25</span>, lw<span class="op">=</span><span class="fl">0.5</span>)</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>ax.spines[<span class="st">"top"</span>].set_visible(<span class="va">False</span>)</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>ax.spines[<span class="st">"right"</span>].set_visible(<span class="va">False</span>)</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>fig.tight_layout()</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -543,7 +561,7 @@ heating_energy = 287,568 J/(m²·day)  = 80 Wh/(m²·day)</code></pre>
 </div>
 </div>
 <p>And its temperature field — note the joists acting as thermal bridges through the cavity band:</p>
-<div id="d15d907d" class="cell" data-execution_count="15">
+<div id="05e1aef3" class="cell" data-execution_count="15">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>T <span class="op">=</span> np.load(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/slab_free_Tfield.npy"</span>)</span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> summary[<span class="st">"slab_free"</span>]</span>
 <span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">8.5</span>, <span class="fl">3.8</span>))</span>
@@ -579,7 +597,7 @@ heating_energy = 287,568 J/(m²·day)  = 80 Wh/(m²·day)</code></pre>
 <section id="inspecting-the-section" class="level3">
 <h3 class="anchored" data-anchor-id="inspecting-the-section">Inspecting the section</h3>
 <p>Before solving you can inspect, <strong>to scale</strong>, how materials and node types are laid out on the 2D mesh — the section schemes shown with each example above were drawn by <code>preview(field="materials")</code>. <code>section_report()</code> prints the verification table:</p>
-<div id="52cb5720" class="cell" data-execution_count="16">
+<div id="37af2816" class="cell" data-execution_count="16">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>wall2d.section_report()            <span class="co"># table: node types + materials (k, ρc, y-range)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>2D section  80×160   X=200.0 mm  Y=150.0 mm   dx=2.500  dy=0.938 mm
@@ -607,7 +625,7 @@ Assigned materials (by k, ρc):
 </div>
 </div>
 <p>The default <code>preview()</code> draws three panels: the <strong>node types</strong> (the finite-volume classification each mesh node gets — interior, cavity walls, corners, air), and the <code>k</code> and <code>ρc</code> fields actually assigned to the mesh:</p>
-<div id="66345131" class="cell" data-execution_count="17">
+<div id="52e81ebc" class="cell" data-execution_count="17">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>wall2d.preview()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -617,11 +635,12 @@ Assigned materials (by k, ρc):
 </div>
 </div>
 </div>
-<p>matplotlib is an optional extra (<code>pip install enerhabitat[viz]</code>); without it — or with <code>backend="ascii"</code> — the inspector falls back to a <strong>to-scale ASCII drawing</strong>, handy on a remote terminal:</p>
-<div id="acb731e2" class="cell" data-execution_count="18">
+<p>matplotlib is an optional extra (<code>pip install enerhabitat[viz]</code>); without it — or with <code>backend="ascii"</code> — the inspector falls back to a <strong>to-scale ASCII drawing</strong>, handy on a remote terminal. Note that the drawing is a <em>resampling</em> of the mesh, not the mesh itself: one character is <strong>not</strong> one node — each character shows the node nearest to its position, and the header states the resolution (chars vs.&nbsp;mesh nodes, and the size in mm each character covers):</p>
+<div id="2ef67d62" class="cell" data-execution_count="18">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>roof.preview(field<span class="op">=</span><span class="st">"materials"</span>, backend<span class="op">=</span><span class="st">"ascii"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>  [materials]  to-scale cut  X=609mm × Y=218mm (outside on top)
+  60×11 chars resampled from the 80×160 mesh (1 char ≈ 10.2×19.8 mm, nearest node)
   ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓   ← OUTSIDE
   ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
   ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
