@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://Ener-Habitat.github.io/EnerHabitat/usage.html</loc>
-    <lastmod>2026-07-23T15:36:45.997Z</lastmod>
+    <lastmod>2026-07-23T23:30:41.047Z</lastmod>
   </url>
   <url>
     <loc>https://Ener-Habitat.github.io/EnerHabitat/model-1d.html</loc>
@@ -17,12 +17,16 @@
     <lastmod>2026-07-23T16:45:08.022Z</lastmod>
   </url>
   <url>
+    <loc>https://Ener-Habitat.github.io/EnerHabitat/usage-2d.html</loc>
+    <lastmod>2026-07-23T23:31:48.686Z</lastmod>
+  </url>
+  <url>
     <loc>https://Ener-Habitat.github.io/EnerHabitat/assumptions.html</loc>
-    <lastmod>2026-07-23T15:41:48.498Z</lastmod>
+    <lastmod>2026-07-23T21:52:26.096Z</lastmod>
   </url>
   <url>
     <loc>https://Ener-Habitat.github.io/EnerHabitat/index.html</loc>
-    <lastmod>2026-07-23T15:42:11.027Z</lastmod>
+    <lastmod>2026-07-23T23:32:04.487Z</lastmod>
   </url>
   <url>
     <loc>https://Ener-Habitat.github.io/EnerHabitat/api.html</loc>

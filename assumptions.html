@@ -23,26 +23,7 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-/* CSS for citations */
-div.csl-bib-body { }
-div.csl-entry {
-  clear: both;
-}
-.hanging-indent div.csl-entry {
-  margin-left:2em;
-  text-indent:-2em;
-}
-div.csl-left-margin {
-  min-width:2em;
-  float:left;
-}
-div.csl-right-inline {
-  margin-left:2em;
-  padding-left:1em;
-}
-div.csl-indent {
-  margin-left: 2em;
-}</style>
+</style>
 
 
 <script src="site_libs/quarto-nav/quarto-nav.js"></script>
@@ -143,10 +124,21 @@ window.Quarto = {
     <a class="nav-link" href="./index.html"> 
 <span class="menu-text">Home</span></a>
   </li>  
-  <li class="nav-item">
-    <a class="nav-link" href="./usage.html"> 
-<span class="menu-text">Usage</span></a>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-usage" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">Usage</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-usage">    
+        <li>
+    <a class="dropdown-item" href="./usage.html">
+ <span class="dropdown-text">Usage — 1D</span></a>
   </li>  
+        <li>
+    <a class="dropdown-item" href="./usage-2d.html">
+ <span class="dropdown-text">Usage — 2D</span></a>
+  </li>  
+    </ul>
+  </li>
   <li class="nav-item dropdown ">
     <a class="nav-link dropdown-toggle" href="#" id="nav-menu-theory" role="link" data-bs-toggle="dropdown" aria-expanded="false">
  <span class="menu-text">Theory</span>
@@ -205,7 +197,6 @@ window.Quarto = {
   <li><a href="#materials-and-geometry" id="toc-materials-and-geometry" class="nav-link" data-scroll-target="#materials-and-geometry">Materials and geometry</a></li>
   <li><a href="#surfaces-and-forcing" id="toc-surfaces-and-forcing" class="nav-link" data-scroll-target="#surfaces-and-forcing">Surfaces and forcing</a></li>
   <li><a href="#cavities-2d-fill.air" id="toc-cavities-2d-fill.air" class="nav-link" data-scroll-target="#cavities-2d-fill.air">Cavities (2D, <code>Fill.AIR</code>)</a></li>
-  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
   </ul>
 </nav>
     </div>
@@ -248,11 +239,11 @@ window.Quarto = {
 <tbody>
 <tr class="odd">
 <td>A single <strong>opaque envelope component</strong> is simulated: no windows, no ventilation, no infiltration, no internal gains, no latent loads, no HVAC equipment model</td>
-<td>The energies quantify the component alone, per unit of its surface area — differences between results isolate the effect of the constructive system</td>
+<td>The energies quantify the component alone, per unit of its surface area, differences between results isolate the effect of the constructive system if the constructive system is the only change</td>
 </tr>
 <tr class="even">
-<td>The forcing is a <strong>synthetic monthly average day</strong>, iterated to a periodic regime</td>
-<td>Results characterise a typical day of the month — not an annual simulation nor any real weather sequence; extreme days are outside the scope</td>
+<td>The forcing is a <strong>synthetic monthly average day</strong> from an EPW file, iterated to a periodic regime</td>
+<td>Results characterise a typical day of the month, not an annual simulation nor any real weather sequence; extreme days are outside the scope unless an EPW is constructed</td>
 </tr>
 <tr class="odd">
 <td>In the air-conditioned mode the setpoint is <strong>constant and ideal</strong> (the adaptive neutrality temperature <span class="math inline">\(T_n\)</span>, or <code>System2D.setpoint</code>)</td>
@@ -293,7 +284,7 @@ window.Quarto = {
 </tr>
 <tr class="odd">
 <td>2D: the cross-section is <strong>invariant out of plane</strong> and the lateral cuts of the repeating cell lie on <strong>mirror-symmetry planes</strong> (adiabatic)</td>
-<td>Valid for the periodic <code>HollowBlock</code>/<code>Slab</code> patterns; not a general periodic boundary condition</td>
+<td>Valid for the periodic <code>HollowBlock</code>/<code>Slab</code> patterns</td>
 </tr>
 </tbody>
 </table>
@@ -313,19 +304,19 @@ window.Quarto = {
 </thead>
 <tbody>
 <tr class="odd">
-<td><strong>Constant film coefficients</strong>: <span class="math inline">\(h_o = 13\)</span>, <span class="math inline">\(h_i = 8.1\)</span> W/(m²·K) by default (NOM values; <span class="math inline">\(h_i\)</span> is the vertical-surface value applied to all orientations)</td>
+<td><strong>Constant film coefficients</strong> : <span class="math inline">\(h_o = 13\)</span>, <span class="math inline">\(h_i = 8.1\)</span> W/(m²·K) by default (NOM-008/020-ENER values; <span class="math inline">\(h_i\)</span> is the vertical-surface value applied to all orientations)</td>
 <td>No wind or flow-direction dependence; configurable via <code>config.ho</code>/<code>config.hi</code></td>
 </tr>
 <tr class="even">
 <td>Solar and long-wave loads enter through the <strong>sun–air temperature</strong>, with the empirical factor <span class="math inline">\(RF\)</span> linear in tilt (3.9 → 0 °C between 0° and 90°)</td>
-<td>No explicit sky/surroundings radiative balance, no shading, no urban context</td>
+<td>No shading, no urban context</td>
 </tr>
 <tr class="odd">
 <td>The plane-of-array irradiance uses the <strong>isotropic-sky</strong> transposition with ground <strong>albedo 0.25</strong> (pvlib defaults)</td>
 <td>Anisotropic sky models or site-specific albedo are not applied</td>
 </tr>
 <tr class="even">
-<td>The indoor air is a <strong>single well-mixed node</strong> of depth <span class="math inline">\(L_a\)</span> per unit area (free-running mode)</td>
+<td>The indoor air is a <strong>single well-mixed node</strong> of depth <span class="math inline">\(L_a=2.5\,m\)</span> per unit area (free-running mode)</td>
 <td>No furniture or other-surface thermal mass; <span class="math inline">\(L_a\)</span> is a volume-to-area ratio, not a room depth</td>
 </tr>
 </tbody>
@@ -351,7 +342,7 @@ window.Quarto = {
 </tr>
 <tr class="even">
 <td>One <strong>uniform</strong> <span class="math inline">\(h_c\)</span> per cavity, from the correlations of Xamán (walls) or Hollands (roofs), evaluated with the mean face temperatures</td>
-<td>Local convection patterns are not resolved; the applicability ranges of the correlations to these cavity aspect ratios are under review in the validation campaign</td>
+<td>Local convection patterns are not resolved</td>
 </tr>
 <tr class="odd">
 <td>Cavity surfaces are <strong>grey and diffuse</strong>, each emitting at its mean temperature, with uniform emissivity</td>
@@ -359,12 +350,6 @@ window.Quarto = {
 </tr>
 </tbody>
 </table>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<div id="refs" role="list">
-
-</div>
 
 
 </section>
