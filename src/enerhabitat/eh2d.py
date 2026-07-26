@@ -731,9 +731,11 @@ class System2D:
         # (redundant with energy_transfer + energy_imbalance); solve_dataframe
         # hidden as _last_df, with the read-only Series properties
         # Tso/Tsi/Thueco as the access path (same concat pattern as the 1D);
-        # result attributes turned into read-only properties like the 1D's.
-        # Still to review: copy() sharing the Location here vs re-creating it
-        # in 1D, flag() missing here, and setpoint existing only here.
+        # result attributes turned into read-only properties like the 1D's;
+        # copy() removed from Location/System/System2D (unused and with
+        # conflicting semantics; build a new System sharing the Location
+        # instead). Still to review: flag() missing here, and setpoint
+        # existing only here.
         self._energy_transfer = None
         self._cooling_energy = None
         self._heating_energy = None
@@ -1139,10 +1141,6 @@ class System2D:
     @Tfield.setter
     def Tfield(self, value):
         pass
-
-    def copy(self):
-        return System2D(self.location, tilt=self.tilt, azimuth=self.azimuth,
-                        absortance=self.absortance, layers=list(self.layers))
 
     def info(self):
         print("<class 'enerhabitat.System2D'>")

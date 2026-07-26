@@ -37,7 +37,6 @@ Methods:
   are averaged; `day` and `year` only set the synthetic date used for the solar
   geometry and the index. In a TMY, `year=2025` does not select observations
   from 2025.
-- `copy()`: independent copy of the instance.
 - `info()`: prints the attributes.
 - `flag()`: dict with metadata of the last `meanDay()` call (e.g. `flag()["date"]`).
 
@@ -83,9 +82,7 @@ Methods:
   `cooling_energy`/`heating_energy`.
 - `add_layer(material, width)` / `remove_layer(index)`: edit the stack (appends at
   the inside).
-- `copy()`: re-creates the `Location` from the EPW file, so the `meanDay()`
-  selection must be re-applied on the copy (`System2D.copy()` shares the
-  `Location` instead). Also `info()`, `flag()`.
+- `info()`, `flag()`.
 
 > `Tsa` depends on `absortance`, `tilt`, `azimuth`, `meanDay` (month) and `Location`;
 > it is recomputed automatically when any of these change (results are cached
@@ -101,9 +98,9 @@ Pending API decisions (guiding principle: `System2D` mirrors the 1D `System`
 public API unless the difference is intrinsic to 2D). Resolved already: `Qout`
 removed; `solve_dataframe` hidden behind the read-only Series `Tso`/`Tsi`/
 `Thueco` (concat pattern, as in 1D); result attributes turned into read-only
-properties like the 1D's. Still to review: `copy()` sharing the `Location`
-here vs re-creating it in 1D, `flag()` missing here, `setpoint` existing only
-here.
+properties like the 1D's; `copy()` removed from the three classes (build a new
+`System`/`System2D` with the same `Location` instead). Still to review:
+`flag()` missing here, `setpoint` existing only here.
 :::
 
 Mirror of `System` for cross-sections that are heterogeneous across their width. Same
@@ -121,8 +118,6 @@ result attributes. Differences:
 - `setpoint` exists only in 2D; the 1D `System` always uses the mean neutrality
   temperature as the AC setpoint.
 - `flag()` is not available (1D only).
-- `copy()` shares the `Location` instance, so a later `meanDay()` affects the
-  original and the copy alike (the 1D `System.copy()` re-creates it instead).
 - `solve()` and `solveAC()` results are cached separately, so alternating modes
   is free; the 1D `System` keeps one cache tagged by the last mode and recomputes
   when alternating.

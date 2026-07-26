@@ -30,7 +30,6 @@ class Location:
     Methods:
         meanDay(day, month, year): Calculates the ambient temperature per second for the average day
         info(): Prints Location's attributes information.
-        copy(): Returns a copy of the Location instance.
         flag(): Returns a copy of the internal flag dictionary.
     """
     
@@ -93,12 +92,6 @@ class Location:
 
         return self.__meanday_dataframe
 
-    def copy(self):
-        """
-        Returns a copy of the Location instance.
-        """
-        return Location(self.file)
-    
     def flag(self):
         return self.__flag.copy()
     
@@ -317,7 +310,6 @@ class System():
         solve(energy): Solves the constructive system's inside temperature.
         solveAC(): Solves the constructive system's required cooling and heating energy to maintain the inside temperature.
         info(): Prints System information.
-        copy(): Returns a copy of the System instance.
         flag(): Returns a copy of the internal flag dictionary.
         add_layer(material, width): Adds a layer to the constructive system.
         remove_layer(index): Removes a layer from the constructive system by index.
@@ -490,18 +482,6 @@ class System():
                 print(f"\t{i+1}: {material}, {width} m")
         else:
             print("Layers: No layers defined")
-    
-    def copy(self):
-        """
-        Returns a copy of the System instance.
-        """
-        return System(
-            location=self.location.copy(),
-            tilt=self.tilt,
-            azimuth=self.azimuth,
-            absortance=self.absortance,
-            layers=self.layers.copy()
-        )
     
     def flag(self):
        return self.__flag.copy()
