@@ -100,8 +100,8 @@ Methods:
 Pending API decisions (guiding principle: `System2D` mirrors the 1D `System`
 public API unless the difference is intrinsic to 2D). Resolved already: `Qout`
 removed; `solve_dataframe` hidden behind the read-only Series `Tso`/`Tsi`/
-`Thueco` (concat pattern, as in 1D). Still to review: result
-attributes writable here vs read-only in 1D, `copy()` sharing the `Location`
+`Thueco` (concat pattern, as in 1D); result attributes turned into read-only
+properties like the 1D's. Still to review: `copy()` sharing the `Location`
 here vs re-creating it in 1D, `flag()` missing here, `setpoint` existing only
 here.
 :::
@@ -123,8 +123,6 @@ result attributes. Differences:
 - `flag()` is not available (1D only).
 - `copy()` shares the `Location` instance, so a later `meanDay()` affects the
   original and the copy alike (the 1D `System.copy()` re-creates it instead).
-- Result attributes are plain writable attributes, not read-only properties as in
-  the 1D `System`.
 - `solve()` and `solveAC()` results are cached separately, so alternating modes
   is free; the 1D `System` keeps one cache tagged by the last mode and recomputes
   when alternating.

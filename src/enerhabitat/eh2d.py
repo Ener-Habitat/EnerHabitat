@@ -724,24 +724,25 @@ class System2D:
         self._solve_sig = None
         self._ac_df = None
         self._ac_sig = None
-        self.energy_transfer = None
         # NOTE(api-symmetry 2026-07): System2D should mirror the 1D System's
         # public surface unless the difference is intrinsic to 2D (the 2D
         # element in layers, the 7-layer cap, tilt validation, Tfield, Thueco
         # and the section inspectors). Resolved in this branch: Qout removed
         # (redundant with energy_transfer + energy_imbalance); solve_dataframe
         # hidden as _last_df, with the read-only Series properties
-        # Tso/Tsi/Thueco as the access path (same concat pattern as the 1D).
-        # Still to review: result attributes writable here vs read-only
-        # properties in 1D, copy() sharing the Location here vs re-creating it
+        # Tso/Tsi/Thueco as the access path (same concat pattern as the 1D);
+        # result attributes turned into read-only properties like the 1D's.
+        # Still to review: copy() sharing the Location here vs re-creating it
         # in 1D, flag() missing here, and setpoint existing only here.
-        self.cooling_energy = None
-        self.heating_energy = None
-        self.days = None
-        self.day_error = None
-        self.converged = None
-        self.inner_iterations = None
-        self.energy_imbalance = None
+        self._energy_transfer = None
+        self._cooling_energy = None
+        self._heating_energy = None
+        self._days = None
+        self._day_error = None
+        self._converged = None
+        self._inner_iterations = None
+        self._energy_imbalance = None
+        self._Tfield = None
         self._last_df = None          # full frame of the LAST solve (internal);
                                       # sliced by the Tso/Tsi/Thueco properties
 
@@ -925,21 +926,21 @@ class System2D:
         res["Thueco"] = Th
         self._last_df = res
         self._solve_df, self._solve_sig = res, sig
-        self.energy_transfer = Qin
-        self.cooling_energy = self.heating_energy = None
-        self.days, self.Tfield = days, Tfield
+        self._energy_transfer = Qin
+        self._cooling_energy = self._heating_energy = None
+        self._days, self._Tfield = days, Tfield
         # Energy-closure diagnostic: in the periodic regime Qin == Qout.
         qmax = max(Qin, Qout)
-        self.energy_imbalance = abs(Qin - Qout) / qmax if qmax > 0.0 else 0.0
+        self._energy_imbalance = abs(Qin - Qout) / qmax if qmax > 0.0 else 0.0
         self._store_convergence(day_err, inner_ok, inner_max, "solve")
         return res["Ti"]
 
     def _store_convergence(self, day_err, inner_ok, inner_max, who):
         """Store the convergence diagnostics and warn if the solve did not
         converge (day cycle or inner sweeps)."""
-        self.day_error = float(day_err)
-        self.inner_iterations = int(inner_max)
-        self.converged = bool(inner_ok) and (day_err <= config2d.tol_day)
+        self._day_error = float(day_err)
+        self._inner_iterations = int(inner_max)
+        self._converged = bool(inner_ok) and (day_err <= config2d.tol_day)
         if not self.converged:
             import warnings
             warnings.warn(
@@ -1021,10 +1022,10 @@ class System2D:
         res["Thueco"] = Th
         self._last_df = res
         self._ac_df, self._ac_sig = res, sig
-        self.cooling_energy, self.heating_energy = Qcool, Qheat
-        self.energy_transfer = None
-        self.days, self.Tfield = days, Tfield
-        self.energy_imbalance = None   # closure check only defined free-running
+        self._cooling_energy, self._heating_energy = Qcool, Qheat
+        self._energy_transfer = None
+        self._days, self._Tfield = days, Tfield
+        self._energy_imbalance = None  # closure check only defined free-running
         self._store_convergence(day_err, inner_ok, inner_max, "solveAC")
         return res["Ti"]
 
@@ -1058,6 +1059,86 @@ class System2D:
         solve: the mean over the N cavities in ``Slab``, ``NaN`` with
         ``Fill.SOLID``; ``None`` before solving."""
         return None if self._last_df is None else self._last_df["Thueco"]
+
+    # Solo lectura (mismo patrón que el System 1D)
+    @property
+    def energy_transfer(self):
+        """Energy delivered to the indoor air over the converged day,
+        J/(m²·day); None before solve() or after solveAC()."""
+        return self._energy_transfer
+    @energy_transfer.setter
+    def energy_transfer(self, value):
+        pass
+
+    @property
+    def cooling_energy(self):
+        """Cooling demand to hold the setpoint, J/(m²·day); None before
+        solveAC() or after solve()."""
+        return self._cooling_energy
+    @cooling_energy.setter
+    def cooling_energy(self, value):
+        pass
+
+    @property
+    def heating_energy(self):
+        """Heating demand to hold the setpoint, J/(m²·day); None before
+        solveAC() or after solve()."""
+        return self._heating_energy
+    @heating_energy.setter
+    def heating_energy(self, value):
+        pass
+
+    @property
+    def days(self):
+        """Day-to-day iterations used by the last solve."""
+        return self._days
+    @days.setter
+    def days(self, value):
+        pass
+
+    @property
+    def day_error(self):
+        """Final day-to-day error (°C) of the last solve: max over the solid
+        field, |ΔT_i| and each cavity |ΔT_h|."""
+        return self._day_error
+    @day_error.setter
+    def day_error(self, value):
+        pass
+
+    @property
+    def converged(self):
+        """True if the last solve met tol_day and every inner step converged
+        within max_inner; a RuntimeWarning is emitted otherwise."""
+        return self._converged
+    @converged.setter
+    def converged(self, value):
+        pass
+
+    @property
+    def inner_iterations(self):
+        """Largest inner sweep count observed in the last solve."""
+        return self._inner_iterations
+    @inner_iterations.setter
+    def inner_iterations(self, value):
+        pass
+
+    @property
+    def energy_imbalance(self):
+        """Energy-closure check |Qin − Qout| / max(Qin, Qout) of the last
+        free-running solve (≈ 0 when periodic); None after solveAC()."""
+        return self._energy_imbalance
+    @energy_imbalance.setter
+    def energy_imbalance(self, value):
+        pass
+
+    @property
+    def Tfield(self):
+        """Temperature field (nx, ny) in °C at the end of the last simulated
+        day (outside → inside along the second axis); None before solving."""
+        return self._Tfield
+    @Tfield.setter
+    def Tfield(self, value):
+        pass
 
     def copy(self):
         return System2D(self.location, tilt=self.tilt, azimuth=self.azimuth,
