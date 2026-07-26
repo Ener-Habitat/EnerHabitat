@@ -53,6 +53,16 @@ era de nodos-en-vértice); la implementación consiste en asignar a cada tipo su
 
 ## Fase 2 — 2D, fronteras externas
 
+- HALLAZGO (fase 1, verificado en código): los constructores de malla
+  (`compute_mesh`, `compute_mesh_slab`, `draw_*`, `set_krhoc_*`) son
+  COMPARTIDOS con los caminos legacy de los golden tests. El gate de
+  compatibilidad debe estar en la CONSTRUCCIÓN DE MALLA (parámetro
+  `vertex=True/False` o funciones paralelas), no solo en los kernels:
+  `dx = X/(nx−1)` cambia índices de cavidad (`i1..j2`), NT y campos k/ρc.
+  Auditar primero qué constructores usan los golden (tests/golden,
+  test_eh2d_hueca, test_eh2d_step, test_eh2d_coeffs) y aislarlos.
+- Confirmado también: los NT 1–4 son esquinas DE DOMINIO y 6–7 los costados
+  (la clasificación que esta fase necesita ya existe desde el C).
 - `Δx = W/(nx−1)`, `Δy = L/(ny−1)`; arreglos de pesos `wx[nx]`, `wy[ny]`
   (1/2 en los extremos) pasados a los kernels.
 - Masa `ρc·(wxΔx)(wyΔy)/Δt`; áreas de cara N/S = `wxΔx`, E/W = `wyΔy`;
