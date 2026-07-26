@@ -82,7 +82,7 @@ Methods:
   `cooling_energy`/`heating_energy`.
 - `add_layer(material, width)` / `remove_layer(index)`: edit the stack (appends at
   the inside).
-- `info()`, `flag()`.
+- `info()`.
 
 > `Tsa` depends on `absortance`, `tilt`, `azimuth`, `meanDay` (month) and `Location`;
 > it is recomputed automatically when any of these change (results are cached
@@ -99,8 +99,9 @@ public API unless the difference is intrinsic to 2D). Resolved already: `Qout`
 removed; `solve_dataframe` hidden behind the read-only Series `Tso`/`Tsi`/
 `Thueco` (concat pattern, as in 1D); result attributes turned into read-only
 properties like the 1D's; `copy()` removed from the three classes (build a new
-`System`/`System2D` with the same `Location` instead). Still to review:
-`flag()` missing here, `setpoint` existing only here.
+`System`/`System2D` with the same `Location` instead); `System.flag()` removed
+(internal cache bookkeeping without users; `Location.flag()` remains as the
+mean-day metadata accessor). Still to review: `setpoint` existing only here.
 :::
 
 Mirror of `System` for cross-sections that are heterogeneous across their width. Same
@@ -117,7 +118,6 @@ result attributes. Differences:
 - Orientation is validated: `HollowBlock` requires `tilt = 90`, `Slab` `tilt = 0`.
 - `setpoint` exists only in 2D; the 1D `System` always uses the mean neutrality
   temperature as the AC setpoint.
-- `flag()` is not available (1D only).
 - `solve()` and `solveAC()` results are cached separately, so alternating modes
   is free; the 1D `System` keeps one cache tagged by the last mode and recomputes
   when alternating.

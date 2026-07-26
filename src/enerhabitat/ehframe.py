@@ -310,7 +310,6 @@ class System():
         solve(energy): Solves the constructive system's inside temperature.
         solveAC(): Solves the constructive system's required cooling and heating energy to maintain the inside temperature.
         info(): Prints System information.
-        flag(): Returns a copy of the internal flag dictionary.
         add_layer(material, width): Adds a layer to the constructive system.
         remove_layer(index): Removes a layer from the constructive system by index.
     """
@@ -482,9 +481,6 @@ class System():
                 print(f"\t{i+1}: {material}, {width} m")
         else:
             print("Layers: No layers defined")
-    
-    def flag(self):
-       return self.__flag.copy()
     
     def add_layer(self, material:str, width:float):
         """

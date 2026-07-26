@@ -734,8 +734,9 @@ class System2D:
         # result attributes turned into read-only properties like the 1D's;
         # copy() removed from Location/System/System2D (unused and with
         # conflicting semantics; build a new System sharing the Location
-        # instead). Still to review: flag() missing here, and setpoint
-        # existing only here.
+        # instead); System.flag() removed (internal cache bookkeeping without
+        # users; Location.flag() remains). Still to review: setpoint existing
+        # only here.
         self._energy_transfer = None
         self._cooling_energy = None
         self._heating_energy = None
