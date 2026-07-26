@@ -68,7 +68,10 @@ def test_mass_conservation():
               ("Zinc", 0.0005)]
     for nx in (7, 50, 200):
         k, rhoc, dx, Gf = _map(layers, nx)
-        total = rhoc.sum() * dx
+        # malla de nodos-en-superficie: los nodos extremos poseen medio volumen
+        vol = np.full(nx, dx)
+        vol[0] = vol[-1] = 0.5 * dx
+        total = (rhoc * vol).sum()
         exact = sum(MATS[n].rho * MATS[n].c * L for n, L in layers)
         assert abs(total - exact) <= 1e-9 * exact, f"masa nx={nx}"
 
@@ -78,7 +81,8 @@ def test_face_resistance_exact():
     for nx in (11, 200):
         k, rhoc, dx, Gf = _map(layers, nx)
         R_faces = np.sum(1.0 / Gf)
-        R_exact = _analytic_R(layers, 0.5 * dx, (nx - 0.5) * dx)
+        # los tramos nodo-a-nodo cubren [0, L] exacto: Σ 1/Gf = R total
+        R_exact = _analytic_R(layers, 0.0, sum(L for _, L in layers))
         assert abs(R_faces - R_exact) <= 1e-12 * R_exact, f"R nx={nx}"
 
 
@@ -93,7 +97,7 @@ def test_subcell_zinc_resistance():
         for layers in (with_z1, with_z2):
             k, rhoc, dx, Gf = _map(layers, nx)
             R = np.sum(1.0 / Gf)
-            R_exp = _analytic_R(layers, 0.5 * dx, (nx - 0.5) * dx)
+            R_exp = _analytic_R(layers, 0.0, sum(L for _, L in layers))
             assert abs(R - R_exp) <= 1e-12 * R_exp
             # y la contribución del zinc está incluida (no desaparece):
             layers_no = [(n, L) for n, L in layers if n != "Zinc"]

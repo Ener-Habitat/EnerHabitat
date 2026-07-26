@@ -148,30 +148,32 @@ def set_k_rhoc(cs, nx):
     """
     Map the physical layers onto the uniform 1D mesh (interface-aware).
 
-    Assignment by cumulative coordinates:
+    Vertex-centred mesh (HALF-NODES scheme): ``nx`` nodes at ``x_i = i·Δx``
+    with ``Δx = L/(nx-1)``, so nodes 0 and ``nx-1`` sit exactly ON the outer
+    and inner surfaces. The control volume of node ``i`` is
+    ``[x_i - Δx/2, x_i + Δx/2] ∩ [0, L]``: full ``Δx`` in the interior and
+    ``Δx/2`` at the two surfaces (the half masses are applied in
+    :func:`prepare_static_coefficients`).
 
-    - ``k_array[i]``: conductivity of the material containing the cell
-      **centre** (reference/reporting value; the solver uses ``Gf``).
-    - ``rhoc_array[i]``: thickness-weighted average of ρc over the cell, so the
-      total thermal mass ``Σ ρc_j·L_j`` is conserved exactly.
-    - ``Gf[f]``: face conductance per unit area (W/(m²·K)) between the centres of
-      cells ``f`` and ``f+1``, from the exact series resistance
-      ``∫ dx'/k(x')`` across the span. Material interfaces may fall anywhere
-      inside a cell, and layers thinner than ``Δx`` (metal sheets, membranes)
-      contribute their true resistance and mass at any position and any
-      ``nx``. For a single-material span it reduces to ``k/Δx``; for an
-      interface exactly at the face it reduces to the harmonic mean
-      ``2·k_L·k_R/(k_L+k_R)/Δx``.
+    - ``k_array[i]``: conductivity of the material containing the NODE
+      position (reference/reporting value; the solver uses ``Gf``).
+    - ``rhoc_array[i]``: volume-averaged ρc over the node's (possibly
+      clipped) control volume, so the total thermal mass ``Σ ρc_j·L_j`` is
+      conserved exactly at any ``nx``.
+    - ``Gf[f]``: face conductance per unit area (W/(m²·K)) between nodes
+      ``f`` and ``f+1``, from the exact series resistance ``∫ dx'/k(x')``
+      over the node-to-node span. Material interfaces may fall anywhere, and
+      layers thinner than ``Δx`` contribute their true resistance and mass.
 
     Args:
         cs (dict): Dictionary with the constructive-system configuration.
-        nx (int): Number of discretisation elements.
+        nx (int): Number of nodes through the thickness.
 
     Returns:
         tuple: (k_array, rhoc_array, dx, Gf) with ``Gf`` of shape ``(nx-1,)``.
     """
     L_total = get_total_L(cs)
-    dx = L_total / nx
+    dx = L_total / (nx - 1)
 
     n_lay = len(cs)
     bounds = np.zeros(n_lay + 1)
@@ -196,20 +198,20 @@ def set_k_rhoc(cs, nx):
     k_array = np.zeros(nx)
     rhoc_array = np.zeros(nx)
     for i in range(nx):
-        x0 = i * dx
-        x1 = x0 + dx
-        xc = 0.5 * (x0 + x1)
-        j = int(np.searchsorted(bounds, xc, side='right')) - 1
+        xn = i * dx                       # node ON the grid line
+        x0 = max(0.0, xn - 0.5 * dx)      # clipped control volume
+        x1 = min(L_total, xn + 0.5 * dx)
+        j = int(np.searchsorted(bounds, xn, side='right')) - 1
         j = 0 if j < 0 else (n_lay - 1 if j > n_lay - 1 else j)
         k_array[i] = k_lay[j]
         acc = 0.0
         for seg, jj in overlaps(x0, x1):
             acc += seg * rhoc_lay[jj]
-        rhoc_array[i] = acc / dx
+        rhoc_array[i] = acc / (x1 - x0)   # volume average over the real volume
 
     Gf = np.zeros(max(nx - 1, 0))
     for f in range(nx - 1):
-        x0 = (f + 0.5) * dx
+        x0 = f * dx                       # node-to-node span
         x1 = x0 + dx
         R = 0.0
         for seg, jj in overlaps(x0, x1):
@@ -245,6 +247,12 @@ def prepare_static_coefficients(k_array, rhoc_array, dx, dt, ho, hi,
     """
     nx = k_array.shape[0]
     mass_coeff = rhoc_array * (dx / dt)
+    # Vertex-centred mesh (HALF-NODES): the surface nodes own half a control
+    # volume, so their thermal mass is halved; the film coefficients connect
+    # the air directly to these true surface nodes.
+    if nx >= 2:
+        mass_coeff[0] *= 0.5
+        mass_coeff[nx - 1] *= 0.5
 
     if nx <= 1:
         a_static = np.empty(1, dtype=np.float64)
