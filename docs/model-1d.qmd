@@ -151,9 +151,11 @@ $$
 T_i \;=\; T_n \;=\; 0.54\, \overline{T_a} \;+\; 13.5\ °\mathrm{C},
 $$ {#eq-tn}
 
-where $\overline{T_a}$ is the mean outdoor air temperature of the average day. The
-cooling and heating demands are the fluxes the air-conditioning system must remove or
-supply to keep $T_i = T_n$:
+where $\overline{T_a}$ is the mean outdoor air temperature of the average day.
+Setting `System.setpoint` (also available in `System2D`) replaces $T_n$ with a
+user-defined constant, e.g. a thermostat temperature. The cooling and heating
+demands are the fluxes the air-conditioning system must remove or supply to keep
+$T_i$ at that temperature:
 
 $$
 E_c \;=\; \int_{24\,\mathrm{h}} h_i \left( T_{x=L} - T_n \right)^{+} dt,

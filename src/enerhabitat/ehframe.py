@@ -331,6 +331,9 @@ class System():
         self.__solve_dataframe = None
         self.__Tso = None
         self.__Tsi = None
+        # AC setpoint: if None, solveAC() holds Ti at Tn.mean() (like the 2D)
+        self.setpoint = None
+        self.__last_setpoint = None
         
         self.__tsa_solver_version = -1
         self.__solve_solver_version = -1
@@ -431,6 +434,8 @@ class System():
         """
         Solves the constructive system's required cooling and heating energy to
         maintain the interior temperature with the Tsa simulation dataframe.
+        The indoor temperature is held at ``setpoint`` if set, otherwise at the
+        neutrality temperature ``Tn.mean()``.
 
         Returns:
             Ti (pandas.Series named "Ti"): Interior temperature for the
@@ -448,18 +453,20 @@ class System():
         
         self.__update_flag_config()
         
-        recalculate = (self.__updated or 
-                        self.__solve_dataframe is None or 
+        recalculate = (self.__updated or
+                        self.__solve_dataframe is None or
                         self.__solve_solver_version != config.version or
-                        self.__last_solve != 'ac'
+                        self.__last_solve != 'ac' or
+                        self.__last_setpoint != self.setpoint
                        )
 
         self.__flag['recalculate'] = recalculate
-        
+
         if recalculate:
             self.__solve_dataframe = self.__calc_solve(AC=True)
             self.__updated = False
-        
+            self.__last_setpoint = self.setpoint
+
         return self.__solve_dataframe
 
     def info(self):
@@ -617,7 +624,13 @@ class System():
         cap_down = hi_down * dt / (AIR_DENSITY * AIR_HEAT_CAPACITY * La)
 
         T = np.full(Nx, SC_dataframe.Tn.mean())
-        SC_dataframe['Ti'] = SC_dataframe.Tn.mean()
+        # AC: the setpoint (System.setpoint) overrides the neutrality
+        # temperature, as in the 2D; free-running ignores it and Tn.mean()
+        # is only the initial condition of the indoor-air node.
+        if AC and self.setpoint is not None:
+            SC_dataframe['Ti'] = float(self.setpoint)
+        else:
+            SC_dataframe['Ti'] = SC_dataframe.Tn.mean()
 
         # Tsa() already comes at step dt (see __calc_tsa); no resampling here.
         Tsa_vals = SC_dataframe['Tsa'].to_numpy()

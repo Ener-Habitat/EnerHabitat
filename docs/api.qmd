@@ -57,6 +57,7 @@ Attributes:
 | `azimuth` | `float` | Surface azimuth, pvlib convention (N=0, E=90, S=180, W=270) |
 | `absortance` | `float` | Solar absorptance of the outdoor surface, `[0, 1]`; validated, so values outside the range raise `ValueError` |
 | `layers` | `list[tuple[str, float]]` | `(material, thickness_m)`, outside → inside |
+| `setpoint` | `float` | AC setpoint override; `None` (default) → the neutrality temperature $T_n$ (@eq-tn in the 1D model). Ignored by `solve()` |
 
 Read-only results (energy per unit surface area over the converged day, in
 J/(m²·day); divide by 3600 for Wh or 3.6e6 for kWh):
@@ -101,12 +102,14 @@ removed; `solve_dataframe` hidden behind the read-only Series `Tso`/`Tsi`/
 properties like the 1D's; `copy()` removed from the three classes (build a new
 `System`/`System2D` with the same `Location` instead); `System.flag()` removed
 (internal cache bookkeeping without users; `Location.flag()` remains as the
-mean-day metadata accessor). Still to review: `setpoint` existing only here.
+mean-day metadata accessor); `setpoint` added to the 1D `System`. Still to
+review: the solve/solveAC cache behaviour (separate caches here vs one cache
+tagged by the last mode in 1D).
 :::
 
 Mirror of `System` for cross-sections that are heterogeneous across their width. Same
-`Location`, `tilt`, `azimuth`, `absortance`, `Tsa()`, `solve()`, `solveAC()` and
-result attributes. Differences:
+`Location`, `tilt`, `azimuth`, `absortance`, `setpoint`, `Tsa()`, `solve()`,
+`solveAC()` and result attributes. Differences:
 
 - `layers` contains, besides ordinary `(material, thickness)` tuples, exactly one
   2D element: a [`HollowBlock`](#hollowblock) or a [`Slab`](#slab). The element's
@@ -116,8 +119,6 @@ result attributes. Differences:
   Exceeding it raises `ValueError: at most 7 layers (including the 2D element).`
   The 1D `System` has no layer limit.
 - Orientation is validated: `HollowBlock` requires `tilt = 90`, `Slab` `tilt = 0`.
-- `setpoint` exists only in 2D; the 1D `System` always uses the mean neutrality
-  temperature as the AC setpoint.
 - `solve()` and `solveAC()` results are cached separately, so alternating modes
   is free; the 1D `System` keeps one cache tagged by the last mode and recomputes
   when alternating.
@@ -127,7 +128,6 @@ result attributes. Differences:
 
 | Attribute | Description |
 |---|---|
-| `setpoint` | AC setpoint override; `None` (default) → the neutrality temperature $T_n$ |
 | `days` | Day-to-day iterations used by the last solve |
 | `converged` | `True` if the last solve met `tol_day` and every inner step converged; a `RuntimeWarning` is emitted otherwise |
 | `day_error` | Final day-to-day error (°C) of the last solve: max over the solid field, $\|\Delta T_i\|$ and each cavity $\|\Delta T_h\|$ |

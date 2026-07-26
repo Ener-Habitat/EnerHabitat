@@ -735,8 +735,9 @@ class System2D:
         # copy() removed from Location/System/System2D (unused and with
         # conflicting semantics; build a new System sharing the Location
         # instead); System.flag() removed (internal cache bookkeeping without
-        # users; Location.flag() remains). Still to review: setpoint existing
-        # only here.
+        # users; Location.flag() remains); setpoint added to the 1D System.
+        # Still to review: solve/solveAC cache behaviour (separate caches here
+        # vs one cache tagged by the last mode in 1D).
         self._energy_transfer = None
         self._cooling_energy = None
         self._heating_energy = None
