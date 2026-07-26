@@ -69,7 +69,7 @@ class Mesh2D:
     j2: int
 
 
-def compute_mesh(nx, ny, L, layer, a, e):
+def compute_mesh(nx, ny, L, layer, a, e, vertex=False):
     """
     Literally reproduces the mesh computation of the C ``main`` (solid filler
     block / single cavity, ``a14 == 0``).
@@ -95,9 +95,11 @@ def compute_mesh(nx, ny, L, layer, a, e):
         X = (a["a11"] + a["a21"] + a["a12"] + a["a22"]
              + a["a13"] + a["a23"] + a["a14"])
 
-    dx = X / nx
+    # HALF-NODES (vertex=True): nodes ON the grid lines, dx = X/(nx-1), so the
+    # first/last nodes sit exactly on the domain boundaries.
+    dx = X / (nx - 1) if vertex else X / nx
     Y = sum(YY)
-    dy = Y / ny
+    dy = Y / (ny - 1) if vertex else Y / ny
 
     # y offset of the filler-block layer (same integer truncation as the C).
     y1 = sum(YY[:layer])
@@ -173,6 +175,13 @@ def set_krhoc_rellena(nx, ny, dx, dy, L, k, rhoc, kr, rhocr, NT):
                 kf[i, j] = k[n]
                 rf[i, j] = rhoc[n]
                 j += 1
+        # HALF-NODES (vertex mesh): the node ON the inner surface lies exactly
+        # at ΣL and the thresholds leave it unassigned; it belongs to the
+        # innermost material. No-op on the legacy mesh (thresholds cover ny).
+        while j < ny:
+            kf[i, j] = kf[i, j - 1]
+            rf[i, j] = rf[i, j - 1]
+            j += 1
 
     # Fill (filler block): kr, rhocr and NT 14 -> 13.
     fill = NT == 14
@@ -228,6 +237,13 @@ def set_krhoc_hueca(nx, ny, dx, dy, L, k, rhoc):
                 kf[i, j] = k[n]
                 rf[i, j] = rhoc[n]
                 j += 1
+        # HALF-NODES (vertex mesh): the node ON the inner surface lies exactly
+        # at ΣL and the thresholds leave it unassigned; it belongs to the
+        # innermost material. No-op on the legacy mesh (thresholds cover ny).
+        while j < ny:
+            kf[i, j] = kf[i, j - 1]
+            rf[i, j] = rf[i, j - 1]
+            j += 1
     return kf, rf
 
 
@@ -242,7 +258,8 @@ def set_krhoc_hueca(nx, ny, dx, dy, L, k, rhoc):
 
 
 def compute_mesh_slab(nx, ny, L, layer, web, foot, shoulder, n_cav, cavity_width,
-                      topping, cover_top, cavity, cover_bottom, topping_cap=0.0):
+                      topping, cover_top, cavity, cover_bottom, topping_cap=0.0,
+                      vertex=False):
     """
     Mesh for the N-cavity roof slab. Returns ``(mesh, info)`` where ``info`` holds
     the element's internal integer bounds and the x-bounds of each cavity. Same
@@ -253,9 +270,9 @@ def compute_mesh_slab(nx, ny, L, layer, web, foot, shoulder, n_cav, cavity_width
     YY[layer] = e_thick
 
     X = 2.0 * (web + foot) + (n_cav + 1) * shoulder + n_cav * cavity_width
-    dx = X / nx
+    dx = X / (nx - 1) if vertex else X / nx
     Y = sum(YY)
-    dy = Y / ny
+    dy = Y / (ny - 1) if vertex else Y / ny
 
     y1 = sum(YY[:layer]) / dy + 0.5
     base = int(y1)
@@ -335,14 +352,22 @@ def set_krhoc_slab(nx, ny, dx, dy, L, k, rhoc, layer, info,
         for n in range(7):
             while j < thr[n] and j < ny:
                 kf[i, j] = kk[n]; rf[i, j] = rr[n]; j += 1
+        # HALF-NODES (vertex mesh): the node row ON the inner surface lies at
+        # ΣL and the thresholds leave it unassigned. No-op on the legacy mesh.
+        while j < ny:
+            kf[i, j] = kf[i, j - 1]; rf[i, j] = rf[i, j - 1]; j += 1
 
     jet, jcap, jcol = info["jet"], info["jcap"], info["jcol"]
     cj1, cj2, jeb = info["cj1"], info["cj2"], info["jeb"]
     niw, nif = info["niw"], info["nif"]
+    # HALF-NODES: if the element's base coincides with the inner surface
+    # (jeb == ny-1, only possible on the vertex mesh; legacy gives jeb == ny),
+    # the surface node row belongs to the element's bottom band.
+    jend = jeb + 1 if jeb == ny - 1 else jeb
     for i in range(nx):
         is_alma = (i < niw) or (i >= nx - niw)
         is_foot = (i < nif) or (i >= nx - nif)
-        for j in range(jet, jeb):
+        for j in range(jet, jend):
             if j < jcol:
                 km, rm = k_topping, rc_topping      # topping band
             else:
@@ -384,6 +409,7 @@ class SlabSection:
     emissivity: float = 0.9
     beta: float = 0.0
     hollow: bool = True
+    vertex: bool = False   # HALF-NODES mesh (nodes on the grid lines)
 
     mesh: Mesh2D = field(init=False, default=None)
     NT: np.ndarray = field(init=False, default=None)
@@ -400,7 +426,7 @@ class SlabSection:
             self.nx, self.ny, self.L, self.layer,
             g["web"], g["foot"], g["shoulder"], g["n_cav"], g["cavity_width"],
             g["topping"], g["cover_top"], g["cavity"], g["cover_bottom"],
-            g.get("topping_cap", 0.0))
+            g.get("topping_cap", 0.0), self.vertex)
         NT, cav_of = draw_slab_multi(self.nx, self.ny, info["cav_i1"],
                                      info["cav_i2"], info["cj1"], info["cj2"],
                                      self.hollow)
@@ -435,6 +461,7 @@ class Section2D:
     e: dict           # e21,e22,e23
     layer: int = 1
     fill_type: Fill = Fill.SOLID
+    vertex: bool = False   # HALF-NODES mesh (nodes on the grid lines)
 
     mesh: Mesh2D = field(init=False, default=None)
     NT: np.ndarray = field(init=False, default=None)
@@ -443,7 +470,8 @@ class Section2D:
 
     def build(self):
         """Builds ``mesh``, ``NT``, ``kfield``, ``rhocfield`` and returns self."""
-        m = compute_mesh(self.nx, self.ny, self.L, self.layer, self.a, self.e)
+        m = compute_mesh(self.nx, self.ny, self.L, self.layer, self.a, self.e,
+                         self.vertex)
         if self.fill_type is Fill.SOLID:
             NT = draw_rellena(m.nx, m.ny, m.i1, m.j1, m.i2, m.j2)
             kf, rf = set_krhoc_rellena(m.nx, m.ny, m.dx, m.dy,
@@ -832,7 +860,7 @@ class System2D:
                 geom=elem._geom(), k_topping=k_col, rc_topping=rc_col, k_rib=k_rib,
                 rc_rib=rc_rib, k_block=k_block, rc_block=rc_block, k_fill=k_fill,
                 rc_fill=rc_fill, emissivity=elem.emissivity, beta=float(self.tilt),
-                hollow=hollow).build()
+                hollow=hollow, vertex=True).build()
             return sec, elem
 
         a, e = elem._ae()
@@ -842,7 +870,7 @@ class System2D:
             kr, rcr = fm.k, fm.rho * fm.c
         sec = Section2D(nx=config2d.nx, ny=config2d.ny, L=L, k=k, rhoc=rhoc,
                         kr=kr, rhocr=rcr, a=a, e=e, layer=idx + 1,
-                        fill_type=elem.fill_type).build()
+                        fill_type=elem.fill_type, vertex=True).build()
         return sec, elem
 
     # --- solution ---
@@ -896,7 +924,7 @@ class System2D:
                 sec.cav_of, sec.cav_i1, sec.cav_i2, sec.info["cj1"], sec.info["cj2"],
                 g["cavity_width"], g["cavity"], 1.0, float(self.tilt), *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
-                config2d.max_inner, hi_up, hi_down)
+                config2d.max_inner, hi_up, hi_down, sec.vertex)
             Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout, day_err, inner_ok, inner_max = out
         elif elem.fill_type is Fill.AIR:   # HollowBlock (wall)
             a, e = elem._ae()
@@ -907,14 +935,14 @@ class System2D:
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
                 m.i1, m.j1, m.i2, m.j2, a21, e22, 1.0, *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
-                config2d.max_inner, hi_up, hi_down)
+                config2d.max_inner, hi_up, hi_down, sec.vertex)
             Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout, day_err, inner_ok, inner_max = out
         else:  # SOLID (HollowBlock or Slab): pure conduction
             out = solve_day_2d(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
-                config2d.max_inner, hi_up, hi_down)
+                config2d.max_inner, hi_up, hi_down, sec.vertex)
             Ti, Tso, Tsi, Tfield, days, Qin, Qout, day_err, inner_ok, inner_max = out
             Th = _np.full_like(Ti, _np.nan)
 
@@ -1008,7 +1036,7 @@ class System2D:
                 sec.cav_of, sec.cav_i1, sec.cav_i2, sec.info["cj1"], sec.info["cj2"],
                 g["cavity_width"], g["cavity"], 1.0, float(self.tilt), *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
-                config2d.max_inner, hi_up, hi_down)
+                config2d.max_inner, hi_up, hi_down, sec.vertex)
             Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat, day_err, inner_ok, inner_max = out
         elif elem.fill_type is Fill.AIR:   # HollowBlock (wall)
             a, e = elem._ae()
@@ -1019,14 +1047,14 @@ class System2D:
                 m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
                 m.i1, m.j1, m.i2, m.j2, a21, e22, 1.0, *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
-                config2d.max_inner, hi_up, hi_down)
+                config2d.max_inner, hi_up, hi_down, sec.vertex)
             Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat, day_err, inner_ok, inner_max = out
         else:  # SOLID (HollowBlock or Slab): pure conduction
             out = solve_day_2d_ac(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
-                config2d.max_inner, hi_up, hi_down)
+                config2d.max_inner, hi_up, hi_down, sec.vertex)
             Ti, Tso, Tsi, Tfield, days, Qcool, Qheat, day_err, inner_ok, inner_max = out
             Th = _np.full_like(Ti, _np.nan)
 

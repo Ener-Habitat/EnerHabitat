@@ -224,7 +224,8 @@ def solve_step_2d(NT, k, rhoc, To, Tsa, Tint, ho, hi, dt, dx, dy,
 
 @njit(cache=True)
 def _step_inner(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
-                a, b, c, d, P, Q, Tn, Tnew, tol, max_inner, legacy):
+                a, b, c, d, P, Q, Tn, Tnew, tol, max_inner, legacy,
+                vertex=False):
     """Inner loop (line-by-line, Jacobi-lagged y neighbours) of one step;
     updates ``T`` in place.
 
@@ -257,20 +258,25 @@ def _step_inner(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
         for j in range(ny):
             for i in range(nx):
                 kij = k[i, j]
-                apo = rhoc[i, j] * dx * dy / dt
+                # HALF-NODES (vertex=True): boundary nodes own fractional
+                # volumes (1/2 edges, 1/4 corners) and their faces/films use
+                # the weighted widths wxi·dx / wyj·dy.
+                wxi = 0.5 if (vertex and (i == 0 or i == nx - 1)) else 1.0
+                wyj = 0.5 if (vertex and (j == 0 or j == ny - 1)) else 1.0
+                apo = rhoc[i, j] * (wxi * dx) * (wyj * dy) / dt
                 aN = aS = aE = aW = 0.0
                 if j > 0:
                     kk = k[i, j - 1]
-                    aN = 2.0 * kk * kij / (kk + kij) * dx / dy
+                    aN = 2.0 * kk * kij / (kk + kij) * (wxi * dx) / dy
                 if j < ny - 1:
                     kk = k[i, j + 1]
-                    aS = 2.0 * kk * kij / (kk + kij) * dx / dy
+                    aS = 2.0 * kk * kij / (kk + kij) * (wxi * dx) / dy
                 if i < nx - 1:
                     kk = k[i + 1, j]
-                    aE = 2.0 * kk * kij / (kk + kij) * dy / dx
+                    aE = 2.0 * kk * kij / (kk + kij) * (wyj * dy) / dx
                 if i > 0:
                     kk = k[i - 1, j]
-                    aW = 2.0 * kk * kij / (kk + kij) * dy / dx
+                    aW = 2.0 * kk * kij / (kk + kij) * (wyj * dy) / dx
                 aP = apo + aN + aS + aE + aW
                 dd = apo * To[i, j]
                 if j > 0:
@@ -278,11 +284,11 @@ def _step_inner(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
                 if j < ny - 1:
                     dd += aS * T[i, j + 1]
                 if j == 0:
-                    aP += ho * dx
-                    dd += ho * dx * Tsa
+                    aP += ho * wxi * dx
+                    dd += ho * wxi * dx * Tsa
                 if j == ny - 1:
-                    aP += hi * dx
-                    dd += hi * dx * Tint
+                    aP += hi * wxi * dx
+                    dd += hi * wxi * dx * Tint
                 a[i, j] = aP
                 b[i, j] = aE
                 c[i, j] = aW
@@ -341,7 +347,7 @@ def _step_inner(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
 @njit(cache=True)
 def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                  rhoair, cair, T0, tol_inner=1e-8, tol_day=5e-4, max_days=60,
-                 max_inner=10000, hi_up=-1.0, hi_down=-1.0):
+                 max_inner=10000, hi_up=-1.0, hi_down=-1.0, vertex=False):
     """
     Production engine: runs the full day, repeating it until periodic steady
     state (``mean|T_day−T_prev_day| < tol_day``). Inner steps use the
@@ -395,10 +401,13 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
         Ti_prev_day = Tint
         Qin = Qout = 0.0
         for s in range(nsteps):
-            # Tso: outer surface before solving, /(nx-1)
+            # Tso: outer surface before solving (vertex: weighted mean, exact)
             tso = 0.0
             for i in range(nx):
-                tso += T[i, 0]
+                if vertex and (i == 0 or i == nx - 1):
+                    tso += 0.5 * T[i, 0]
+                else:
+                    tso += T[i, 0]
             Tso_series[s] = tso / (nx - 1)
             # To <- T
             for j in range(ny):
@@ -406,30 +415,37 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                     To[i, j] = T[i, j]
             Ti_old = Tint
             # hi of the step from the heat-flow direction at the indoor surface
-            # (unbiased mean of the inner row, Σ/nx — NOT the /(nx-1) reporting
-            # convention, which is biased by +T/(nx-1)): Tsi > Ti → downward
+            # (vertex: weighted mean Σw/(nx-1); else unbiased Σ/nx)
             tsi_o = 0.0
             for i in range(nx):
-                tsi_o += T[i, ny - 1]
-            hi_s = hi_down if tsi_o / nx > Ti_old else hi_up
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi_o += 0.5 * T[i, ny - 1]
+                else:
+                    tsi_o += T[i, ny - 1]
+            tsi_m = tsi_o / (nx - 1) if vertex else tsi_o / nx
+            hi_s = hi_down if tsi_m > Ti_old else hi_up
             it_s, conv_s, _e = _step_inner(k, rhoc, To, T, Tsa_arr[s], Tint,
                                            ho, hi_s, dt, dx, dy,
                                            a, b, c, d, P, Q, Tn, Tnew,
-                                           tol_inner, max_inner, False)
+                                           tol_inner, max_inner, False, vertex)
             if not conv_s:
                 inner_ok = False
             if it_s > inner_max:
                 inner_max = it_s
-            # indoor-air update (ONE dt, physically correct)
+            # indoor-air update (ONE dt; vertex: weighted widths, Σw·dx = X)
             flux = 0.0
             for i in range(nx):
-                flux += hi_s * dx * (T[i, ny - 1] - Ti_old)
+                w = 0.5 if (vertex and (i == 0 or i == nx - 1)) else 1.0
+                flux += hi_s * w * dx * (T[i, ny - 1] - Ti_old)
             Tint = Ti_old + dt * flux / Cair
             Ti_series[s] = Tint
-            # Tsi: inner surface after solving, /(nx-1)
+            # Tsi: inner surface after solving (vertex: weighted mean, exact)
             tsi = 0.0
             for i in range(nx):
-                tsi += T[i, ny - 1]
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi += 0.5 * T[i, ny - 1]
+                else:
+                    tsi += T[i, ny - 1]
             Tsi_series[s] = tsi / (nx - 1)
             # energy (per unit indoor area)
             e = flux * dt / X
@@ -470,7 +486,8 @@ _SIGMA = 5.6704e-8
 def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                 i1, j1, i2, j2, e22, E, c_wall,
                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                a, b, c, d, P, Q, Tnew, tol, max_inner, legacy):
+                a, b, c, d, P, Q, Tnew, tol, max_inner, legacy,
+                vertex=False):
     """Inner loop of one step for a filler block with air cavity (wall).
 
     ``c_wall`` is the dimensional constant of the wall Nusselt correlation
@@ -530,16 +547,21 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                 nt_ij = 0
                 # node type deduced from the cavity coordinates
                 kij = k[i, j]
-                apo = rhoc[i, j] * dx * dy / dt
+                # HALF-NODES (vertex=True): fractional volumes/areas at the
+                # DOMAIN boundaries; the cavity is strictly interior, so its
+                # branches see weights of 1 and stay untouched (phase 3).
+                wxi = 0.5 if (vertex and (i == 0 or i == nx - 1)) else 1.0
+                wyj = 0.5 if (vertex and (j == 0 or j == ny - 1)) else 1.0
+                apo = rhoc[i, j] * (wxi * dx) * (wyj * dy) / dt
                 aN = aS = aE = aW = 0.0
                 if j > 0:
-                    kk = k[i, j - 1]; aN = 2.0 * kk * kij / (kk + kij) * dx / dy
+                    kk = k[i, j - 1]; aN = 2.0 * kk * kij / (kk + kij) * (wxi * dx) / dy
                 if j < ny - 1:
-                    kk = k[i, j + 1]; aS = 2.0 * kk * kij / (kk + kij) * dx / dy
+                    kk = k[i, j + 1]; aS = 2.0 * kk * kij / (kk + kij) * (wxi * dx) / dy
                 if i < nx - 1:
-                    kk = k[i + 1, j]; aE = 2.0 * kk * kij / (kk + kij) * dy / dx
+                    kk = k[i + 1, j]; aE = 2.0 * kk * kij / (kk + kij) * (wyj * dy) / dx
                 if i > 0:
-                    kk = k[i - 1, j]; aW = 2.0 * kk * kij / (kk + kij) * dy / dx
+                    kk = k[i - 1, j]; aW = 2.0 * kk * kij / (kk + kij) * (wyj * dy) / dx
                 in_hole_cols = (i1 <= i) and (i < i2)
                 in_hole_rows = (j1 <= j) and (j < j2)
                 if in_hole_cols and in_hole_rows:
@@ -574,9 +596,9 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                     if j < ny - 1:
                         dd += aS * T[i, j + 1]
                     if j == 0:
-                        aP += ho * dx; dd += ho * dx * Tsa
+                        aP += ho * wxi * dx; dd += ho * wxi * dx * Tsa
                     if j == ny - 1:
-                        aP += hi * dx; dd += hi * dx * Tint
+                        aP += hi * wxi * dx; dd += hi * wxi * dx * Tint
                     a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
                 # scaled residual of the current T for this node
                 rr = d[i, j] - a[i, j] * T[i, j]
@@ -740,7 +762,7 @@ def solve_step_hueca(NT, k, rhoc, To, Tsa, Tint, Thueco, ho, hi, dt, dx, dy,
 def solve_day_hueca(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                     rhoair, cair, T0, i1, j1, i2, j2, a21, e22, E,
                     Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                    tol_inner, tol_day, max_days):
+                    tol_inner, tol_day, max_days, vertex=False):
     """
     Full day with day-to-day convergence for a filler block with air cavity.
     Faithful replica of the C (Tso /nx, Tsi /(nx-1), Tint with dt², Thueco lumped).
@@ -773,7 +795,10 @@ def solve_day_hueca(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
         for s in range(nsteps):
             tso = 0.0
             for i in range(nx):
-                tso += T[i, 0]
+                if vertex and (i == 0 or i == nx - 1):
+                    tso += 0.5 * T[i, 0]
+                else:
+                    tso += T[i, 0]
             Tso_s[s] = tso / nx          # C's Tsout: /nx (faithful replica)
             for j in range(ny):
                 for i in range(nx):
@@ -802,7 +827,10 @@ def solve_day_hueca(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             Th_s[s] = Th
             tsi = 0.0
             for i in range(nx):
-                tsi += T[i, ny - 1]
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi += 0.5 * T[i, ny - 1]
+                else:
+                    tsi += T[i, ny - 1]
             Tsi_s[s] = tsi / (nx - 1)    # C's max_min: /(nx-1)
         C = 0.0
         for j in range(ny):
@@ -818,7 +846,7 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                          rhoair, cair, T0, i1, j1, i2, j2, a21, e22, E,
                          Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                          tol_inner, tol_day, max_days, max_inner,
-                         hi_up=-1.0, hi_down=-1.0):
+                         hi_up=-1.0, hi_down=-1.0, vertex=False):
     """
     **Production** version of the day with air cavity (hollow block / filler
     block with air). Same as :func:`solve_day_hueca` but with the Phase 5
@@ -869,7 +897,10 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
         for s in range(nsteps):
             tso = 0.0
             for i in range(nx):
-                tso += T[i, 0]
+                if vertex and (i == 0 or i == nx - 1):
+                    tso += 0.5 * T[i, 0]
+                else:
+                    tso += T[i, 0]
             Tso_s[s] = tso / (nx - 1)        # production: /(nx-1)
             for j in range(ny):
                 for i in range(nx):
@@ -879,13 +910,18 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             # hi of the step from the heat-flow direction at the indoor surface
             tsi_o = 0.0
             for i in range(nx):
-                tsi_o += T[i, ny - 1]
-            hi_s = hi_down if tsi_o / nx > Ti_old else hi_up
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi_o += 0.5 * T[i, ny - 1]
+                else:
+                    tsi_o += T[i, ny - 1]
+            tsi_m = tsi_o / (nx - 1) if vertex else tsi_o / nx
+            hi_s = hi_down if tsi_m > Ti_old else hi_up
             it_s, hh, conv_s, _e = _step_hueca(
                                 k, rhoc, To, T, Tsa_arr[s], Ti_old, Th_old,
                                 ho, hi_s, dt, dx, dy, i1, j1, i2, j2, e22, E, c_wall,
                                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                                a, b, c, d, P, Q, Tnew, tol_inner, max_inner, False)
+                                a, b, c, d, P, Q, Tnew, tol_inner, max_inner,
+                                False, vertex)
             if not conv_s:
                 inner_ok = False
             if it_s > inner_max:
@@ -902,13 +938,17 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             # indoor air (single dt, physically correct)
             flux = 0.0
             for i in range(nx):
-                flux += hi_s * dx * (T[i, ny - 1] - Ti_old)
+                w = 0.5 if (vertex and (i == 0 or i == nx - 1)) else 1.0
+                flux += hi_s * w * dx * (T[i, ny - 1] - Ti_old)
             Tint = Ti_old + dt * flux / Cair
             Ti_s[s] = Tint
             Th_s[s] = Th
             tsi = 0.0
             for i in range(nx):
-                tsi += T[i, ny - 1]
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi += 0.5 * T[i, ny - 1]
+                else:
+                    tsi += T[i, ny - 1]
             Tsi_s[s] = tsi / (nx - 1)
             e = flux * dt / X
             if e > 0.0:
@@ -1008,7 +1048,7 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                kair, gr, beta_exp, nu, alphaair,
                Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright, tol,
-               max_inner, legacy):
+               max_inner, legacy, vertex=False):
     """Inner loop (line-by-line, Jacobi-lagged) of one step for the N-cavity
     roof slab. ``Th`` (n_cav) constant during the loop; fills ``hh`` (n_cav)
     and updates ``T`` in place. Stopping rule as in :func:`_step_inner`
@@ -1063,16 +1103,20 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
             for i in range(nx):
                 nt = NT[i, j]
                 kij = k[i, j]
-                apo = rhoc[i, j] * dx * dy / dt
+                # HALF-NODES (vertex=True): fractional volumes/areas at the
+                # DOMAIN boundaries; cavities are interior (weights 1, phase 3).
+                wxi = 0.5 if (vertex and (i == 0 or i == nx - 1)) else 1.0
+                wyj = 0.5 if (vertex and (j == 0 or j == ny - 1)) else 1.0
+                apo = rhoc[i, j] * (wxi * dx) * (wyj * dy) / dt
                 aN = aS = aE = aW = 0.0
                 if j > 0:
-                    kk = k[i, j - 1]; aN = 2.0 * kk * kij / (kk + kij) * dx / dy
+                    kk = k[i, j - 1]; aN = 2.0 * kk * kij / (kk + kij) * (wxi * dx) / dy
                 if j < ny - 1:
-                    kk = k[i, j + 1]; aS = 2.0 * kk * kij / (kk + kij) * dx / dy
+                    kk = k[i, j + 1]; aS = 2.0 * kk * kij / (kk + kij) * (wxi * dx) / dy
                 if i < nx - 1:
-                    kk = k[i + 1, j]; aE = 2.0 * kk * kij / (kk + kij) * dy / dx
+                    kk = k[i + 1, j]; aE = 2.0 * kk * kij / (kk + kij) * (wyj * dy) / dx
                 if i > 0:
-                    kk = k[i - 1, j]; aW = 2.0 * kk * kij / (kk + kij) * dy / dx
+                    kk = k[i - 1, j]; aW = 2.0 * kk * kij / (kk + kij) * (wyj * dy) / dx
                 if nt == 0:
                     cc = cav_of[i, j]
                     a[i, j] = 1.0; b[i, j] = 0.0; c[i, j] = 0.0; d[i, j] = Th[cc]
@@ -1104,9 +1148,9 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                     if j < ny - 1:
                         dd += aS * T[i, j + 1]
                     if j == 0:
-                        aP += ho * dx; dd += ho * dx * Tsa
+                        aP += ho * wxi * dx; dd += ho * wxi * dx * Tsa
                     if j == ny - 1:
-                        aP += hi * dx; dd += hi * dx * Tint
+                        aP += hi * wxi * dx; dd += hi * wxi * dx * Tint
                     a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
                 # scaled residual of the current T for this node
                 rr = d[i, j] - a[i, j] * T[i, j]
@@ -1166,7 +1210,7 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                         cavity_width, e22, E, beta,
                         Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                         tol_inner, tol_day, max_days, max_inner,
-                        hi_up=-1.0, hi_down=-1.0):
+                        hi_up=-1.0, hi_down=-1.0, vertex=False):
     """Full day (day-to-day convergence) of the N-air-cavity roof slab. Each cavity
     has its lumped node ``Th[c]``; production conventions (single dt, surfaces
     /(nx-1)). Wall/roof Nusselt according to ``beta``.
@@ -1220,7 +1264,10 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
         for s in range(nsteps):
             tso = 0.0
             for i in range(nx):
-                tso += T[i, 0]
+                if vertex and (i == 0 or i == nx - 1):
+                    tso += 0.5 * T[i, 0]
+                else:
+                    tso += T[i, 0]
             Tso_s[s] = tso / (nx - 1)
             for j in range(ny):
                 for i in range(nx):
@@ -1229,15 +1276,19 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             # hi of the step from the heat-flow direction at the indoor surface
             tsi_o = 0.0
             for i in range(nx):
-                tsi_o += T[i, ny - 1]
-            hi_s = hi_down if tsi_o / nx > Ti_old else hi_up
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi_o += 0.5 * T[i, ny - 1]
+                else:
+                    tsi_o += T[i, ny - 1]
+            tsi_m = tsi_o / (nx - 1) if vertex else tsi_o / nx
+            hi_s = hi_down if tsi_m > Ti_old else hi_up
             it_s, conv_s, _e = _step_slab(
                        k, rhoc, To, T, Tsa_arr[s], Ti_old, Th, ho, hi_s, dt, dx, dy,
                        NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
                        _K_AIR, _GR, _BETA_EXP, nuair, alphaair,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                        a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright,
-                       tol_inner, max_inner, False)
+                       tol_inner, max_inner, False, vertex)
             if not conv_s:
                 inner_ok = False
             if it_s > inner_max:
@@ -1259,12 +1310,16 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             # indoor air (single dt)
             flux = 0.0
             for i in range(nx):
-                flux += hi_s * dx * (T[i, ny - 1] - Ti_old)
+                w = 0.5 if (vertex and (i == 0 or i == nx - 1)) else 1.0
+                flux += hi_s * w * dx * (T[i, ny - 1] - Ti_old)
             Tint = Ti_old + dt * flux / Cair
             Ti_s[s] = Tint
             tsi = 0.0
             for i in range(nx):
-                tsi += T[i, ny - 1]
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi += 0.5 * T[i, ny - 1]
+                else:
+                    tsi += T[i, ny - 1]
             Tsi_s[s] = tsi / (nx - 1)
             e = flux * dt / X
             if e > 0.0:
@@ -1356,7 +1411,8 @@ def solve_step_slab(NT, k, rhoc, To, Tsa, Tint, Th0, ho, hi, dt, dx, dy,
 @njit(cache=True)
 def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                     rhoair, cair, T0, Tset, tol_inner=1e-8, tol_day=5e-4,
-                    max_days=60, max_inner=10000, hi_up=-1.0, hi_down=-1.0):
+                    max_days=60, max_inner=10000, hi_up=-1.0, hi_down=-1.0,
+                    vertex=False):
     """AC for pure conduction (SOLID). Returns
     (Ti_series(=Tset), Tso, Tsi, T_field, days, Qcool, Qheat,
     day_error, inner_ok, inner_iters_max)."""
@@ -1386,7 +1442,10 @@ def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
         for s in range(nsteps):
             tso = 0.0
             for i in range(nx):
-                tso += T[i, 0]
+                if vertex and (i == 0 or i == nx - 1):
+                    tso += 0.5 * T[i, 0]
+                else:
+                    tso += T[i, 0]
             Tso_s[s] = tso / (nx - 1)
             for j in range(ny):
                 for i in range(nx):
@@ -1394,19 +1453,24 @@ def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             # hi of the step from the heat-flow direction at the indoor surface
             tsi_o = 0.0
             for i in range(nx):
-                tsi_o += T[i, ny - 1]
-            hi_s = hi_down if tsi_o / nx > Tset else hi_up
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi_o += 0.5 * T[i, ny - 1]
+                else:
+                    tsi_o += T[i, ny - 1]
+            tsi_m = tsi_o / (nx - 1) if vertex else tsi_o / nx
+            hi_s = hi_down if tsi_m > Tset else hi_up
             it_s, conv_s, _e = _step_inner(k, rhoc, To, T, Tsa_arr[s], Tset,
                                            ho, hi_s, dt, dx, dy,
                                            a, b, c, d, P, Q, Tn, Tnew,
-                                           tol_inner, max_inner, False)
+                                           tol_inner, max_inner, False, vertex)
             if not conv_s:
                 inner_ok = False
             if it_s > inner_max:
                 inner_max = it_s
             flux = 0.0
             for i in range(nx):
-                flux += hi_s * dx * (T[i, ny - 1] - Tset)
+                w = 0.5 if (vertex and (i == 0 or i == nx - 1)) else 1.0
+                flux += hi_s * w * dx * (T[i, ny - 1] - Tset)
             e = flux * dt / X
             if e > 0.0:
                 Qcool += e
@@ -1415,7 +1479,10 @@ def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             Ti_s[s] = Tset
             tsi = 0.0
             for i in range(nx):
-                tsi += T[i, ny - 1]
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi += 0.5 * T[i, ny - 1]
+                else:
+                    tsi += T[i, ny - 1]
             Tsi_s[s] = tsi / (nx - 1)
         C = 0.0
         for j in range(ny):
@@ -1432,7 +1499,7 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                        rhoair, cair, T0, Tset, i1, j1, i2, j2, a21, e22, E,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                        tol_inner, tol_day, max_days, max_inner,
-                       hi_up=-1.0, hi_down=-1.0):
+                       hi_up=-1.0, hi_down=-1.0, vertex=False):
     """AC for a wall with air cavity (Thueco floats, Tint=Tset fixed). Returns
     (Ti(=Tset), Tso, Tsi, Th, T_field, days, Qcool, Qheat,
     day_error, inner_ok, inner_iters_max)."""
@@ -1469,7 +1536,10 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
         for s in range(nsteps):
             tso = 0.0
             for i in range(nx):
-                tso += T[i, 0]
+                if vertex and (i == 0 or i == nx - 1):
+                    tso += 0.5 * T[i, 0]
+                else:
+                    tso += T[i, 0]
             Tso_s[s] = tso / (nx - 1)
             for j in range(ny):
                 for i in range(nx):
@@ -1478,13 +1548,18 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             # hi of the step from the heat-flow direction at the indoor surface
             tsi_o = 0.0
             for i in range(nx):
-                tsi_o += T[i, ny - 1]
-            hi_s = hi_down if tsi_o / nx > Tset else hi_up
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi_o += 0.5 * T[i, ny - 1]
+                else:
+                    tsi_o += T[i, ny - 1]
+            tsi_m = tsi_o / (nx - 1) if vertex else tsi_o / nx
+            hi_s = hi_down if tsi_m > Tset else hi_up
             it_s, hh, conv_s, _e = _step_hueca(
                                 k, rhoc, To, T, Tsa_arr[s], Tset, Th_old,
                                 ho, hi_s, dt, dx, dy, i1, j1, i2, j2, e22, E, c_wall,
                                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                                a, b, c, d, P, Q, Tnew, tol_inner, max_inner, False)
+                                a, b, c, d, P, Q, Tnew, tol_inner, max_inner,
+                                False, vertex)
             if not conv_s:
                 inner_ok = False
             if it_s > inner_max:
@@ -1499,7 +1574,8 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             Th = Th_old + dt * qh / Ch
             flux = 0.0
             for i in range(nx):
-                flux += hi_s * dx * (T[i, ny - 1] - Tset)
+                w = 0.5 if (vertex and (i == 0 or i == nx - 1)) else 1.0
+                flux += hi_s * w * dx * (T[i, ny - 1] - Tset)
             e = flux * dt / X
             if e > 0.0:
                 Qcool += e
@@ -1508,7 +1584,10 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             Ti_s[s] = Tset; Th_s[s] = Th
             tsi = 0.0
             for i in range(nx):
-                tsi += T[i, ny - 1]
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi += 0.5 * T[i, ny - 1]
+                else:
+                    tsi += T[i, ny - 1]
             Tsi_s[s] = tsi / (nx - 1)
         C = 0.0
         for j in range(ny):
@@ -1531,7 +1610,7 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                       cavity_width, e22, E, beta,
                       Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                       tol_inner, tol_day, max_days, max_inner,
-                      hi_up=-1.0, hi_down=-1.0):
+                      hi_up=-1.0, hi_down=-1.0, vertex=False):
     """AC for an N-cavity roof (Thueco[c] float, Tint=Tset fixed). Returns
     (Ti(=Tset), Tso, Tsi, Th_mean, T_field, days, Qcool, Qheat,
     day_error, inner_ok, inner_iters_max)."""
@@ -1574,7 +1653,10 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
         for s in range(nsteps):
             tso = 0.0
             for i in range(nx):
-                tso += T[i, 0]
+                if vertex and (i == 0 or i == nx - 1):
+                    tso += 0.5 * T[i, 0]
+                else:
+                    tso += T[i, 0]
             Tso_s[s] = tso / (nx - 1)
             for j in range(ny):
                 for i in range(nx):
@@ -1582,15 +1664,19 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             # hi of the step from the heat-flow direction at the indoor surface
             tsi_o = 0.0
             for i in range(nx):
-                tsi_o += T[i, ny - 1]
-            hi_s = hi_down if tsi_o / nx > Tset else hi_up
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi_o += 0.5 * T[i, ny - 1]
+                else:
+                    tsi_o += T[i, ny - 1]
+            tsi_m = tsi_o / (nx - 1) if vertex else tsi_o / nx
+            hi_s = hi_down if tsi_m > Tset else hi_up
             it_s, conv_s, _e = _step_slab(
                        k, rhoc, To, T, Tsa_arr[s], Tset, Th, ho, hi_s, dt, dx, dy,
                        NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
                        _K_AIR, _GR, _BETA_EXP, nuair, alphaair,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                        a, b, c, d, P, Q, Tnew, hh, Qtop, Qbot, Qleft, Qright,
-                       tol_inner, max_inner, False)
+                       tol_inner, max_inner, False, vertex)
             if not conv_s:
                 inner_ok = False
             if it_s > inner_max:
@@ -1610,7 +1696,8 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             Th_s[s] = thsum / n_cav
             flux = 0.0
             for i in range(nx):
-                flux += hi_s * dx * (T[i, ny - 1] - Tset)
+                w = 0.5 if (vertex and (i == 0 or i == nx - 1)) else 1.0
+                flux += hi_s * w * dx * (T[i, ny - 1] - Tset)
             e = flux * dt / X
             if e > 0.0:
                 Qcool += e
@@ -1619,7 +1706,10 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             Ti_s[s] = Tset
             tsi = 0.0
             for i in range(nx):
-                tsi += T[i, ny - 1]
+                if vertex and (i == 0 or i == nx - 1):
+                    tsi += 0.5 * T[i, ny - 1]
+                else:
+                    tsi += T[i, ny - 1]
             Tsi_s[s] = tsi / (nx - 1)
         C = 0.0
         for j in range(ny):
