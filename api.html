@@ -166,15 +166,15 @@ window.Quarto = {
     <ul class="dropdown-menu" aria-labelledby="nav-menu-usage">    
         <li>
     <a class="dropdown-item" href="./usage.html">
- <span class="dropdown-text">Workflow and setup</span></a>
+ <span class="dropdown-text">Setup</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-1d.html">
- <span class="dropdown-text">Usage — 1D</span></a>
+ <span class="dropdown-text">1D</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-2d.html">
- <span class="dropdown-text">Usage — 2D</span></a>
+ <span class="dropdown-text">2D</span></a>
   </li>  
     </ul>
   </li>
@@ -273,7 +273,7 @@ window.Quarto = {
 <h2 class="anchored" data-anchor-id="location"><code>Location</code></h2>
 <p>Reads an EPW file and builds the average day of a month.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>loc <span class="op">=</span> eh.Location(<span class="st">"./epw/example.epw"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Attributes.</strong> The EPW path is stored in <code>file</code>; assigning a new path reloads the header. The rest are read-only, recovered from the EPW header:</p>
+<p>Attributes: the EPW path is stored in <code>file</code>; assigning a new path reloads the header. The rest are read-only, recovered from the EPW header:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
@@ -315,19 +315,18 @@ window.Quarto = {
 </tr>
 </tbody>
 </table>
-<p><strong>Methods</strong></p>
+<p>Methods:</p>
 <ul>
-<li><code>meanDay(day="15", month="current", year="current")</code> — average-day DataFrame (<code>Ta</code>; <code>Ig</code> GHI, <code>Ib</code> <strong>DNI</strong>, <code>Id</code> DHI; <code>Tn</code>, <code>DeltaTn</code>; solar position), cached; see <a href="./model-1d.html#the-average-day">how it is built</a>. <code>month</code> selects which EPW rows are averaged; <code>day</code> and <code>year</code> only set the <strong>synthetic date</strong> used for the solar geometry and the index — in a TMY, <code>year=2025</code> does <strong>not</strong> select observations from 2025.</li>
-<li><code>copy()</code> — independent copy of the instance.</li>
-<li><code>info()</code> — prints the attributes.</li>
-<li><code>flag()</code> — dict with metadata of the last <code>meanDay()</code> call (e.g.&nbsp;<code>flag()["date"]</code>).</li>
+<li><code>meanDay(day="15", month="current", year="current")</code>: average-day DataFrame (<code>Ta</code>; <code>Ig</code> GHI, <code>Ib</code> DNI, <code>Id</code> DHI; <code>Tn</code>, <code>DeltaTn</code>; solar position), cached; see <a href="./model-1d.html#the-average-day">how it is built</a>. <code>month</code> selects which EPW rows are averaged; <code>day</code> and <code>year</code> only set the synthetic date used for the solar geometry and the index. In a TMY, <code>year=2025</code> does not select observations from 2025.</li>
+<li><code>info()</code>: prints the attributes.</li>
+<li><code>flag()</code>: dict with metadata of the last <code>meanDay()</code> call (e.g.&nbsp;<code>flag()["date"]</code>).</li>
 </ul>
 </section>
 <section id="system-1d" class="level2">
 <h2 class="anchored" data-anchor-id="system-1d"><code>System</code> (1D)</h2>
 <p>A multilayer wall or roof tied to a <code>Location</code>.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>wall <span class="op">=</span> eh.System(location<span class="op">=</span>loc, tilt<span class="op">=</span><span class="dv">90</span>, azimuth<span class="op">=</span><span class="dv">0</span>, absortance<span class="op">=</span><span class="fl">0.8</span>, layers<span class="op">=</span>[])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Attributes</strong></p>
+<p>Attributes:</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
@@ -350,7 +349,7 @@ window.Quarto = {
 <tr class="even">
 <td><code>tilt</code></td>
 <td><code>float</code></td>
-<td>Degrees from horizontal: <code>0</code> roof, <code>90</code> vertical wall. Any tilt is accepted in 1D — <span class="math inline">\(I_s\)</span> is transposed by pvlib and <span class="math inline">\(RF\)</span> varies linearly from 3.9 °C (0°) to 0 (90°); the 2D elements only admit 0/90</td>
+<td>Degrees from horizontal: <code>0</code> roof, <code>90</code> vertical wall. Any tilt is accepted in 1D (<span class="math inline">\(I_s\)</span> is transposed by pvlib and <span class="math inline">\(RF\)</span> varies linearly from 3.9 °C at 0° to 0 at 90°); the 2D elements only admit 0/90</td>
 </tr>
 <tr class="odd">
 <td><code>azimuth</code></td>
@@ -360,16 +359,21 @@ window.Quarto = {
 <tr class="even">
 <td><code>absortance</code></td>
 <td><code>float</code></td>
-<td>Solar absorptance of the outdoor surface, <code>[0, 1]</code> — <strong>validated</strong>: values outside the range raise <code>ValueError</code></td>
+<td>Solar absorptance of the outdoor surface, <code>[0, 1]</code>; validated, so values outside the range raise <code>ValueError</code></td>
 </tr>
 <tr class="odd">
 <td><code>layers</code></td>
 <td><code>list[tuple[str, float]]</code></td>
-<td><code>(material, thickness_m)</code>, <strong>outside → inside</strong></td>
+<td><code>(material, thickness_m)</code>, outside → inside</td>
+</tr>
+<tr class="even">
+<td><code>setpoint</code></td>
+<td><code>float</code></td>
+<td>AC setpoint override; <code>None</code> (default) → the neutrality temperature <span class="math inline">\(T_n\)</span> (<strong>?@eq-tn</strong> in the 1D model). Ignored by <code>solve()</code></td>
 </tr>
 </tbody>
 </table>
-<p>Read-only results (energy per unit surface area over the converged day, <strong>J/(m²·day)</strong> — divide by 3600 for Wh or 3.6e6 for kWh):</p>
+<p>Read-only results (energy per unit surface area over the converged day, in J/(m²·day); divide by 3600 for Wh or 3.6e6 for kWh):</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
@@ -419,33 +423,33 @@ window.Quarto = {
 <td><code>solve()</code></td>
 <td>Energy-closure check <span class="math inline">\(\|Q_{in}-Q_{out}\|/\max(Q_{in},Q_{out})\)</span> (≈ 0 when periodic); <code>None</code> after <code>solveAC()</code></td>
 </tr>
+<tr class="even">
+<td><code>Tso</code>, <code>Tsi</code></td>
+<td>both</td>
+<td>Read-only surface temperature <code>Series</code> (outdoor/indoor surface, °C) of the last solve, on the <code>Tsa()</code> grid; <code>None</code> before solving. They concatenate directly with <code>Ti</code> and <code>Tsa()</code></td>
+</tr>
 </tbody>
 </table>
-<p><strong>Methods</strong></p>
+<p>Methods:</p>
 <ul>
-<li><code>Tsa()</code> — sun–air temperature and <code>Is</code> for the current absorptance/orientation/month, on the solver’s time grid (results concatenate directly with <code>solve()</code> output).</li>
-<li><code>solve()</code> — free-running indoor temperature <code>Ti</code> (<code>pandas.Series</code> named <code>"Ti"</code>; use <code>.to_frame("Ti")</code> when a DataFrame is needed).</li>
-<li><code>solveAC()</code> — <code>Ti</code> held at <span class="math inline">\(T_n\)</span> (constant <code>pandas.Series</code>); sets <code>cooling_energy</code>/<code>heating_energy</code>.</li>
-<li><code>add_layer(material, width)</code> / <code>remove_layer(index)</code> — edit the stack (appends at the inside).</li>
-<li><code>copy()</code> — re-creates the <code>Location</code> from the EPW file, so the <code>meanDay()</code> selection must be re-applied on the copy (<code>System2D.copy()</code> shares the <code>Location</code> instead), <code>info()</code>, <code>flag()</code>.</li>
+<li><code>Tsa()</code>: sun–air temperature and <code>Is</code> for the current absorptance/orientation/month, on the solver’s time grid (results concatenate directly with <code>solve()</code> output).</li>
+<li><code>solve()</code>: free-running indoor temperature <code>Ti</code> (<code>pandas.Series</code> named <code>"Ti"</code>; use <code>.to_frame("Ti")</code> when a DataFrame is needed).</li>
+<li><code>solveAC()</code>: <code>Ti</code> held at <span class="math inline">\(T_n\)</span> (constant <code>pandas.Series</code>); sets <code>cooling_energy</code>/<code>heating_energy</code>.</li>
+<li><code>add_layer(material, width)</code> / <code>remove_layer(index)</code>: edit the stack (appends at the inside).</li>
+<li><code>info()</code>.</li>
 </ul>
 <blockquote class="blockquote">
-<p><code>Tsa</code> depends on <code>absortance</code>, <code>tilt</code>, <code>azimuth</code>, <code>meanDay</code> (month) and <code>Location</code>; it is recomputed automatically when any of these change (results are cached otherwise) — a prior manual <code>Tsa()</code> call is optional, for inspection. <code>layers</code> does not affect <code>Tsa</code>, but mutating it in place (<code>.append(...)</code>) bypasses the cache invalidation of the <strong>solvers</strong>: assign the list or use <code>add_layer()</code>/<code>remove_layer()</code>.</p>
+<p>The caches (in 1D and 2D alike) compare the current inputs on every call: <code>Tsa()</code> recomputes when <code>absortance</code>, <code>tilt</code>, <code>azimuth</code>, the <code>meanDay</code> selection, the <code>Location</code> or the configuration change, and the solvers additionally watch <code>layers</code>, including in-place mutations (<code>.append(...)</code>). <code>solve()</code> and <code>solveAC()</code> keep separate caches, so alternating modes reuses each result. A prior manual <code>Tsa()</code> call is optional, for inspection.</p>
 </blockquote>
 </section>
 <section id="system2d" class="level2">
 <h2 class="anchored" data-anchor-id="system2d"><code>System2D</code></h2>
-<p>Mirror of <code>System</code> for cross-sections that are heterogeneous across their width. Same <code>Location</code>, <code>tilt</code>, <code>azimuth</code>, <code>absortance</code>, <code>Tsa()</code>, <code>solve()</code>, <code>solveAC()</code> and result attributes. Differences:</p>
+<p>Mirror of <code>System</code> for cross-sections that are heterogeneous across their width. Same <code>Location</code>, <code>tilt</code>, <code>azimuth</code>, <code>absortance</code>, <code>setpoint</code>, <code>Tsa()</code>, <code>solve()</code>, <code>solveAC()</code> and result attributes. Differences:</p>
 <ul>
-<li><code>layers</code> contains, besides ordinary <code>(material, thickness)</code> tuples, <strong>exactly one</strong> 2D element: a <a href="#hollowblock"><code>HollowBlock</code></a> or a <a href="#slab"><code>Slab</code></a>. The element’s thickness is derived from its <code>geometry</code>.</li>
-<li>The stack accepts at most <strong>7 layers, including the 2D element</strong> — the section builder uses the fixed seven slots (<code>L1…L7</code>) inherited from the C engine. Exceeding it raises <code>ValueError: at most 7 layers (including the 2D element).</code> The 1D <code>System</code> has no layer limit.</li>
+<li><code>layers</code> contains, besides ordinary <code>(material, thickness)</code> tuples, exactly one 2D element: a <a href="#hollowblock"><code>HollowBlock</code></a> or a <a href="#slab"><code>Slab</code></a>. The element’s thickness is derived from its <code>geometry</code>.</li>
+<li>The stack accepts at most 7 layers, including the 2D element; the section builder uses the fixed seven slots (<code>L1…L7</code>) inherited from the C engine. Exceeding it raises <code>ValueError: at most 7 layers (including the 2D element).</code> The 1D <code>System</code> has no layer limit.</li>
 <li>Orientation is validated: <code>HollowBlock</code> requires <code>tilt = 90</code>, <code>Slab</code> <code>tilt = 0</code>.</li>
-<li><code>setpoint</code> exists <strong>only</strong> in 2D; the 1D <code>System</code> always uses the mean neutrality temperature as the AC setpoint.</li>
-<li><code>flag()</code> is not available (1D only).</li>
-<li><code>copy()</code> <strong>shares</strong> the <code>Location</code> instance — a later <code>meanDay()</code> affects the original and the copy alike (the 1D <code>System.copy()</code> re-creates it instead).</li>
-<li>Result attributes are plain writable attributes, not read-only properties as in the 1D <code>System</code>.</li>
-<li><code>solve()</code> and <code>solveAC()</code> results are cached <strong>separately</strong>, so alternating modes is free; the 1D <code>System</code> keeps one cache tagged by the last mode and recomputes when alternating.</li>
-<li>Additional outputs beyond the 1D set: <code>Qout</code>, <code>Tfield</code>, <code>solve_dataframe</code> (see the attribute table below) and the inspectors <code>preview()</code> / <code>section_report()</code>.</li>
+<li>Additional outputs beyond the 1D set: <code>Tfield</code>, the <code>Thueco</code> Series and the inspectors <code>preview()</code> / <code>section_report()</code>.</li>
 <li>Extra attributes:</li>
 </ul>
 <table class="caption-top table">
@@ -461,40 +465,36 @@ window.Quarto = {
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>setpoint</code></td>
-<td>AC setpoint override; <code>None</code> (default) → the neutrality temperature <span class="math inline">\(T_n\)</span></td>
-</tr>
-<tr class="even">
 <td><code>days</code></td>
 <td>Day-to-day iterations used by the last solve</td>
 </tr>
-<tr class="odd">
-<td><code>converged</code></td>
-<td><code>True</code> if the last solve met <code>tol_day</code> <strong>and</strong> every inner step converged; a <code>RuntimeWarning</code> is emitted otherwise</td>
-</tr>
 <tr class="even">
+<td><code>converged</code></td>
+<td><code>True</code> if the last solve met <code>tol_day</code> and every inner step converged; a <code>RuntimeWarning</code> is emitted otherwise</td>
+</tr>
+<tr class="odd">
 <td><code>day_error</code></td>
 <td>Final day-to-day error (°C) of the last solve: max over the solid field, <span class="math inline">\(\|\Delta T_i\|\)</span> and each cavity <span class="math inline">\(\|\Delta T_h\|\)</span></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>inner_iterations</code></td>
 <td>Largest inner sweep count observed in the last solve</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>energy_imbalance</code></td>
 <td>Energy-closure check <span class="math inline">\(\|Q_{in}-Q_{out}\|/\max(Q_{in},Q_{out})\)</span> of the last free-running solve (≈ 0 when periodic); <code>None</code> after <code>solveAC()</code></td>
 </tr>
+<tr class="even">
+<td><code>Tso</code>, <code>Tsi</code></td>
+<td>Read-only surface temperature <code>Series</code> (outer/inner-surface mean, °C) of the last solve, on the <code>Tsa()</code> grid; <code>None</code> before solving. As in 1D, they concatenate directly with <code>Ti</code> and <code>Tsa()</code>. Sampling convention inherited from the C: <code>Tso</code> is recorded at the start of each time step, <code>Ti</code>/<code>Tsi</code> at the end</td>
+</tr>
 <tr class="odd">
-<td><code>Qout</code></td>
-<td>Gross energy <strong>leaving</strong> the indoor air over the converged day, J/(m²·day) — counterpart of <code>energy_transfer</code> (= <span class="math inline">\(Q_{in}\)</span>); in the periodic regime <code>Qout ≈ energy_transfer</code></td>
+<td><code>Thueco</code></td>
+<td>Read-only cavity-air temperature <code>Series</code> (°C): the mean over the N cavities in <code>Slab</code>, <code>NaN</code> with <code>Fill.SOLID</code>; <code>None</code> before solving</td>
 </tr>
 <tr class="even">
-<td><code>solve_dataframe</code></td>
-<td>Full result <code>DataFrame</code> on the <code>Tsa()</code> time grid: the forcing columns plus <code>Ti</code>, <code>Tso</code> (outer-surface mean), <code>Tsi</code> (inner-surface mean) and <code>Thueco</code> (cavity-air temperature; the mean over the N cavities in <code>Slab</code>, <code>NaN</code> with <code>Fill.SOLID</code>), all in °C. Sampling convention inherited from the C: <code>Tso</code> is recorded at the <strong>start</strong> of each time step, <code>Ti</code>/<code>Tsi</code> at the <strong>end</strong></td>
-</tr>
-<tr class="odd">
 <td><code>Tfield</code></td>
-<td>Temperature field <code>(nx, ny)</code> in °C at the end of the last simulated day (outside → inside along the second axis) — useful for cross-section plots</td>
+<td>Temperature field <code>(nx, ny)</code> in °C at the end of the last simulated day (outside → inside along the second axis), useful for cross-section plots</td>
 </tr>
 </tbody>
 </table>
@@ -507,7 +507,7 @@ window.Quarto = {
 </section>
 <section id="hollowblock" class="level2">
 <h2 class="anchored" data-anchor-id="hollowblock"><code>HollowBlock</code></h2>
-<p>Concrete hollow block for <strong>walls</strong> (<code>tilt = 90</code>): a shell of one material with one cavity per repeating cell.</p>
+<p>Concrete hollow block for walls (<code>tilt = 90</code>): a shell of one material with one cavity per repeating cell.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>block <span class="op">=</span> eh.HollowBlock(</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    material      <span class="op">=</span> <span class="st">"Concreto"</span>,</span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    fill_type     <span class="op">=</span> eh.Fill.AIR,     <span class="co"># or eh.Fill.SOLID</span></span>
@@ -529,7 +529,7 @@ window.Quarto = {
 <tbody>
 <tr class="odd">
 <td><code>web</code></td>
-<td>Half web (rib) thickness — the full web between cavities is <code>2·web</code></td>
+<td>Half web (rib) thickness; the full web between cavities is <code>2·web</code></td>
 </tr>
 <tr class="even">
 <td><code>block_width</code></td>
@@ -553,7 +553,7 @@ window.Quarto = {
 </section>
 <section id="slab" class="level2">
 <h2 class="anchored" data-anchor-id="slab"><code>Slab</code></h2>
-<p>Joist-and-block (<em>vigueta y bovedilla</em>) unit for <strong>roofs</strong> (<code>tilt = 0</code>): compression topping, L-shaped rib (web + foot) at each cell edge, filler block, and <code>n_cavities</code> equal cavities.</p>
+<p>Joist-and-block (<em>vigueta y bovedilla</em>) unit for roofs (<code>tilt = 0</code>): compression topping, L-shaped rib (web + foot) at each cell edge, filler block, and <code>n_cavities</code> equal cavities.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>slab <span class="op">=</span> eh.Slab(</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    rib_material     <span class="op">=</span> <span class="st">"Concreto"</span>,</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    block_material   <span class="op">=</span> <span class="st">"Bovedilla"</span>,</span>
@@ -642,27 +642,42 @@ window.Quarto = {
 <tr class="odd">
 <td><code>hi</code></td>
 <td><code>8.1</code> W/(m²·K)</td>
-<td>Indoor film coefficient (NOM, vertical-surface value)</td>
+<td>Indoor film coefficient for walls (NOM, vertical-surface value)</td>
 </tr>
 <tr class="even">
-<td><code>dt</code></td>
-<td><code>10</code> s</td>
-<td><strong>Fixed</strong> — assignments are ignored (<a href="./numerics.html#indoor-air-coupling-free-running-mode">why</a>)</td>
+<td><code>hi_up</code></td>
+<td><code>9.4</code> W/(m²·K)</td>
+<td>Indoor coefficient for roofs, upward heat flow (NOM)</td>
 </tr>
 <tr class="odd">
+<td><code>hi_down</code></td>
+<td><code>6.6</code> W/(m²·K)</td>
+<td>Indoor coefficient for roofs, downward heat flow (NOM)</td>
+</tr>
+<tr class="even">
+<td><code>hi_flow</code></td>
+<td><code>True</code></td>
+<td>Roofs (<code>tilt &lt; 60°</code>) pick <code>hi_up</code>/<code>hi_down</code> per time step; <code>False</code> → fixed <code>hi</code> everywhere</td>
+</tr>
+<tr class="odd">
+<td><code>dt</code></td>
+<td><code>10</code> s</td>
+<td>Fixed; assignments are ignored (<a href="./numerics.html#indoor-air-coupling-free-running-mode">why</a>)</td>
+</tr>
+<tr class="even">
 <td><code>AIR_DENSITY</code></td>
 <td><code>1.18</code> kg/m³</td>
 <td>Indoor/cavity air density</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>AIR_HEAT_CAPACITY</code></td>
 <td><code>1005</code> J/(kg·K)</td>
 <td>Indoor/cavity air specific heat</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Methods</strong>: <code>info()</code>, <code>to_dict()</code>, <code>reset()</code> (restores the numeric defaults; <code>file</code>/<code>materials</code> are user-provided and are kept), <code>materials_list()</code>, <code>materials_dict()</code>; <code>config.materials</code> is a read-only dict of material properties (<code>.k</code>, <code>.rho</code>, <code>.c</code>).</p>
-<p>Setters <strong>validate</strong> (raising <code>ValueError</code>): <code>La</code>, <code>ho</code>, <code>hi</code> and the air properties must be &gt; 0; <code>Nx</code> must be an integer ≥ 3; materials must have <code>k</code>, <code>rho</code>, <code>c</code> &gt; 0 (checked when the <code>.ini</code> is loaded; on failure the previous materials are kept). Layer thicknesses must be &gt; 0 (checked at solve time).</p>
+<p>Methods: <code>info()</code>, <code>to_dict()</code>, <code>reset()</code> (restores the numeric defaults; <code>file</code>/<code>materials</code> are user-provided and are kept), <code>materials_list()</code>, <code>materials_dict()</code>; <code>config.materials</code> is a read-only dict of material properties (<code>.k</code>, <code>.rho</code>, <code>.c</code>).</p>
+<p>Setters validate, raising <code>ValueError</code>: <code>La</code>, <code>ho</code>, <code>hi</code>, <code>hi_up</code>, <code>hi_down</code> and the air properties must be &gt; 0; <code>Nx</code> must be an integer ≥ 3; materials must have <code>k</code>, <code>rho</code>, <code>c</code> &gt; 0 (checked when the <code>.ini</code> is loaded; on failure the previous materials are kept). Layer thicknesses must be &gt; 0 (checked at solve time).</p>
 </section>
 <section id="config2d-2d" class="level2">
 <h2 class="anchored" data-anchor-id="config2d-2d"><code>config2d</code> (2D)</h2>
@@ -693,7 +708,7 @@ window.Quarto = {
 <tr class="odd">
 <td><code>tol_inner</code></td>
 <td><code>1e-8</code> °C</td>
-<td>Inner-step tolerance: max node update <strong>and</strong> max scaled equation residual must both fall below it</td>
+<td>Inner-step tolerance: max node update and max scaled equation residual must both fall below it</td>
 </tr>
 <tr class="even">
 <td><code>tol_day</code></td>
@@ -712,7 +727,7 @@ window.Quarto = {
 </tr>
 </tbody>
 </table>
-<p><strong>Methods</strong>: <code>info()</code>, <code>to_dict()</code>, <code>reset()</code>, <code>validate()</code>.</p>
+<p>Methods: <code>info()</code>, <code>to_dict()</code>, <code>reset()</code>, <code>validate()</code>.</p>
 <p>The attributes are plain (assignment is not checked); <code>validate()</code> runs at the start of every <code>System2D</code> solve and raises <code>ValueError</code> if <code>nx</code>/<code>ny</code> are not integers ≥ 3, a tolerance is ≤ 0, or <code>max_days</code>/<code>max_inner</code> are not integers ≥ 1.</p>
 
 

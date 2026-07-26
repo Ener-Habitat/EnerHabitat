@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Usage — 1D – EnerHabitat</title>
+<title>Usage: 1D – EnerHabitat</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -140,15 +140,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <ul class="dropdown-menu" aria-labelledby="nav-menu-usage">    
         <li>
     <a class="dropdown-item" href="./usage.html">
- <span class="dropdown-text">Workflow and setup</span></a>
+ <span class="dropdown-text">Setup</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-1d.html">
- <span class="dropdown-text">Usage — 1D</span></a>
+ <span class="dropdown-text">1D</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-2d.html">
- <span class="dropdown-text">Usage — 2D</span></a>
+ <span class="dropdown-text">2D</span></a>
   </li>  
     </ul>
   </li>
@@ -217,7 +217,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Usage — 1D</h1>
+<h1 class="title">Usage: 1D</h1>
 </div>
 
 
@@ -234,28 +234,31 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>The <a href="./usage.html">workflow</a> applied to a homogeneous layer stack, in both modes — free-running and air-conditioned. The examples show <strong>real results</strong> for the average day of May in Cuernavaca, Mexico (the EPW and <code>materials.ini</code> used here live in <code>docs/data/</code> in the repository), and are executed when this documentation is rendered.</p>
+<p>The <a href="./index.html#quickstart">Quickstart steps</a> applied to a homogeneous layer stack, in both modes, free-running and air-conditioned. The examples show real results for the average day of May in Cuernavaca, Mexico (the EPW and <code>materials.ini</code> used here live in <code>docs/data/</code> in the repository), and are executed when this documentation is rendered.</p>
 <p>Setup shared by all the examples:</p>
 <!-- Shared setup for the Usage pages (included by usage.qmd and usage-2d.qmd). -->
-<div id="37625abb" class="cell" data-execution_count="1">
+<div id="f2cea88c" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> enerhabitat <span class="im">as</span> eh</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"data/materials.ini"</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>epw_file <span class="op">=</span> <span class="st">"data/MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-2018.epw"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt   <span class="co"># Comment or delete if not creating visualization</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.dates <span class="im">as</span> mdates <span class="co"># Comment or delete if not creating visualization</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"data/materials.ini"</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>epw_file <span class="op">=</span> <span class="st">"data/MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-2018.epw"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="f26bc250" class="cell" data-execution_count="2">
+<div id="780be691" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Plot helper used by the examples (click to show)</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.dates <span class="im">as</span> mdates</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>EH_COLORS <span class="op">=</span> {<span class="st">"Ti"</span>: <span class="st">"#2a78d6"</span>, <span class="st">"Tsa"</span>: <span class="st">"#eb6834"</span>, <span class="st">"Ta"</span>: <span class="st">"#008300"</span>, <span class="st">"Tn"</span>: <span class="st">"#6b7280"</span>}</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> plot_day(df, title<span class="op">=</span><span class="st">""</span>):</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Temperatures of the average day, with the comfort zone Tn ± DeltaTn."""</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">7.2</span>, <span class="fl">3.6</span>))</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>EH_COLORS <span class="op">=</span> {<span class="st">"Ti"</span>: <span class="st">"#2a78d6"</span>, <span class="st">"Tsa"</span>: <span class="st">"#eb6834"</span>, <span class="st">"Ta"</span>: <span class="st">"#008300"</span>, <span class="st">"Tn"</span>: <span class="st">"#6b7280"</span>}</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> plot_day(df, title<span class="op">=</span><span class="st">""</span>):</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Temperatures of the average day (with the comfort zone Tn ± DeltaTn)</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co">    and the solar irradiance components carried by the same dataframe."""</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    fig, (ax, axr) <span class="op">=</span> plt.subplots(<span class="dv">2</span>, <span class="dv">1</span>, figsize<span class="op">=</span>(<span class="fl">7.2</span>, <span class="fl">5.8</span>), sharex<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>                                  height_ratios<span class="op">=</span>[<span class="dv">3</span>, <span class="dv">2</span>])</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># --- temperatures ---</span></span>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># comfort zone: Tn and DeltaTn are columns (constant along the day)</span></span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    ax.fill_between(df.index, df[<span class="st">"Tn"</span>] <span class="op">-</span> df[<span class="st">"DeltaTn"</span>], df[<span class="st">"Tn"</span>] <span class="op">+</span> df[<span class="st">"DeltaTn"</span>],</span>
 <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>                    color<span class="op">=</span>EH_COLORS[<span class="st">"Tn"</span>], alpha<span class="op">=</span><span class="fl">0.12</span>, lw<span class="op">=</span><span class="dv">0</span>)</span>
@@ -265,23 +268,36 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    ax.plot(df[<span class="st">"Tsa"</span>], color<span class="op">=</span>EH_COLORS[<span class="st">"Tsa"</span>], lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Tsa"</span>)</span>
 <span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    ax.plot(df[<span class="st">"Ti"</span>],  color<span class="op">=</span>EH_COLORS[<span class="st">"Ti"</span>],  lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Ti"</span>)</span>
 <span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="co"># tz=... keeps the labels in local time (matplotlib defaults to UTC)</span></span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    ax.xaxis.set_major_locator(mdates.HourLocator(byhour<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">6</span>, <span class="dv">12</span>, <span class="dv">18</span>], tz<span class="op">=</span>df.index.tz))</span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    ax.xaxis.set_major_formatter(mdates.DateFormatter(<span class="st">"%H"</span>, tz<span class="op">=</span>df.index.tz))</span>
-<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    ax.set_xlabel(<span class="st">"hour of the average day"</span>)</span>
-<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    ax.set_ylabel(<span class="st">"temperature (°C)"</span>)</span>
-<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    ax.set_title(title, fontsize<span class="op">=</span><span class="dv">10</span>)</span>
-<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    ax.legend(frameon<span class="op">=</span><span class="va">False</span>, fontsize<span class="op">=</span><span class="dv">9</span>, loc<span class="op">=</span><span class="st">"upper left"</span>)</span>
-<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    ax.grid(alpha<span class="op">=</span><span class="fl">0.25</span>, lw<span class="op">=</span><span class="fl">0.5</span>)</span>
-<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    ax.spines[<span class="st">"top"</span>].set_visible(<span class="va">False</span>)</span>
-<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    ax.spines[<span class="st">"right"</span>].set_visible(<span class="va">False</span>)</span>
-<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    fig.tight_layout()</span>
-<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    ax.set_ylabel(<span class="st">"temperature (°C)"</span>)</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    ax.set_title(title, fontsize<span class="op">=</span><span class="dv">10</span>)</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    ax.legend(frameon<span class="op">=</span><span class="va">False</span>, fontsize<span class="op">=</span><span class="dv">9</span>, loc<span class="op">=</span><span class="st">"upper left"</span>)</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="co"># --- solar irradiance (same dataframe: Ig, Ib, Id from the EPW; Is on the</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    <span class="co"># tilted/oriented surface, computed by Tsa()) ---</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    axr.plot(df[<span class="st">"Ig"</span>], color<span class="op">=</span><span class="st">"#f59e0b"</span>, lw<span class="op">=</span><span class="fl">1.5</span>, label<span class="op">=</span><span class="st">"Ig (global horizontal)"</span>)</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    axr.plot(df[<span class="st">"Ib"</span>], color<span class="op">=</span><span class="st">"#a16207"</span>, lw<span class="op">=</span><span class="fl">1.5</span>, label<span class="op">=</span><span class="st">"Ib (direct normal)"</span>)</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    axr.plot(df[<span class="st">"Id"</span>], color<span class="op">=</span><span class="st">"#60a5fa"</span>, lw<span class="op">=</span><span class="fl">1.5</span>, label<span class="op">=</span><span class="st">"Id (diffuse horizontal)"</span>)</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    axr.plot(df[<span class="st">"Is"</span>], color<span class="op">=</span><span class="st">"#dc2626"</span>, lw<span class="op">=</span><span class="dv">2</span>,   label<span class="op">=</span><span class="st">"Is (on the surface)"</span>)</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    axr.set_ylabel(<span class="st">"irradiance (W/m²)"</span>)</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    axr.set_xlabel(<span class="st">"hour of the average day (civil time)"</span>)</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    axr.legend(frameon<span class="op">=</span><span class="va">False</span>, fontsize<span class="op">=</span><span class="dv">8</span>, loc<span class="op">=</span><span class="st">"upper left"</span>)</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    <span class="co"># tz=... keeps the labels in local time (matplotlib defaults to UTC)</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    axr.xaxis.set_major_locator(mdates.HourLocator(byhour<span class="op">=</span>[<span class="dv">0</span>, <span class="dv">6</span>, <span class="dv">12</span>, <span class="dv">18</span>], tz<span class="op">=</span>df.index.tz))</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>    axr.xaxis.set_major_formatter(mdates.DateFormatter(<span class="st">"%H"</span>, tz<span class="op">=</span>df.index.tz))</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> a <span class="kw">in</span> (ax, axr):</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>        a.grid(alpha<span class="op">=</span><span class="fl">0.25</span>, lw<span class="op">=</span><span class="fl">0.5</span>)</span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>        a.spines[<span class="st">"top"</span>].set_visible(<span class="va">False</span>)</span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>        a.spines[<span class="st">"right"</span>].set_visible(<span class="va">False</span>)</span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>    fig.tight_layout()</span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>    plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <section id="d-wall-free-running" class="level2">
 <h2 class="anchored" data-anchor-id="d-wall-free-running">1D wall, free-running</h2>
-<div id="f8137e3a" class="cell" data-execution_count="3">
+<div id="79113f63" class="cell" data-execution_count="3">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>wall <span class="op">=</span> eh.System(eh.Location(epw_file))</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>wall.azimuth <span class="op">=</span> <span class="dv">90</span>                    <span class="co"># east-facing</span></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>wall.absortance <span class="op">=</span> <span class="fl">0.3</span></span>
@@ -290,48 +306,52 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>wall.Tsa()</span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> wall.solve()                  <span class="co"># free-running Ti</span></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> pd.concat([data, wall.Tsa()], axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> pd.concat([data, wall.Tso, wall.Tsi, wall.Tsa()], axis<span class="op">=</span><span class="dv">1</span>)</span>
 <span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"energy_transfer = </span><span class="sc">{</span>wall<span class="sc">.</span>energy_transfer<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>energy_transfer<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>energy_transfer<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.1f}</span><span class="ss"> Wh/(m²·day)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>energy_transfer = 31,973 J/(m²·day)  = 9 Wh/(m²·day)</code></pre>
+<pre><code>energy_transfer = 31,973 J/(m²·day)  = 8.9 Wh/(m²·day)</code></pre>
 </div>
 </div>
-<div id="79c56ac9" class="cell" data-execution_count="4">
+<p>Both solvers return a <code>pandas.Series</code> named <code>"Ti"</code>, indexed by time of day on the same time grid as <code>Tsa()</code>; that is why the <code>pd.concat</code> above aligns without NaN and promotes the Series to a column. The surface temperatures of the last solve are available the same way, as the read-only Series <code>wall.Tso</code> (outdoor surface) and <code>wall.Tsi</code> (indoor surface). When a <code>DataFrame</code> is required, convert with <code>wall.solve().to_frame("Ti")</code>.</p>
+<div id="ea55b900" class="cell" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>plot_day(data, title<span class="op">=</span><span class="st">"Mortero + Ladrillo wall, east, free-running — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><a href="usage-1d_files/figure-html/cell-5-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1"><img src="usage-1d_files/figure-html/cell-5-output-1.png" width="681" height="336" class="figure-img"></a></p>
+<p><a href="usage-1d_files/figure-html/cell-5-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1"><img src="usage-1d_files/figure-html/cell-5-output-1.png" width="681" height="547" class="figure-img"></a></p>
 </figure>
 </div>
 </div>
 </div>
-<p>The indoor temperature <code>Ti</code> oscillates with a smaller amplitude than the sun–air temperature <code>Tsa</code> and lags behind it — the damping and the delay are the thermal mass at work.</p>
+<!-- The indoor temperature `Ti` oscillates with a smaller amplitude than the sun–air
+temperature `Tsa` and lags behind it. The damping and the delay are the thermal
+mass at work. -->
+<p>The time axis is civil (clock) time, inherited from the EPW, not solar time. That is why this east-facing wall keeps direct sun past 12:00: solar noon in Cuernavaca falls at about 12:33 (the site lies 9.2° west of the UTC−6 reference meridian, which adds 37 min, minus some 4 min of equation of time in May). The sharp drop in <code>Is</code> (mirrored by <code>Tsa</code>) marks that moment: the sun crosses due south and the east wall is left with diffuse irradiance only.</p>
 </section>
 <section id="d-wall-air-conditioned" class="level2">
 <h2 class="anchored" data-anchor-id="d-wall-air-conditioned">1D wall, air-conditioned</h2>
 <p>Same wall; <code>solveAC()</code> holds <code>Ti</code> at the neutrality temperature <code>Tn</code> and reports the energy needed to do so:</p>
-<div id="a9ea99ac" class="cell" data-execution_count="5">
+<div id="f48f5b74" class="cell" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>dataAC <span class="op">=</span> wall.solveAC()</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>dataAC <span class="op">=</span> pd.concat([dataAC, wall.Tsa()], axis<span class="op">=</span><span class="dv">1</span>)</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"cooling_energy = </span><span class="sc">{</span>wall<span class="sc">.</span>cooling_energy<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>cooling_energy<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>cooling_energy<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.1f}</span><span class="ss"> Wh/(m²·day)"</span>)</span>
 <span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"heating_energy = </span><span class="sc">{</span>wall<span class="sc">.</span>heating_energy<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>heating_energy<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.0f}</span><span class="ss"> Wh/(m²·day)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>heating_energy<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.1f}</span><span class="ss"> Wh/(m²·day)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>cooling_energy = 943,968 J/(m²·day)  = 262 Wh/(m²·day)
-heating_energy = 386,936 J/(m²·day)  = 107 Wh/(m²·day)</code></pre>
+<pre><code>cooling_energy = 943,968 J/(m²·day)  = 262.2 Wh/(m²·day)
+heating_energy = 386,936 J/(m²·day)  = 107.5 Wh/(m²·day)</code></pre>
 </div>
 </div>
-<div id="ab6de670" class="cell" data-execution_count="6">
+<div id="1af5fbcb" class="cell" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>plot_day(dataAC, title<span class="op">=</span><span class="st">"Same wall, air-conditioned (Ti = Tn) — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><a href="usage-1d_files/figure-html/cell-7-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2"><img src="usage-1d_files/figure-html/cell-7-output-1.png" width="681" height="336" class="figure-img"></a></p>
+<p><a href="usage-1d_files/figure-html/cell-7-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2"><img src="usage-1d_files/figure-html/cell-7-output-1.png" width="681" height="547" class="figure-img"></a></p>
 </figure>
 </div>
 </div>
@@ -339,7 +359,7 @@ heating_energy = 386,936 J/(m²·day)  = 107 Wh/(m²·day)</code></pre>
 </section>
 <section id="where-to-go-next" class="level2">
 <h2 class="anchored" data-anchor-id="where-to-go-next">Where to go next</h2>
-<p>For systems whose section is not a simple layer stack — hollow blocks, joist-and-block slabs — continue with <a href="./usage-2d.html">Usage — 2D</a>. The global parameters (<code>La</code>, <code>ho</code>, <code>hi</code>, <code>Nx</code>) are documented in <a href="./usage.html#configuration">the configuration</a>.</p>
+<p>For systems whose section is not a simple layer stack (hollow blocks, joist-and-block slabs), continue with <a href="./usage-2d.html">Usage — 2D</a>. The global parameters (<code>La</code>, <code>ho</code>, <code>hi</code>, <code>Nx</code>) are documented in <a href="./usage.html#configuration">the configuration</a>.</p>
 
 
 </section>

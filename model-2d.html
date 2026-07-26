@@ -150,15 +150,15 @@ window.Quarto = {
     <ul class="dropdown-menu" aria-labelledby="nav-menu-usage">    
         <li>
     <a class="dropdown-item" href="./usage.html">
- <span class="dropdown-text">Workflow and setup</span></a>
+ <span class="dropdown-text">Setup</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-1d.html">
- <span class="dropdown-text">Usage — 1D</span></a>
+ <span class="dropdown-text">1D</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-2d.html">
- <span class="dropdown-text">Usage — 2D</span></a>
+ <span class="dropdown-text">2D</span></a>
   </li>  
     </ul>
   </li>
@@ -229,8 +229,8 @@ window.Quarto = {
   </ul></li>
   <li><a href="#geometries" id="toc-geometries" class="nav-link" data-scroll-target="#geometries">Geometries</a>
   <ul class="collapse">
-  <li><a href="#hollow-block-wall-hollowblock" id="toc-hollow-block-wall-hollowblock" class="nav-link" data-scroll-target="#hollow-block-wall-hollowblock">Hollow-block wall — <code>HollowBlock</code></a></li>
-  <li><a href="#joist-and-block-roof-slab" id="toc-joist-and-block-roof-slab" class="nav-link" data-scroll-target="#joist-and-block-roof-slab">Joist-and-block roof — <code>Slab</code></a></li>
+  <li><a href="#hollow-block-wall-hollowblock" id="toc-hollow-block-wall-hollowblock" class="nav-link" data-scroll-target="#hollow-block-wall-hollowblock">Hollow-block wall: <code>HollowBlock</code></a></li>
+  <li><a href="#joist-and-block-roof-slab" id="toc-joist-and-block-roof-slab" class="nav-link" data-scroll-target="#joist-and-block-roof-slab">Joist-and-block roof: <code>Slab</code></a></li>
   </ul></li>
   <li><a href="#the-average-day" id="toc-the-average-day" class="nav-link" data-scroll-target="#the-average-day">The average day</a></li>
   <li><a href="#constraints" id="toc-constraints" class="nav-link" data-scroll-target="#constraints">Constraints</a></li>
@@ -261,60 +261,78 @@ window.Quarto = {
 </header>
 
 
-<p>Real masonry units are not homogeneous across their width: a concrete hollow block has air cavities between webs, and a joist-and-block (<em>vigueta y bovedilla</em>) roof alternates concrete ribs, filler blocks and cavities. Averaging their properties into an equivalent homogeneous layer misses the physics that matters — heat bridging through the solid webs and the convective/radiative exchange inside the cavities. For these systems EnerHabitat solves the heat transfer on a <strong>2D cross-section</strong> of the unit <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>.</p>
+<p>The <a href="./model-1d.html">1D model</a> applies when every layer is homogeneous, so the heat flows only across the thickness. Some constructive systems break that premise: the material changes in the plane perpendicular to the heat flow. A concrete hollow block alternates solid webs and air cavities across its width, and a joist-and-block roof alternates concrete ribs, filler blocks and cavities. In those units the heat also flows in-plane, concentrating through the webs and ribs and crossing the cavities by convection and radiation. A 1D stack cannot simulate this, and an equivalent homogeneous layer with averaged properties does not recover it. For these systems EnerHabitat solves the heat transfer on a 2D cross-section of the unit <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>.</p>
 <section id="domain-and-assumptions" class="level2">
 <h2 class="anchored" data-anchor-id="domain-and-assumptions">Domain and assumptions</h2>
-<p>Constructive units repeat periodically along the wall or roof, so the domain is a single <strong>repeating cell</strong> — the block (or the rib-to-rib module) cut across its width and thickness. The lateral cuts are placed on <strong>mirror-symmetry planes</strong> of the periodic pattern (mid-web, mid-rib), where the temperature field has zero normal gradient — so the sides of the cell are <strong>adiabatic</strong>. (Periodicity alone would only impose equality of temperature and flux between opposite sides, not zero flux; it is the mirror symmetry of the chosen cell that makes the adiabatic condition exact.)</p>
-<p>Axis convention (used by the package and throughout these pages): <span class="math inline">\(x\)</span> runs across the <strong>width</strong> of the cell and <span class="math inline">\(y\)</span> through the <strong>thickness</strong>, from the outside (<span class="math inline">\(y = 0\)</span>) to the inside (<span class="math inline">\(y = e\)</span>), as in the cross-section figures below — i.e.&nbsp;the 1D model’s coordinate <span class="math inline">\(x\)</span> (through the thickness) corresponds to <span class="math inline">\(y\)</span> here. Note that the reference paper <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span> uses the transposed convention (<span class="math inline">\(x\)</span> through the thickness).</p>
-<p>The cell is a stack in <span class="math inline">\(y\)</span> — exterior finishes, the non-homogeneous unit, interior finishes — where the unit itself is a 2D patchwork of materials and, possibly, cavities.</p>
-<p>The model keeps every <a href="./model-1d.html#domain-and-assumptions">1D assumption</a> — constant properties per material, perfect thermal contact, fixed film coefficients, sun–air forcing, lumped indoor air or fixed setpoint — except that conduction is now two-dimensional in the cross-section. In addition it assumes:</p>
+<p>Constructive units repeat periodically along the wall or roof, so the domain is a single repeating cell: the block (or the rib-to-rib module) cut across its width and thickness. The lateral cuts are placed on mirror-symmetry planes of the periodic pattern (mid-web, mid-rib), where the temperature field has zero normal gradient, so the sides of the cell are adiabatic.</p>
+<p>Axis convention (used throughout these theory pages): <span class="math inline">\(x\)</span> runs through the thickness, from the outside (<span class="math inline">\(x = 0\)</span>) to the inside (<span class="math inline">\(x = L\)</span>), exactly as in <a href="./model-1d.html">the 1D model</a>; <span class="math inline">\(y\)</span> runs across the width of the repeating unit of the constructive system, from <span class="math inline">\(y = 0\)</span> to <span class="math inline">\(y = W\)</span>.</p>
+<div id="fig-domain2d" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-domain2d-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="img/domain_2d.png" class="img-fluid figure-img">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-domain2d-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: The 2D domain: one repeating cell, with the sun–air forcing on the outside face, the lumped indoor air on the inside face, the adiabatic lateral cuts and the cavity physics.
+</figcaption>
+</figure>
+</div>
+<p>The cell is a stack in <span class="math inline">\(x\)</span> (exterior finishes, the non-homogeneous unit, interior finishes) where the unit itself is a 2D patchwork of materials and, possibly, cavities.</p>
+<p>The model keeps every <a href="./model-1d.html#domain-and-assumptions">1D assumption</a>, from the constant properties per material and perfect thermal contact to the film coefficients, the sun–air forcing and the lumped indoor air or fixed setpoint, except that conduction is now two-dimensional in the cross-section. In addition it assumes:</p>
 <ul>
-<li>the cross-section is <strong>invariant out of plane</strong>: all quantities are per unit length along the wall/roof;</li>
+<li>the cross-section is invariant out of plane: all quantities are per unit length along the wall/roof;</li>
 <li>the lateral sides of the cell are mirror-symmetry planes (adiabatic, as above);</li>
-<li>the air of each cavity (<code>Fill.AIR</code>) is <strong>well mixed</strong> — one temperature <span class="math inline">\(T_h\)</span> per cavity — and radiatively non-participating;</li>
-<li>one <strong>uniform</strong> convective coefficient <span class="math inline">\(h_c\)</span> per cavity, evaluated from the mean temperatures of the faces across the thickness (not from each local wall temperature);</li>
-<li>the cavity surfaces are grey and diffuse, each emitting at its <strong>mean</strong> temperature.</li>
+<li>the air of each cavity (<code>Fill.AIR</code>) is well mixed, with one temperature <span class="math inline">\(T_h\)</span> per cavity, and radiatively non-participating;</li>
+<li>one uniform convective coefficient <span class="math inline">\(h_c\)</span> per cavity, evaluated from the mean temperatures of the faces across the thickness;</li>
+<li>the cavity surfaces are grey and diffuse, each emitting at its mean temperature.</li>
 </ul>
 <p>The canonical list of assumptions, with the consequence each one has for interpreting the results, is in <a href="./assumptions.html">Assumptions and limits</a>.</p>
 </section>
 <section id="governing-equations" class="level2">
 <h2 class="anchored" data-anchor-id="governing-equations">Governing equations</h2>
-<p>Conduction in the solids obeys the two-dimensional extension of the <a href="./model-1d.html#eq-heat">1D heat equation</a>, with position-dependent properties:</p>
+<p>In 1D the homogeneous regions are the layers, indexed by <span class="math inline">\(j\)</span> along <span class="math inline">\(x\)</span>; in 2D they are the material patches of the section (a finish layer, the shell, the L-shaped rib, the topping, the filler block, a solid fill), so the same index <span class="math inline">\(j\)</span> now enumerates regions of the plane. Within each homogeneous region <span class="math inline">\(j\)</span> the temperature obeys the two-dimensional extension of the <a href="./model-1d.html#eq-heat">1D heat equation</a>:</p>
 <p><span id="eq-heat2d"><span class="math display">\[
+\rho_j\, c_j\, \frac{\partial T_j}{\partial t}
+\;=\;
+k_j \left( \frac{\partial^2 T_j}{\partial x^2} + \frac{\partial^2 T_j}{\partial y^2} \right),
+\qquad j = 1, \dots, M,
+\tag{1}\]</span></span></p>
+<p>with, as in the 1D case, continuity of temperature and of the normal conductive flux <span class="math inline">\(k_j\, \partial T/\partial n\)</span> at the boundary between neighbouring regions.</p>
+<p>Equivalently, the whole section can be described by one equation in conservative (divergence) form, with <span class="math inline">\(k(x,y)\)</span>, <span class="math inline">\(\rho(x,y)\)</span> and <span class="math inline">\(c(x,y)\)</span> taking the value of the material occupying each point:</p>
+<p><span class="math display">\[
 \rho\, c\, \frac{\partial T}{\partial t}
 \;=\;
 \frac{\partial}{\partial x}\!\left( k\, \frac{\partial T}{\partial x} \right)
 +
-\frac{\partial}{\partial y}\!\left( k\, \frac{\partial T}{\partial y} \right),
-\tag{1}\]</span></span></p>
-<p>where <span class="math inline">\(k(x,y)\)</span>, <span class="math inline">\(\rho(x,y)\)</span> and <span class="math inline">\(c(x,y)\)</span> take the value of the material occupying each point (rib, filler block, topping, solid fill…). Continuity of temperature and flux at material joints is as in the 1D case.</p>
+\frac{\partial}{\partial y}\!\left( k\, \frac{\partial T}{\partial y} \right).
+\]</span></p>
+<p>This form carries the flux continuity across the material joints implicitly, which is exactly where the finite-volume discretization evaluates the face conductances.</p>
 </section>
 <section id="boundary-conditions" class="level2">
 <h2 class="anchored" data-anchor-id="boundary-conditions">Boundary conditions</h2>
-<p>The boundary conditions close the problem:</p>
+<p>The boundary conditions (<a href="#fig-domain2d" class="quarto-xref">Figure&nbsp;1</a>) close the problem:</p>
 <p><span id="eq-bc2d"><span class="math display">\[
 \begin{aligned}
-y = 0:&amp;\quad h_o \left( T_{sa} - T \right) = -k\, \frac{\partial T}{\partial y}
+x = 0:&amp;\quad h_o \left( T_{sa} - T \right) = -k\, \frac{\partial T}{\partial x}
   &amp;&amp; \text{(outdoor, sun–air temperature)}\\[4pt]
-y = e:&amp;\quad -k\, \frac{\partial T}{\partial y} = h_i \left( T - T_i \right)
+x = L:&amp;\quad -k\, \frac{\partial T}{\partial x} = h_i \left( T - T_i \right)
   &amp;&amp; \text{(indoor air)}\\[4pt]
-x = 0,\ x = W:&amp;\quad \frac{\partial T}{\partial x} = 0
+y = 0,\ y = W:&amp;\quad \frac{\partial T}{\partial y} = 0
   &amp;&amp; \text{(adiabatic sides, periodicity)}
 \end{aligned}
 \tag{2}\]</span></span></p>
-<p><span class="math inline">\(T_{sa}\)</span>, <span class="math inline">\(h_o\)</span> and <span class="math inline">\(h_i\)</span> are exactly those of the <a href="./model-1d.html">1D model</a> — same average day, same <code>Tsa()</code>.</p>
+<p>Here <span class="math inline">\(W\)</span> is the width of the repeating unit of the constructive system (one hollow block with its half-webs, or one joist-to-joist module of the slab) and <span class="math inline">\(L\)</span> the total thickness of the constructive system, as in <a href="./model-1d.html">the 1D model</a>. The domain is <span class="math inline">\(x \in [0, L]\)</span>, <span class="math inline">\(y \in [0, W]\)</span>; their expressions in terms of each element’s <code>geometry</code> are given in <a href="#geometries">Geometries</a>. <span class="math inline">\(T_{sa}\)</span>, <span class="math inline">\(h_o\)</span> and <span class="math inline">\(h_i\)</span> are exactly those of the <a href="./model-1d.html">1D model</a>: same average day, same <code>Tsa()</code>.</p>
 </section>
 <section id="solution-modes" class="level2">
 <h2 class="anchored" data-anchor-id="solution-modes">Solution modes</h2>
 <p>The indoor air <span class="math inline">\(T_i\)</span> follows the same <a href="./model-1d.html#boundary-conditions-and-solution-modes">two solution modes as the 1D model</a>, with two 2D-specific details:</p>
 <ul>
-<li>In the <strong>free-running</strong> mode the lumped indoor-air node is fed by the <strong>width-averaged</strong> convective flux from the indoor surface at <span class="math inline">\(y = e\)</span> (so the energy balance is per unit of indoor surface area, as in 1D).</li>
-<li>In the <strong>air-conditioned</strong> mode only the <em>indoor</em> node is fixed at the setpoint (<span class="math inline">\(T_i = T_n\)</span>, or <code>System2D.setpoint</code>); the air of each cavity <span class="math inline">\(T_h\)</span> <strong>keeps floating</strong>, governed by <a href="#eq-cavity-air" class="quarto-xref">Equation&nbsp;3</a> throughout the AC solve.</li>
+<li>In the free-running mode the lumped indoor-air node is fed by the width-averaged convective flux from the indoor surface at <span class="math inline">\(x = L\)</span> (so the energy balance is per unit of indoor surface area, as in 1D).</li>
+<li>In the air-conditioned mode only the <em>indoor</em> node is fixed at the setpoint (<span class="math inline">\(T_i = T_n\)</span>, or <code>System2D.setpoint</code>); the air of each cavity <span class="math inline">\(T_h\)</span> keeps floating, governed by <a href="#eq-cavity-air" class="quarto-xref">Equation&nbsp;3</a> throughout the AC solve.</li>
 </ul>
 </section>
 <section id="cavity-physics" class="level2">
 <h2 class="anchored" data-anchor-id="cavity-physics">Cavity physics</h2>
-<p>When the unit’s cavity contains air (<code>Fill.AIR</code>), three heat-transfer mechanisms act together <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>: conduction through the surrounding solids, <strong>natural convection</strong> of the cavity air, and <strong>radiation</strong> between the cavity surfaces. (The alternative, a solid-filled cavity, is described <a href="#solid-fill">below</a>.)</p>
+<p>When the unit’s cavity contains air (<code>Fill.AIR</code>), three heat-transfer mechanisms act together <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>: conduction through the surrounding solids, natural convection of the cavity air, and radiation between the cavity surfaces. (The alternative, a solid-filled cavity, is described <a href="#solid-fill">below</a>.)</p>
 <section id="the-cavity-air-node" class="level3">
 <h3 class="anchored" data-anchor-id="the-cavity-air-node">The cavity-air node</h3>
 <p>The air inside each cavity is modelled as a single lumped node at temperature <span class="math inline">\(T_h\)</span>, exchanging heat by convection with the four cavity walls:</p>
@@ -327,16 +345,15 @@ x = 0,\ x = W:&amp;\quad \frac{\partial T}{\partial x} = 0
 </section>
 <section id="convective-coefficient-walls-vs-roofs" class="level3">
 <h3 class="anchored" data-anchor-id="convective-coefficient-walls-vs-roofs">Convective coefficient: walls vs roofs</h3>
-<p>For a <strong>wall</strong> (<code>tilt = 90</code>, vertical cavity) EnerHabitat uses the turbulent correlation of Xamán et al. <span class="citation" data-cites="xaman2005">(<a href="#ref-xaman2005" role="doc-biblioref">2005</a>)</span> for tall cavities of façade elements — their Eq. (11), aspect ratio 20, <span class="math inline">\(10^4 \le Ra_L \le 10^8\)</span>: <span class="math inline">\(Nu = 0.0857\,Ra_L^{0.3033}\)</span>. Substituting <span class="math inline">\(Ra_L = g\beta\Delta T d^3/(\nu\alpha)\)</span> and <span class="math inline">\(Nu = h_c d / k_{air}\)</span>, with the air properties anchored at 300 K (see the roof correlation below), gives the dimensional form actually evaluated, as a function of the temperature difference between the two faces across the thickness and the cavity depth <span class="math inline">\(d\)</span> (m):</p>
+<p>For a wall (<code>tilt = 90</code>, vertical cavity) EnerHabitat uses the turbulent correlation of Xamán et al. <span class="citation" data-cites="xaman2005">(<a href="#ref-xaman2005" role="doc-biblioref">2005</a>)</span> for tall cavities of façade elements, <span class="math inline">\(Nu = 0.0857\,Ra_L^{0.3033}\)</span>, evaluated in its dimensional form as a function of the temperature difference between the two faces across the thickness and the cavity depth <span class="math inline">\(d\)</span> (m):</p>
 <p><span id="eq-nu-wall"><span class="math display">\[
 h_c \;=\; C_w\, \frac{\left| T_{out} - T_{in} \right|^{0.3033}}{d^{\,0.0901}},
 \qquad
 C_w = 0.0857\, k_{air} \left( \frac{g\,\beta}{\nu\,\alpha} \right)^{0.3033}
 \approx 0.59,
 \tag{4}\]</span></span></p>
-<p>where the exponent of <span class="math inline">\(d\)</span> follows from the reduction (<span class="math inline">\(3 \times 0.3033 - 1 =
--0.0901\)</span>) and <span class="math inline">\(C_w\)</span> is computed at run time from the same property set as the roof correlation (so it stays consistent if the air density or heat capacity are changed). Two provenance notes: the 2016 tool hardcoded <span class="math inline">\(C_w = 0.4005\)</span> — an unrecorded reduction, ~0.61× the value above — which is kept only in the C-fidelity regression tests; and Xamán’s fits cover <strong>tall</strong> cavities (<span class="math inline">\(A = 20\)</span>–<span class="math inline">\(80\)</span>), while the hollow-block cavity has a much lower aspect ratio, so this use is an <strong>extrapolation</strong>. Both the constant and the extrapolation are tested directly by the hollow-block hot-box experiment of Borbón et al. <span class="citation" data-cites="borbon2010">(<a href="#ref-borbon2010" role="doc-biblioref">2010</a>)</span> in the validation campaign; the sensitivity of the documented wall’s daily energies to <span class="math inline">\(C_w\)</span> is ~1 % (0.4005 → 0.59).</p>
-<p>For a <strong>roof</strong> (<code>tilt = 0</code>, horizontal cavity) the regime is Rayleigh–Bénard. If the lower face is not hotter than the upper one the air stratifies stably and only conducts, <span class="math inline">\(h_c = k_{air}/d\)</span>. Otherwise convection sets in, described by the correlation of Hollands et al. <span class="citation" data-cites="hollands1975">(<a href="#ref-hollands1975" role="doc-biblioref">1975</a>)</span> for horizontal layers heated from below:</p>
+<p>where <span class="math inline">\(C_w\)</span> is a constant that groups the air properties, taken as constant in the model, and the exponent of <span class="math inline">\(d\)</span> follows from the reduction.</p>
+<p>For a roof (<code>tilt = 0</code>, horizontal cavity) the regime is Rayleigh–Bénard. If the lower face is not hotter than the upper one the air stratifies stably and only conducts, <span class="math inline">\(h_c = k_{air}/d\)</span>. Otherwise convection sets in, described by the correlation of Hollands et al. <span class="citation" data-cites="hollands1975">(<a href="#ref-hollands1975" role="doc-biblioref">1975</a>)</span> for horizontal layers heated from below:</p>
 <p><span id="eq-nu-roof"><span class="math display">\[
 h_c \;=\; \frac{k_{air}}{d}
 \left(
@@ -346,20 +363,17 @@ h_c \;=\; \frac{k_{air}}{d}
 \qquad
 Ra = \frac{g\, \beta\, \Delta T\, d^3}{\nu\, \alpha},
 \tag{5}\]</span></span></p>
-<p>where <span class="math inline">\([\,\cdot\,]^{+}\)</span> keeps the positive part and the air properties are anchored at a fixed reference temperature of 300 K <span class="citation" data-cites="incropera2007">(<a href="#ref-incropera2007" role="doc-biblioref">Incropera et al. 2007</a>)</span>: <span class="math inline">\(k_{air} = 0.0262\)</span> W/(m·K), <span class="math inline">\(\beta = 1/300\)</span> K⁻¹, and <span class="math inline">\(\mu(300\,\mathrm{K}) = 1.846\times10^{-5}\)</span> Pa·s from Sutherland’s law. The kinematic values entering <span class="math inline">\(Ra\)</span> are computed with the <strong>configurable</strong> air density and heat capacity — <span class="math inline">\(\nu = \mu/\rho_a \approx
-1.56\times10^{-5}\)</span> m²/s and <span class="math inline">\(\alpha = k_{air}/(\rho_a c_a) \approx
-2.21\times10^{-5}\)</span> m²/s with the defaults — so they remain thermodynamically consistent if the user changes the air properties. Because <span class="math inline">\(h_c\)</span> depends on the wall temperatures, it is re-evaluated inside the iteration of every time step (see the <a href="./numerics.html#solution-algorithm">numerical method</a>).</p>
+<p>where <span class="math inline">\([\,\cdot\,]^{+}\)</span> keeps the positive part. The air properties entering <span class="math inline">\(Ra\)</span> (<span class="math inline">\(k_{air}\)</span>, <span class="math inline">\(\beta\)</span>, <span class="math inline">\(\nu\)</span>, <span class="math inline">\(\alpha\)</span>) are constants evaluated at 300 K <span class="citation" data-cites="incropera2007">(<a href="#ref-incropera2007" role="doc-biblioref">Incropera et al. 2007</a>)</span>. Because <span class="math inline">\(h_c\)</span> depends on the face temperatures, it is re-evaluated inside the iteration of every time step (see the <a href="./numerics.html#solution-algorithm">numerical method</a>).</p>
 </section>
 <section id="radiation-between-cavity-surfaces" class="level3">
 <h3 class="anchored" data-anchor-id="radiation-between-cavity-surfaces">Radiation between cavity surfaces</h3>
-<p>The four cavity walls exchange long-wave radiation. The air is non-participating, the surfaces are grey and diffuse with uniform emissivity <span class="math inline">\(\varepsilon\)</span> (the <code>emissivity</code> parameter, 0.9 by default), and each surface emits at its mean temperature <span class="citation" data-cites="incropera2007">(<a href="#ref-incropera2007" role="doc-biblioref">Incropera et al. 2007</a>)</span>. Because grey surfaces reflect, the exchange couples all four surfaces through multiple reflections; the enclosure is solved exactly with the <strong>radiosity system</strong> in Gebhart form <span class="citation" data-cites="gebhart1961 incropera2007">(<a href="#ref-gebhart1961" role="doc-biblioref">Gebhart 1961</a>; <a href="#ref-incropera2007" role="doc-biblioref">Incropera et al. 2007</a>)</span>. For the four isothermal surfaces the solution reduces to a pairwise expression with constant <strong>transfer factors</strong> <span class="math inline">\(\mathfrak{F}_{mn}\)</span>:</p>
+<p>The four cavity walls exchange long-wave radiation. The air is non-participating, the surfaces are grey and diffuse with uniform emissivity <span class="math inline">\(\varepsilon\)</span> (the <code>emissivity</code> parameter, 0.9 by default), and each surface emits at its mean temperature <span class="citation" data-cites="incropera2007">(<a href="#ref-incropera2007" role="doc-biblioref">Incropera et al. 2007</a>)</span>. Because grey surfaces reflect, the exchange couples all four surfaces through multiple reflections; the enclosure is solved exactly with the radiosity system in Gebhart form <span class="citation" data-cites="gebhart1961 incropera2007">(<a href="#ref-gebhart1961" role="doc-biblioref">Gebhart 1961</a>; <a href="#ref-incropera2007" role="doc-biblioref">Incropera et al. 2007</a>)</span>. For the four isothermal surfaces the solution reduces to a pairwise expression with constant transfer factors <span class="math inline">\(\mathfrak{F}_{mn}\)</span>:</p>
 <p><span id="eq-rad"><span class="math display">\[
 q_{m \to n} \;=\; \mathfrak{F}_{mn}\, \sigma \left( T_m^4 - T_n^4 \right),
 \qquad
 \mathfrak{F} \;=\; \varepsilon^2 \left[ I - (1-\varepsilon)\, F \right]^{-1} F,
 \tag{6}\]</span></span></p>
-<p>with <span class="math inline">\(\sigma\)</span> the Stefan–Boltzmann constant and <span class="math inline">\(F\)</span> the view-factor matrix. The <span class="math inline">\(\mathfrak{F}_{mn}\)</span> inherit reciprocity (<span class="math inline">\(A_m \mathfrak{F}_{mn} = A_n
-\mathfrak{F}_{nm}\)</span>), satisfy the closure <span class="math inline">\(\sum_n \mathfrak{F}_{mn} = \varepsilon\)</span>, and reduce to <span class="math inline">\(F_{mn}\)</span> for black surfaces (<span class="math inline">\(\varepsilon = 1\)</span>). Since the geometry and <span class="math inline">\(\varepsilon\)</span> are constant, the <span class="math inline">\(4\times4\)</span> system is solved <strong>once</strong> per cavity geometry; per-surface emissivities are supported by the same formulation. (The legacy Ener-Habitat tool used the direct-exchange approximation <span class="math inline">\(q = \varepsilon \sigma F_{mn} \Delta T^4\)</span>, which overestimates the dominant pair — e.g.&nbsp;by ~10 % at <span class="math inline">\(\varepsilon = 0.9\)</span> in the parallel-plate limit, where the exact factor is <span class="math inline">\(1/(2/\varepsilon - 1)\)</span>.)</p>
+<p>with <span class="math inline">\(\sigma\)</span> the Stefan–Boltzmann constant, <span class="math inline">\(F\)</span> the view-factor matrix and <span class="math inline">\(I\)</span> the identity matrix. Since the geometry and <span class="math inline">\(\varepsilon\)</span> are constant, the transfer factors are computed once per cavity geometry.</p>
 <p>For a rectangular cavity of width <span class="math inline">\(w\)</span> and depth <span class="math inline">\(d\)</span> the view factors follow from the crossed-strings method; e.g.&nbsp;between the top wall and one lateral wall, and between the two opposite walls:</p>
 <p><span id="eq-vf"><span class="math display">\[
 F_{u \to r} = \tfrac{1}{2}\left( 1 + \tfrac{d}{w} - \sqrt{1 + \tfrac{d^2}{w^2}} \right),
@@ -369,13 +383,13 @@ F_{u \to d} = 1 - 2 F_{u \to r}.
 </section>
 <section id="solid-fill" class="level3">
 <h3 class="anchored" data-anchor-id="solid-fill">Solid fill (<code>Fill.SOLID</code>)</h3>
-<p>The cavity can instead be filled with a solid material (e.g.&nbsp;an insulating core): the cavity physics switches off and the fill behaves as one more conducting material in <a href="#eq-heat2d" class="quarto-xref">Equation&nbsp;1</a>. Filling with the <em>same</em> material as the shell makes the unit homogeneous — in that limit the 2D solution reduces to the 1D one, which is one of the package’s validation checks (see <a href="./numerics.html#validation">Validation</a>).</p>
+<p>The cavity can instead be filled with a solid material (e.g.&nbsp;an insulating core): the cavity physics switches off and the fill behaves as one more conducting material in <a href="#eq-heat2d" class="quarto-xref">Equation&nbsp;1</a>. Filling with the <em>same</em> material as the shell makes the unit homogeneous; in that limit the 2D solution reduces to the 1D one, which is one of the package’s validation checks (see <a href="./numerics.html#validation">Validation</a>).</p>
 </section>
 </section>
 <section id="geometries" class="level2">
 <h2 class="anchored" data-anchor-id="geometries">Geometries</h2>
 <section id="hollow-block-wall-hollowblock" class="level3">
-<h3 class="anchored" data-anchor-id="hollow-block-wall-hollowblock">Hollow-block wall — <code>HollowBlock</code></h3>
+<h3 class="anchored" data-anchor-id="hollow-block-wall-hollowblock">Hollow-block wall: <code>HollowBlock</code></h3>
 <p>A shell of a single material with one cavity per cell; walls only (<code>tilt = 90</code>). The repeating cell takes half a web on each side, so the full web between two cavities is <code>2·web</code>.</p>
 <div id="fig-hollow" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -383,50 +397,49 @@ F_{u \to d} = 1 - 2 F_{u \to r}.
 <img src="img/hollow_block.png" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-hollow-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1: Hollow-block wall cross-section (to scale).
+Figure&nbsp;2: Hollow-block wall cross-section (to scale).
 </figcaption>
 </figure>
 </div>
 <ul>
 <li>cell width <span class="math inline">\(W = 2 \cdot \texttt{web} + \texttt{block\_width}\)</span></li>
-<li>thickness <span class="math inline">\(e = \texttt{cover\_top} + \texttt{cavity} + \texttt{cover\_bottom}\)</span></li>
+<li>thickness <span class="math inline">\(L = \texttt{cover\_top} + \texttt{cavity} + \texttt{cover\_bottom}\)</span></li>
 </ul>
 </section>
 <section id="joist-and-block-roof-slab" class="level3">
-<h3 class="anchored" data-anchor-id="joist-and-block-roof-slab">Joist-and-block roof — <code>Slab</code></h3>
-<p>Roofs only (<code>tilt = 0</code>). Three solid materials — the compression topping, an L-shaped concrete rib (web + foot) at each edge of the cell, and the filler block — plus <span class="math inline">\(n\)</span> equal cavities, each one with its own lumped air node (<a href="#eq-cavity-air" class="quarto-xref">Equation&nbsp;3</a>) and its own <span class="math inline">\(h_c\)</span>.</p>
+<h3 class="anchored" data-anchor-id="joist-and-block-roof-slab">Joist-and-block roof: <code>Slab</code></h3>
+<p>Roofs only (<code>tilt = 0</code>). Three solid materials (the compression topping, an L-shaped concrete rib made of web plus foot at each edge of the cell, and the filler block) plus <span class="math inline">\(n\)</span> equal cavities, each one with its own lumped air node (<a href="#eq-cavity-air" class="quarto-xref">Equation&nbsp;3</a>) and its own <span class="math inline">\(h_c\)</span>.</p>
 <div id="fig-slab" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-slab-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="img/slab.png" class="img-fluid figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-slab-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;2: Joist-and-block roof cross-section (to scale, 3 cavities).
+Figure&nbsp;3: Joist-and-block roof cross-section (to scale, 3 cavities).
 </figcaption>
 </figure>
 </div>
 <ul>
 <li>cell width <span class="math inline">\(W = 2(\texttt{web} + \texttt{foot}) + (n+1)\cdot\texttt{shoulder} + n\cdot\texttt{cavity\_width}\)</span></li>
-<li>thickness <span class="math inline">\(e = \texttt{topping} + \texttt{cover\_top} + \texttt{cavity} + \texttt{cover\_bottom}\)</span></li>
+<li>thickness <span class="math inline">\(L = \texttt{topping} + \texttt{cover\_top} + \texttt{cavity} + \texttt{cover\_bottom}\)</span></li>
 </ul>
 <p>The rib’s web rises through the whole section except the top <code>topping_cap</code> of the topping, reproducing the real joist profile.</p>
 </section>
 </section>
 <section id="the-average-day" class="level2">
 <h2 class="anchored" data-anchor-id="the-average-day">The average day</h2>
-<p>The climate forcing — the synthetic average day and <code>Tsa()</code> — is exactly the 1D one: see <a href="./model-1d.html#the-average-day">The average day</a>.</p>
+<p>The climate forcing, that is, the synthetic average day and <code>Tsa()</code>, is exactly the 1D one: see <a href="./model-1d.html#the-average-day">The average day</a>.</p>
 </section>
 <section id="constraints" class="level2">
 <h2 class="anchored" data-anchor-id="constraints">Constraints</h2>
 <ul>
-<li>The <code>layers</code> list of a <code>System2D</code> contains <strong>exactly one</strong> 2D element (<code>HollowBlock</code> or <code>Slab</code>); any other entries are ordinary homogeneous layers (finishes), handled as 1D bands of the cross-section. At most <strong>7 layers</strong> including the element.</li>
+<li>The <code>layers</code> list of a <code>System2D</code> contains exactly one 2D element (<code>HollowBlock</code> or <code>Slab</code>); any other entries are ordinary homogeneous layers (finishes), handled as 1D bands of the cross-section. At most 7 layers including the element.</li>
 <li>The element’s thickness is derived from its <code>geometry</code>, so it is not repeated as a layer thickness.</li>
 <li>Orientation is validated: <code>HollowBlock</code> requires <code>tilt = 90</code>, <code>Slab</code> requires <code>tilt = 0</code>.</li>
 </ul>
 </section>
 <section id="outputs-and-units" class="level2">
 <h2 class="anchored" data-anchor-id="outputs-and-units">Outputs and units</h2>
-<p>All energies are expressed <strong>per unit of indoor surface area</strong> (built from the width-averaged flux at <span class="math inline">\(y = e\)</span>), so 1D and 2D results are directly comparable.</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 25%">
@@ -456,30 +469,24 @@ Figure&nbsp;2: Joist-and-block roof cross-section (to scale, 3 cavities).
 <td>J/(m²·day)</td>
 </tr>
 <tr class="odd">
-<td><code>Qout</code></td>
-<td><code>solve()</code></td>
-<td>Gross energy leaving the indoor air (≈ <code>energy_transfer</code> in the periodic regime)</td>
-<td>J/(m²·day)</td>
-</tr>
-<tr class="even">
 <td><code>cooling_energy</code></td>
 <td><code>solveAC()</code></td>
 <td>Cooling demand to hold the setpoint</td>
 <td>J/(m²·day)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>heating_energy</code></td>
 <td><code>solveAC()</code></td>
 <td>Heating demand to hold the setpoint</td>
 <td>J/(m²·day)</td>
 </tr>
-<tr class="even">
-<td><code>solve_dataframe</code></td>
+<tr class="odd">
+<td><code>Tso</code>, <code>Tsi</code>, <code>Thueco</code></td>
 <td>both</td>
-<td><code>Ti</code>, <code>Tso</code>, <code>Tsi</code>, <code>Thueco</code> on the <code>Tsa()</code> time grid</td>
+<td>Surface and cavity-air temperature <code>Series</code> on the <code>Tsa()</code> time grid</td>
 <td>°C</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>Tfield</code></td>
 <td>both</td>
 <td>Temperature field <code>(nx, ny)</code> at the end of the last day</td>
@@ -487,6 +494,7 @@ Figure&nbsp;2: Joist-and-block roof cross-section (to scale, 3 cavities).
 </tr>
 </tbody>
 </table>
+<p>Energies are per unit of indoor surface area (built from the width-averaged flux at <span class="math inline">\(x = L\)</span>, so 1D and 2D results are directly comparable), accumulated over one day: divide by <span class="math inline">\(3600\)</span> for Wh/(m²·day) or by <span class="math inline">\(3.6\times10^6\)</span> for kWh/(m²·day).</p>
 <p>The convergence diagnostics (<code>days</code>, <code>day_error</code>, <code>converged</code>, <code>inner_iterations</code>, <code>energy_imbalance</code>) and the sampling conventions are described in the <a href="./api.html#system2d">API reference</a>.</p>
 </section>
 <section id="references" class="level2">
@@ -494,9 +502,6 @@ Figure&nbsp;2: Joist-and-block roof cross-section (to scale, 3 cavities).
 <div id="refs" class="references csl-bib-body hanging-indent" role="list">
 <div id="ref-barrios2016" class="csl-entry" role="listitem">
 Barrios, G., J. M. Casas, G. Huelsz, and J. Rojas. 2016. <span>“Ener-Habitat: An Online Numerical Tool to Evaluate the Thermal Performance of Homogeneous and Non-Homogeneous Envelope Walls/Roofs.”</span> <em>Solar Energy</em> 131: 296–304. <a href="https://doi.org/10.1016/j.solener.2015.12.017">https://doi.org/10.1016/j.solener.2015.12.017</a>.
-</div>
-<div id="ref-borbon2010" class="csl-entry" role="listitem">
-Borbón, A. C., R. E. Cabanillas, and J. B. Pérez. 2010. <span>“Determinaci<span>ó</span>n Experimental y Contraste Num<span>é</span>rico de La Resistencia t<span>é</span>rmica de Un Muro de Bloques de Concreto Hueco.”</span> <em>Informaci<span>ó</span>n Tecnol<span>ó</span>gica</em> 21 (6): 163–76. <a href="https://www.scielo.cl/pdf/infotec/v21n6/art17.pdf">https://www.scielo.cl/pdf/infotec/v21n6/art17.pdf</a>.
 </div>
 <div id="ref-gebhart1961" class="csl-entry" role="listitem">
 Gebhart, B. 1961. <span>“Surface Temperature Calculations in Radiant Surroundings of Arbitrary Complexity—for Gray, Diffuse Radiation.”</span> <em>International Journal of Heat and Mass Transfer</em> 3 (4): 341–46. <a href="https://doi.org/10.1016/0017-9310(61)90048-5">https://doi.org/10.1016/0017-9310(61)90048-5</a>.

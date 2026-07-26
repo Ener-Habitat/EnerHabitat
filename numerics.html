@@ -150,15 +150,15 @@ window.Quarto = {
     <ul class="dropdown-menu" aria-labelledby="nav-menu-usage">    
         <li>
     <a class="dropdown-item" href="./usage.html">
- <span class="dropdown-text">Workflow and setup</span></a>
+ <span class="dropdown-text">Setup</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-1d.html">
- <span class="dropdown-text">Usage — 1D</span></a>
+ <span class="dropdown-text">1D</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-2d.html">
- <span class="dropdown-text">Usage — 2D</span></a>
+ <span class="dropdown-text">2D</span></a>
   </li>  
     </ul>
   </li>
@@ -249,23 +249,23 @@ window.Quarto = {
 </header>
 
 
-<p>Both the <a href="./model-1d.html">1D</a> and the <a href="./model-2d.html">2D</a> models are solved with the same strategy: an <strong>implicit control-volume discretisation</strong> of the heat equation <span class="citation" data-cites="patankar1980">(<a href="#ref-patankar1980" role="doc-biblioref">Patankar 1980</a>)</span>, advanced in time until the daily solution becomes periodic. This page documents the discretisation, the solution algorithm, the convergence criteria, the differences with the reference paper <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>, and the validation record.</p>
+<p>Both the <a href="./model-1d.html">1D</a> and the <a href="./model-2d.html">2D</a> models are solved with the same strategy: an implicit control-volume discretisation of the heat equation <span class="citation" data-cites="patankar1980">(<a href="#ref-patankar1980" role="doc-biblioref">Patankar 1980</a>)</span>, advanced in time until the daily solution becomes periodic. This page documents the discretisation, the solution algorithm, the convergence criteria, the differences with the reference paper <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>, and the validation record.</p>
 <section id="discretisation" class="level2">
 <h2 class="anchored" data-anchor-id="discretisation">Discretisation</h2>
-<p>The domain is divided into control volumes — <span class="math inline">\(N_x = 200\)</span> through the thickness in 1D (<code>config.Nx</code>); an <span class="math inline">\(n_x \times n_y = 80 \times 160\)</span> grid (width × thickness) in 2D (<code>config2d</code>). Integrating the heat equation over each volume with a <strong>fully implicit</strong> (backward-Euler) time scheme gives, per node, an algebraic equation of the form</p>
+<p>The domain is divided into control volumes: <span class="math inline">\(N_x = 200\)</span> through the thickness in 1D (<code>config.Nx</code>), and an <span class="math inline">\(n_x \times n_y = 80 \times 160\)</span> grid (width × thickness) in 2D (<code>config2d</code>). Integrating the heat equation over each volume with a fully implicit (backward-Euler) time scheme gives, per node, an algebraic equation of the form</p>
 <p><span id="eq-discrete"><span class="math display">\[
 a_P\, T_P \;=\; a_E\, T_E + a_W\, T_W + a_N\, T_N + a_S\, T_S + b,
 \qquad
 a_P = \frac{\rho c\, \Delta x \Delta y}{\Delta t} + \sum a_{nb} \;(+\,h\,\Delta s),
 \tag{1}\]</span></span></p>
 <p>where the neighbour coefficients <span class="math inline">\(a_{nb}\)</span> are the face conductances (only <span class="math inline">\(E\)</span>/<span class="math inline">\(W\)</span> exist in 1D), <span class="math inline">\(b\)</span> carries the previous-time-step term and the boundary sources, and the film coefficients <span class="math inline">\(h_o\)</span>, <span class="math inline">\(h_i\)</span> enter <span class="math inline">\(a_P\)</span> and <span class="math inline">\(b\)</span> at the boundary nodes exactly as the boundary conditions prescribe.</p>
-<p><strong>Layer-to-mesh mapping (1D).</strong> The physical layers are mapped onto the uniform mesh by cumulative coordinates: each cell takes for reference the material containing its centre, and its volumetric heat capacity is the thickness-weighted average of <span class="math inline">\(\rho c\)</span> over the cell — so the total thermal mass <span class="math inline">\(\sum_j \rho c_j L_j\)</span> is conserved exactly at any <span class="math inline">\(N_x\)</span>.</p>
-<p>At interior faces, the conductance (per unit area) is built from the <strong>series resistance</strong> between the adjacent cell centres <span class="citation" data-cites="patankar1980">(<a href="#ref-patankar1980" role="doc-biblioref">Patankar 1980</a>)</span>:</p>
+<p>Layer-to-mesh mapping (1D): the physical layers are mapped onto the uniform mesh by cumulative coordinates. Each cell takes for reference the material containing its centre, and its volumetric heat capacity is the thickness-weighted average of <span class="math inline">\(\rho c\)</span> over the cell, so the total thermal mass <span class="math inline">\(\sum_j \rho c_j L_j\)</span> is conserved exactly at any <span class="math inline">\(N_x\)</span>.</p>
+<p>At interior faces, the conductance (per unit area) is built from the series resistance between the adjacent cell centres <span class="citation" data-cites="patankar1980">(<a href="#ref-patankar1980" role="doc-biblioref">Patankar 1980</a>)</span>:</p>
 <p><span id="eq-face"><span class="math display">\[
 G_f \;=\; \left[\, \int_{x_P}^{x_E} \frac{dx'}{k(x')} \,\right]^{-1}
 \;=\; \left(\, \sum_m \frac{\delta_m}{k_m} \,\right)^{-1},
 \tag{2}\]</span></span></p>
-<p>where the sum runs over the material segments crossed by the span. Material interfaces may therefore fall <strong>anywhere inside a cell</strong>, and layers thinner than <span class="math inline">\(\Delta x\)</span> — metal sheets, membranes — contribute their exact resistance and mass at any position and any <span class="math inline">\(N_x\)</span> (a 0.5 mm metal sheet adds its true, negligible <span class="math inline">\(L/k\)</span> instead of being deleted or smeared). When the interface lies exactly on the face with equal half-widths <span class="math inline">\(\delta_L = \delta_R = \Delta x / 2\)</span> and perfect thermal contact, <a href="#eq-face" class="quarto-xref">Equation&nbsp;2</a> reduces to the familiar <strong>harmonic mean</strong>:</p>
+<p>where the sum runs over the material segments crossed by the span. Material interfaces may therefore fall anywhere inside a cell, and layers thinner than <span class="math inline">\(\Delta x\)</span> (metal sheets, membranes) contribute their exact resistance and mass at any position and any <span class="math inline">\(N_x\)</span>: a 0.5 mm metal sheet adds its true, negligible <span class="math inline">\(L/k\)</span> instead of being deleted or smeared. When the interface lies exactly on the face with equal half-widths <span class="math inline">\(\delta_L = \delta_R = \Delta x / 2\)</span> and perfect thermal contact, <a href="#eq-face" class="quarto-xref">Equation&nbsp;2</a> reduces to the familiar harmonic mean:</p>
 <p><span id="eq-harmonic"><span class="math display">\[
 k_f \;=\; \frac{2\, k_L\, k_R}{k_L + k_R},
 \qquad G_f = \frac{k_f}{\Delta x}.
@@ -273,36 +273,36 @@ k_f \;=\; \frac{2\, k_L\, k_R}{k_L + k_R},
 </section>
 <section id="solution-algorithm" class="level2">
 <h2 class="anchored" data-anchor-id="solution-algorithm">Solution algorithm</h2>
-<p><strong>1D.</strong> The discrete system is tridiagonal, and each time step is solved <strong>exactly</strong> in one pass of the Tridiagonal Matrix Algorithm (TDMA / Thomas algorithm). No inner iteration is needed.</p>
-<p><strong>2D.</strong> Each time step is solved <strong>line by line</strong> <span class="citation" data-cites="patankar1980">(<a href="#ref-patankar1980" role="doc-biblioref">Patankar 1980</a>)</span>: for every row <span class="math inline">\(j\)</span> (a line across the width) a TDMA solves the <span class="math inline">\(x\)</span>-direction implicitly, while the <span class="math inline">\(y\)</span>-neighbour terms and the non-linear cavity physics — the convective coefficient <span class="math inline">\(h_c(\Delta T)\)</span> and the <span class="math inline">\(T^4\)</span> radiation exchange — are evaluated with the previous sweep’s field (Jacobi lagging) and re-assembled at the start of <strong>every sweep</strong>.</p>
-<p>Sweeps repeat until <strong>two non-cancellable criteria</strong> hold simultaneously (both in °C, <code>config2d.tol_inner</code>, <span class="math inline">\(10^{-8}\)</span> by default):</p>
+<p>In 1D the discrete system is tridiagonal, and each time step is solved exactly in one pass of the Tridiagonal Matrix Algorithm (TDMA / Thomas algorithm). No inner iteration is needed.</p>
+<p>In 2D each time step is solved line by line <span class="citation" data-cites="patankar1980">(<a href="#ref-patankar1980" role="doc-biblioref">Patankar 1980</a>)</span>: a TDMA solves each line across the width implicitly, while the through-thickness neighbour terms and the non-linear cavity physics (the convective coefficient <span class="math inline">\(h_c(\Delta T)\)</span> and the <span class="math inline">\(T^4\)</span> radiation exchange) are evaluated with the previous sweep’s field (Jacobi lagging) and re-assembled at the start of every sweep.</p>
+<p>Sweeps repeat until two non-cancellable criteria hold simultaneously (both in °C, <code>config2d.tol_inner</code>, <span class="math inline">\(10^{-8}\)</span> by default):</p>
 <p><span id="eq-inner"><span class="math display">\[
 \max_P \left| T_P^{(r+1)} - T_P^{(r)} \right| \;\le\; \varepsilon_{in}
 \qquad\text{and}\qquad
 \max_P \frac{\left| a_P T_P - \textstyle\sum a_{nb} T_{nb} - b \right|}{a_P}
 \;\le\; \varepsilon_{in},
 \tag{4}\]</span></span></p>
-<p>i.e.&nbsp;the largest node update of the last sweep <strong>and</strong> the largest scaled residual of the discrete equations (<a href="#eq-discrete" class="quarto-xref">Equation&nbsp;1</a>), the residual being evaluated with the accepted field’s own (re-assembled, non-linear) coefficients — the convergence monitor recommended by <span class="citation" data-cites="patankar1980">Patankar (<a href="#ref-patankar1980" role="doc-biblioref">1980</a>)</span>. A per-step cap <code>config2d.max_inner</code> (<span class="math inline">\(10^4\)</span> sweeps) guards against stalls; if it is hit, the solve completes but is flagged <code>converged = False</code> (see below). The default <span class="math inline">\(\varepsilon_{in} = 10^{-8}\)</span> °C keeps the worst-case accumulated inner error over one day (8640 steps × <span class="math inline">\(10^{-8}\)</span> ≈ <span class="math inline">\(10^{-4}\)</span> °C) below the day-to-day tolerance <code>tol_day</code>.</p>
+<p>i.e.&nbsp;the largest node update of the last sweep and the largest scaled residual of the discrete equations (<a href="#eq-discrete" class="quarto-xref">Equation&nbsp;1</a>), the residual being evaluated with the accepted field’s own (re-assembled, non-linear) coefficients. This is the convergence monitor recommended by <span class="citation" data-cites="patankar1980">Patankar (<a href="#ref-patankar1980" role="doc-biblioref">1980</a>)</span>. A per-step cap <code>config2d.max_inner</code> (<span class="math inline">\(10^4\)</span> sweeps) guards against stalls; if it is hit, the solve completes but is flagged <code>converged = False</code> (see below). The default <span class="math inline">\(\varepsilon_{in} = 10^{-8}\)</span> °C keeps the worst-case accumulated inner error over one day (8640 steps × <span class="math inline">\(10^{-8}\)</span> ≈ <span class="math inline">\(10^{-4}\)</span> °C) below the day-to-day tolerance <code>tol_day</code>.</p>
 </section>
 <section id="indoor-air-coupling-free-running-mode" class="level2">
 <h2 class="anchored" data-anchor-id="indoor-air-coupling-free-running-mode">Indoor-air coupling (free-running mode)</h2>
-<p>The conduction solver is implicit and therefore <strong>unconditionally stable</strong> — no time-step restriction comes from the wall itself. The coupling with the indoor air is, however, <strong>segregated</strong>: each step solves the wall using the indoor temperature of the previous step, and then advances the air node explicitly (forward Euler over <a href="./model-1d.html#eq-air">the air balance</a>):</p>
+<p>The conduction solver is implicit and therefore unconditionally stable; no time-step restriction comes from the wall itself. The coupling with the indoor air is, however, segregated: each step solves the wall using the indoor temperature of the previous step, and then advances the air node explicitly (forward Euler over <a href="./model-1d.html#eq-air">the air balance</a>):</p>
 <p><span id="eq-air-coupling"><span class="math display">\[
 T_i^{new} \;=\; T_i \;+\; \mathrm{Fo}_a \left( \overline{T}_{surf} - T_i \right),
 \qquad
 \mathrm{Fo}_a = \frac{h_i\, \Delta t}{\rho_a\, c_a\, L_a}.
 \tag{5}\]</span></span></p>
-<p>That scalar explicit step is the one piece of the scheme with a stability constraint: <span class="math inline">\(\mathrm{Fo}_a &lt; 2\)</span> for stability and <span class="math inline">\(\mathrm{Fo}_a \lesssim 1\)</span> to avoid oscillations. With the fixed <span class="math inline">\(\Delta t = 10\)</span> s, <span class="math inline">\(\mathrm{Fo}_a \approx 0.03\)</span> — far inside the stable region. This is why <code>config.dt</code> is <strong>locked</strong>: a user-enlarged <span class="math inline">\(\Delta t\)</span> would push the air node toward non-physical behaviour while buying almost no speed (the inner iterations grow to compensate).</p>
-<p>In the 2D solver the cavity-air nodes <span class="math inline">\(T_h\)</span> are advanced the same way (forward Euler), and their stability parameter is <strong>not</strong> uniformly small:</p>
+<p>That scalar explicit step is the one piece of the scheme with a stability constraint: <span class="math inline">\(\mathrm{Fo}_a &lt; 2\)</span> for stability and <span class="math inline">\(\mathrm{Fo}_a \lesssim 1\)</span> to avoid oscillations. With the fixed <span class="math inline">\(\Delta t = 10\)</span> s, <span class="math inline">\(\mathrm{Fo}_a \approx 0.03\)</span>, far inside the stable region. This is why <code>config.dt</code> is locked: a user-enlarged <span class="math inline">\(\Delta t\)</span> would push the air node toward non-physical behaviour while buying almost no speed (the inner iterations grow to compensate).</p>
+<p>In the 2D solver the cavity-air nodes <span class="math inline">\(T_h\)</span> are advanced the same way (forward Euler), and their stability parameter is not uniformly small:</p>
 <p><span id="eq-cavity-coupling"><span class="math display">\[
 \lambda_h\,\Delta t \;=\; \frac{h_c\, P_{cav}\, \Delta t}{\rho_a\, c_a\, A_{cav}},
 \tag{6}\]</span></span></p>
-<p>with <span class="math inline">\(P_{cav}\)</span> and <span class="math inline">\(A_{cav}\)</span> the cavity perimeter and cross-section. It depends on the geometry and on the instantaneous <span class="math inline">\(h_c\)</span>: at <span class="math inline">\(\Delta t = 10\)</span> s the documented example geometries give <span class="math inline">\(\lambda_h\Delta t \approx 0.2\)</span> for the hollow-block wall cavity but up to <span class="math inline">\(\approx 1\)</span> for the roof-slab cavities — stable (<span class="math inline">\(&lt; 2\)</span>) though not always in the monotone regime (<span class="math inline">\(\le 1\)</span>).</p>
-<p>In the <strong>air-conditioned mode</strong> the indoor node is a fixed setpoint, so <a href="#eq-air-coupling" class="quarto-xref">Equation&nbsp;5</a> does not apply to it — but the scheme is <em>not</em> purely implicit there: with <code>Fill.AIR</code> the cavity-air nodes <span class="math inline">\(T_h\)</span> keep advancing explicitly (<a href="#eq-cavity-coupling" class="quarto-xref">Equation&nbsp;6</a> holds in AC mode too).</p>
+<p>with <span class="math inline">\(P_{cav}\)</span> and <span class="math inline">\(A_{cav}\)</span> the cavity perimeter and cross-section. It depends on the geometry and on the instantaneous <span class="math inline">\(h_c\)</span>: at <span class="math inline">\(\Delta t = 10\)</span> s the documented example geometries give <span class="math inline">\(\lambda_h\Delta t \approx 0.2\)</span> for the hollow-block wall cavity but up to <span class="math inline">\(\approx 1\)</span> for the roof-slab cavities, stable (<span class="math inline">\(&lt; 2\)</span>) though not always in the monotone regime (<span class="math inline">\(\le 1\)</span>).</p>
+<p>In the air-conditioned mode the indoor node is a fixed setpoint, so <a href="#eq-air-coupling" class="quarto-xref">Equation&nbsp;5</a> does not apply to it. The scheme is still <em>not</em> purely implicit there: with <code>Fill.AIR</code> the cavity-air nodes <span class="math inline">\(T_h\)</span> keep advancing explicitly (<a href="#eq-cavity-coupling" class="quarto-xref">Equation&nbsp;6</a> holds in AC mode too).</p>
 </section>
 <section id="convergence-to-the-periodic-regime" class="level2">
 <h2 class="anchored" data-anchor-id="convergence-to-the-periodic-regime">Convergence to the periodic regime</h2>
-<p>The boundary forcing (<span class="math inline">\(T_{sa}\)</span>) is periodic with a 24 h period, so the physical solution of interest is the periodic one. Starting from a uniform field at the neutrality temperature <span class="math inline">\(\overline{T_n}\)</span>, the day is simulated repeatedly — each day starting from the previous day’s final state — until <strong>every persisted state</strong> stops changing between consecutive days: the solid field, the indoor-air node <span class="math inline">\(T_i\)</span> (free-running mode) and each cavity-air node <span class="math inline">\(T_{h,c}\)</span>:</p>
+<p>The boundary forcing (<span class="math inline">\(T_{sa}\)</span>) is periodic with a 24 h period, so the physical solution of interest is the periodic one. Starting from a uniform field at the neutrality temperature <span class="math inline">\(\overline{T_n}\)</span>, the day is simulated repeatedly, each day starting from the previous day’s final state, until every persisted state stops changing between consecutive days: the solid field, the indoor-air node <span class="math inline">\(T_i\)</span> (free-running mode) and each cavity-air node <span class="math inline">\(T_{h,c}\)</span>:</p>
 <p><span id="eq-periodic"><span class="math display">\[
 \text{day\_error} \;=\; \max\!\left(
 \frac{1}{N}\sum_{\text{nodes}} \left| T^{day+1} - T^{day} \right|,\;
@@ -315,7 +315,7 @@ T_i^{new} \;=\; T_i \;+\; \mathrm{Fo}_a \left( \overline{T}_{surf} - T_i \right)
 </section>
 <section id="differences-with-the-2016-paper" class="level2">
 <h2 class="anchored" data-anchor-id="differences-with-the-2016-paper">Differences with the 2016 paper</h2>
-<p>The reference paper describes the online tool Ener-Habitat (v2.2). This package solves the same physical problem but is <strong>not</strong> a copy of that implementation; the table lists the deliberate differences (each entry verified against the code).</p>
+<p>The reference paper describes the online tool Ener-Habitat (v2.2). This package solves the same physical problem but is not a copy of that implementation; the table lists the deliberate differences (each entry verified against the code).</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
@@ -333,12 +333,12 @@ T_i^{new} \;=\; T_i \;+\; \mathrm{Fo}_a \left( \overline{T}_{surf} - T_i \right)
 <tr class="odd">
 <td>Climate source</td>
 <td>Built-in database, 80 Mexican cities (Meteonorm)</td>
-<td>User-provided <strong>EPW file</strong>, any location</td>
+<td>User-provided EPW file, any location</td>
 </tr>
 <tr class="even">
 <td>Average-day irradiance</td>
 <td>Positive half-sine, amplitude = monthly max; diffuse varies linearly with tilt</td>
-<td><strong>Monthly hour-by-hour means</strong> interpolated in time; tilted-surface <span class="math inline">\(I_s\)</span> by <strong>pvlib transposition</strong></td>
+<td>Monthly hour-by-hour means interpolated in time; tilted-surface <span class="math inline">\(I_s\)</span> by pvlib transposition</td>
 </tr>
 <tr class="odd">
 <td>Long-wave factor <span class="math inline">\(RF\)</span></td>
@@ -348,7 +348,7 @@ T_i^{new} \;=\; T_i \;+\; \mathrm{Fo}_a \left( \overline{T}_{surf} - T_i \right)
 <tr class="even">
 <td>Time step</td>
 <td>1 s</td>
-<td><strong>10 s, fixed</strong> (explicit air-node coupling, <a href="#eq-air-coupling" class="quarto-xref">Equation&nbsp;5</a>)</td>
+<td>10 s, fixed (explicit air-node coupling, <a href="#eq-air-coupling" class="quarto-xref">Equation&nbsp;5</a>)</td>
 </tr>
 <tr class="odd">
 <td>Mesh</td>
@@ -358,7 +358,7 @@ T_i^{new} \;=\; T_i \;+\; \mathrm{Fo}_a \left( \overline{T}_{surf} - T_i \right)
 <tr class="even">
 <td>Indoor film coefficient <span class="math inline">\(h_i\)</span></td>
 <td>8.1 (wall); 9.4 / 6.6 (roof, by flux direction)</td>
-<td><strong>8.1</strong> W/(m²·K) (NOM vertical-surface value, constant for all orientations), configurable</td>
+<td>Same convention: 8.1 (wall), 9.4 / 6.6 selected per time step on roofs (<code>hi_flow</code>); all values configurable, and <code>hi_flow = False</code> restores a fixed 8.1</td>
 </tr>
 <tr class="odd">
 <td>Periodic tolerance</td>
@@ -378,7 +378,7 @@ T_i^{new} \;=\; T_i \;+\; \mathrm{Fo}_a \left( \overline{T}_{surf} - T_i \right)
 <tr class="even">
 <td>Materials</td>
 <td>Built-in + user database</td>
-<td><strong>User <code>materials.ini</code> only</strong> (no bundled data)</td>
+<td>User <code>materials.ini</code> only (no bundled data)</td>
 </tr>
 </tbody>
 </table>
@@ -387,15 +387,15 @@ T_i^{new} \;=\; T_i \;+\; \mathrm{Fo}_a \left( \overline{T}_{surf} - T_i \right)
 <h2 class="anchored" data-anchor-id="validation">Validation</h2>
 <p>The validation record combines the published validation of the method with the package’s own regression tests:</p>
 <ul>
-<li><strong>1D vs EnergyPlus</strong> <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>: six constructive systems (massive, insulated and mixed), non air-conditioned and air-conditioned, hot month. Maximum differences: indoor temperature 0.5 °C, decrement factor 0.03, lag time 0.4 h, cooling energy 3%, heating energy 4%; both programs rank the systems identically.</li>
-<li><strong>2D, filled block</strong>: setting the same material everywhere, the 2D solution equals the 1D one <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>. The package reproduces this <strong>2D → 1D reduction</strong> as a test.</li>
-<li><strong>2D, hollow block vs experiment</strong>: steady-state heat flux through a concrete hollow-block wall compared with hot-box measurements <span class="citation" data-cites="borbon2010">(<a href="#ref-borbon2010" role="doc-biblioref">Borbón et al. 2010</a>)</span>; maximum difference 6.5% (experimental uncertainty ±3.8%) <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>.</li>
-<li><strong>Package vs legacy code</strong>: the 2D solver was ported from the C code of the online tool; <code>tests/golden/</code> holds <em>golden master</em> dumps of the C solver and the suite (<code>tests/test_eh2d_*.py</code>) checks the port reproduces them, plus geometry, coefficient, single-step, full-day and AC tests.</li>
+<li>1D vs EnergyPlus <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>: six constructive systems (massive, insulated and mixed), non air-conditioned and air-conditioned, hot month. Maximum differences: indoor temperature 0.5 °C, decrement factor 0.03, lag time 0.4 h, cooling energy 3%, heating energy 4%; both programs rank the systems identically.</li>
+<li>2D, filled block: setting the same material everywhere, the 2D solution equals the 1D one <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>. The package reproduces this 2D → 1D reduction as a test.</li>
+<li>2D, hollow block vs experiment: steady-state heat flux through a concrete hollow-block wall compared with hot-box measurements <span class="citation" data-cites="borbon2010">(<a href="#ref-borbon2010" role="doc-biblioref">Borbón et al. 2010</a>)</span>; maximum difference 6.5% (experimental uncertainty ±3.8%) <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>.</li>
+<li>Package vs legacy code: the 2D solver was ported from the C code of the online tool; <code>tests/golden/</code> holds <em>golden master</em> dumps of the C solver and the suite (<code>tests/test_eh2d_*.py</code>) checks the port reproduces them, plus geometry, coefficient, single-step, full-day and AC tests.</li>
 </ul>
 </section>
 <section id="performance" class="level2">
 <h2 class="anchored" data-anchor-id="performance">Performance</h2>
-<p>Each solve is single-threaded, JIT-compiled with <a href="https://numba.pydata.org/">numba</a> (the first call in a session pays the compilation cost). In-solver thread parallelism was measured (~1.06× on realistic meshes) and removed as not worthwhile. For parameter sweeps — many independent configurations — parallelise at the <strong>process level</strong> (<code>multiprocessing</code>, <code>joblib</code>): measured speed-ups are near-linear, ≈6× with 8 processes and ≈10× with 16 on an 18-core machine.</p>
+<p>Each solve is single-threaded, JIT-compiled with <a href="https://numba.pydata.org/">numba</a> (the first call in a session pays the compilation cost). In-solver thread parallelism was measured (~1.06× on realistic meshes) and removed as not worthwhile. For parameter sweeps over many independent configurations, parallelise at the process level (<code>multiprocessing</code>, <code>joblib</code>): measured speed-ups are near-linear, ≈6× with 8 processes and ≈10× with 16 on an 18-core machine.</p>
 </section>
 <section id="references" class="level2">
 <h2 class="anchored" data-anchor-id="references">References</h2>

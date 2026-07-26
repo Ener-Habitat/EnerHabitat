@@ -156,15 +156,15 @@ div.csl-indent {
     <ul class="dropdown-menu" aria-labelledby="nav-menu-usage">    
         <li>
     <a class="dropdown-item" href="./usage.html">
- <span class="dropdown-text">Workflow and setup</span></a>
+ <span class="dropdown-text">Setup</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-1d.html">
- <span class="dropdown-text">Usage — 1D</span></a>
+ <span class="dropdown-text">1D</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-2d.html">
- <span class="dropdown-text">Usage — 2D</span></a>
+ <span class="dropdown-text">2D</span></a>
   </li>  
     </ul>
   </li>
@@ -234,7 +234,7 @@ div.csl-indent {
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
 <h1 class="title">EnerHabitat</h1>
-<p class="subtitle lead">Thermal simulation of opaque constructive systems (walls and roofs) from EPW data — 1D and 2D</p>
+<p class="subtitle lead">Thermal simulation of opaque constructive systems (walls and roofs) from EPW data, in 1D and 2D</p>
 </div>
 
 
@@ -251,45 +251,58 @@ div.csl-indent {
 </header>
 
 
-<p><strong>EnerHabitat</strong> is a Python package for the thermal simulation of opaque constructive systems (walls and roofs) driven by EPW weather data. It solves the time-dependent heat conduction equation across multi-layer systems — in <strong>1D</strong> for homogeneous layers (<code>System</code>) and in <strong>2D</strong> for units that are heterogeneous across their width, such as concrete hollow-block walls and joist-and-block roofs (<code>System2D</code>) — and produces indoor temperatures and air-conditioning energy demands for an <em>average day</em> of a chosen month <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>.</p>
-<p>The model considers a single opaque envelope component: no windows, no ventilation, no infiltration, no internal gains, so any difference in the results is caused by the constructive system alone. Two solution modes are available: <strong>free-running</strong> (the indoor temperature evolves with the system’s dynamics) and <strong>air-conditioned</strong> (the indoor temperature is held at a comfort setpoint and the energy demands are reported). The full list of modelling assumptions and their consequences is in <a href="./assumptions.html">Assumptions and limits</a>.</p>
+<p>EnerHabitat is a Python package for the thermal simulation of opaque constructive systems (walls and roofs) driven by EPW weather data. It solves the time-dependent heat conduction equation across the system and produces indoor temperatures and air-conditioning energy demands for an <em>average day</em> of a chosen month <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>. Homogeneous layer stacks are solved in 1D (<code>System</code>); units that are heterogeneous across their width, such as concrete hollow-block walls and joist-and-block roofs, are solved in 2D over their cross-section (<code>System2D</code>).</p>
+<p>The model considers a single opaque envelope component: no windows, no ventilation, no infiltration, no internal gains. Two solution modes are available: free-running (the indoor temperature evolves with the system’s dynamics) and air-conditioned (the indoor temperature is held at a comfort setpoint and the energy demands are reported). The full list of modelling assumptions and their consequences is in <a href="./assumptions.html">Assumptions and limits</a>.</p>
 <section id="installation" class="level2">
 <h2 class="anchored" data-anchor-id="installation">Installation</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install enerhabitat        <span class="co"># or: uv add enerhabitat</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Requires <strong>Python ≥ 3.10</strong>. The section inspector plots are an optional extra: <code>pip install enerhabitat[viz]</code>.</p>
+<p>Requires Python ≥ 3.10. The section inspector plots are an optional extra: <code>pip install enerhabitat[viz]</code>.</p>
 </section>
 <section id="quickstart" class="level2">
 <h2 class="anchored" data-anchor-id="quickstart">Quickstart</h2>
-<p>EnerHabitat ships <strong>no</strong> materials: create a plain text file <code>materials.ini</code> in your working directory (or point <code>eh.config.file</code> to one) before running anything:</p>
+<p>EnerHabitat bundles no materials. Create a plain text file <code>materials.ini</code> in your working directory (or point <code>eh.config.file</code> to one) before running anything:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[Adobe]</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">k   </span><span class="ot">=</span><span class="st"> 0.58    # W/(m·K)</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dt">rho </span><span class="ot">=</span><span class="st"> 1500    # kg/m³</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="dt">c   </span><span class="ot">=</span><span class="st"> 1480    # J/(kg·K)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">k   </span><span class="ot">=</span><span class="st"> 0.58    # W/(m·K),  thermal conductivity</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dt">rho </span><span class="ot">=</span><span class="st"> 1500    # kg/m³,    density</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="dt">c   </span><span class="ot">=</span><span class="st"> 1480    # J/(kg·K), specific heat</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> enerhabitat <span class="im">as</span> eh</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"./materials.ini"</span>           <span class="co"># 1) materials (required)</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>loc <span class="op">=</span> eh.Location(<span class="st">"./epw/example.epw"</span>)       <span class="co"># 2) location from an EPW</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Create or locate the materials file (required; no defaults are bundled)</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"./materials.ini"</span></span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>wall <span class="op">=</span> eh.System(location<span class="op">=</span>loc)               <span class="co"># 3) constructive system</span></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>wall.azimuth <span class="op">=</span> <span class="dv">90</span>                            <span class="co">#    east-facing wall, 0 North, 90 East, 180 South, 270 West</span></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>wall.absortance <span class="op">=</span> <span class="fl">0.3</span>                        <span class="co">#    fraction of incident long-wavelength radiant energy absorbed</span></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>wall.layers <span class="op">=</span> [(<span class="st">"Adobe"</span>, <span class="fl">0.20</span>)]              <span class="co">#    (material, width in meters) outside → inside</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>loc.meanDay(month<span class="op">=</span><span class="dv">5</span>, year<span class="op">=</span><span class="dv">2025</span>)              <span class="co"># 4) average day of May, year to assign to datetime results</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>wall.Tsa()                                   <span class="co">#    sun–air temperature</span></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>ti <span class="op">=</span> wall.solve()                            <span class="co"># 5) solves for the free-running indoor temperature and returns pandas series Ti</span></span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(wall.energy_transfer)                  <span class="co">#    J/(m²·day)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Geolocate: read an EPW weather file</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>loc <span class="op">=</span> eh.Location(<span class="st">"./epw/example.epw"</span>)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Define the constructive system: orientation, solar absorptance, layers</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>wall <span class="op">=</span> eh.System(location<span class="op">=</span>loc)</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>wall.azimuth <span class="op">=</span> <span class="dv">90</span>                  <span class="co"># surface azimuth: 0 N, 90 E, 180 S, 270 W</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>wall.absortance <span class="op">=</span> <span class="fl">0.3</span>              <span class="co"># solar (short-wave) absorptance of the outdoor surface</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>wall.layers <span class="op">=</span> [(<span class="st">"Adobe"</span>, <span class="fl">0.20</span>)]    <span class="co"># (material, thickness in m), outside → inside</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>                                   <span class="co"># tilt: 90 = vertical wall (default), 0 = roof</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. Choose the period: the average day of May</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a><span class="co">#    (the year only stamps the datetime index; in a TMY it selects nothing)</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>loc.meanDay(month<span class="op">=</span><span class="dv">5</span>, year<span class="op">=</span><span class="dv">2025</span>)</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>wall.Tsa()                         <span class="co"># sun–air temperature, the outdoor forcing</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="co"># 5. Solve: free-running indoor temperature (pandas Series named "Ti")</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>ti <span class="op">=</span> wall.solve()</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(wall.energy_transfer)        <span class="co"># J/(m²·day)</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a><span class="co"># ...or air-conditioned: Ti held at the neutrality temperature Tn</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a><span class="co"># wall.solveAC()</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a><span class="co"># print(wall.cooling_energy, wall.heating_energy)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The same steps, with real results and plots, run in <a href="./usage-1d.html">Usage — 1D</a>; 2D units add their geometry in <a href="./usage-2d.html">Usage — 2D</a>.</p>
 </section>
 <section id="where-to-go-next" class="level2">
 <h2 class="anchored" data-anchor-id="where-to-go-next">Where to go next</h2>
 <ul>
-<li><a href="./usage.html">Usage — workflow and setup</a> — the workflow, the materials file and the global configuration.</li>
-<li><a href="./usage-1d.html">Usage — 1D</a> — the workflow applied to a homogeneous wall, free-running and air-conditioned, executed live.</li>
-<li><a href="./usage-2d.html">Usage — 2D</a> — hollow blocks and joist-and-block slabs: geometry schemes, section inspection, temperature fields and <code>config2d</code>.</li>
-<li>Theory — <a href="./model-1d.html">1D model</a> (physical problem, equations, boundary conditions), <a href="./model-2d.html">2D model</a> (cavities, hollow blocks, slabs), <a href="./numerics.html">numerical method</a> (discretisation, convergence, validation) and <a href="./assumptions.html">assumptions and limits</a>.</li>
-<li><a href="./api.html">API reference</a> — every class and parameter.</li>
-<li><a href="./about.html">About</a> — how to cite, changelog, authors.</li>
+<li><a href="./usage.html">Usage — setup</a>: the materials file and the configuration (<code>config</code>, <code>config2d</code>).</li>
+<li><a href="./usage-1d.html">Usage — 1D</a>: the Quickstart steps on a homogeneous wall, free-running and air-conditioned, executed live.</li>
+<li><a href="./usage-2d.html">Usage — 2D</a>: hollow blocks and joist-and-block slabs, with geometry schemes, section inspection and temperature fields.</li>
+<li>Theory: <a href="./model-1d.html">1D model</a> (physical problem, equations, boundary conditions), <a href="./model-2d.html">2D model</a> (cavities, hollow blocks, slabs), <a href="./numerics.html">numerical method</a> (discretisation, convergence, validation) and <a href="./assumptions.html">assumptions and limits</a>.</li>
+<li><a href="./api.html">API reference</a>: every class and parameter.</li>
+<li><a href="./about.html">About</a>: how to cite, changelog, authors.</li>
 </ul>
 
 

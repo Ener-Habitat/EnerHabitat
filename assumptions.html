@@ -131,15 +131,15 @@ window.Quarto = {
     <ul class="dropdown-menu" aria-labelledby="nav-menu-usage">    
         <li>
     <a class="dropdown-item" href="./usage.html">
- <span class="dropdown-text">Workflow and setup</span></a>
+ <span class="dropdown-text">Setup</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-1d.html">
- <span class="dropdown-text">Usage — 1D</span></a>
+ <span class="dropdown-text">1D</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-2d.html">
- <span class="dropdown-text">Usage — 2D</span></a>
+ <span class="dropdown-text">2D</span></a>
   </li>  
     </ul>
   </li>
@@ -226,7 +226,7 @@ window.Quarto = {
 </header>
 
 
-<p>Every EnerHabitat result is conditioned by the modelling assumptions below. This page is the <strong>canonical list</strong>: each entry states the assumption and the consequence it has for interpreting the outputs. The theory pages (<a href="./model-1d.html#domain-and-assumptions">1D</a>, <a href="./model-2d.html#domain-and-assumptions">2D</a>) restate the subset relevant to each solver.</p>
+<p>Every EnerHabitat result is conditioned by the modelling assumptions below. This page is the canonical list: each entry states the assumption and the consequence it has for interpreting the outputs. The theory pages (<a href="./model-1d.html#domain-and-assumptions">1D</a>, <a href="./model-2d.html#domain-and-assumptions">2D</a>) restate the subset relevant to each solver.</p>
 <section id="scope" class="level2">
 <h2 class="anchored" data-anchor-id="scope">Scope</h2>
 <table class="caption-top table">
@@ -242,15 +242,15 @@ window.Quarto = {
 </thead>
 <tbody>
 <tr class="odd">
-<td>A single <strong>opaque envelope component</strong> is simulated: no windows, no ventilation, no infiltration, no internal gains, no latent loads, no HVAC equipment model</td>
-<td>The energies quantify the component alone, per unit of its surface area, differences between results isolate the effect of the constructive system if the constructive system is the only change</td>
+<td>A single opaque envelope component is simulated: no windows, no ventilation, no infiltration, no internal gains, no latent loads, no HVAC equipment model</td>
+<td>The energies quantify the component alone, per unit of its surface area; differences between results isolate the effect of the constructive system if the constructive system is the only change</td>
 </tr>
 <tr class="even">
-<td>The forcing is a <strong>synthetic monthly average day</strong> from an EPW file, iterated to a periodic regime</td>
+<td>The forcing is a synthetic monthly average day from an EPW file, iterated to a periodic regime</td>
 <td>Results characterise a typical day of the month, not an annual simulation nor any real weather sequence; extreme days are outside the scope unless an EPW is constructed</td>
 </tr>
 <tr class="odd">
-<td>In the air-conditioned mode the setpoint is <strong>constant and ideal</strong> (the adaptive neutrality temperature <span class="math inline">\(T_n\)</span>, or <code>System2D.setpoint</code>)</td>
+<td>In the air-conditioned mode the setpoint is constant and ideal (the adaptive neutrality temperature <span class="math inline">\(T_n\)</span>, or <code>System2D.setpoint</code>)</td>
 <td>No thermostat dynamics, schedules, equipment capacity or efficiency; demands are ideal sensible loads</td>
 </tr>
 </tbody>
@@ -271,11 +271,11 @@ window.Quarto = {
 </thead>
 <tbody>
 <tr class="odd">
-<td>Materials are <strong>isotropic, homogeneous per region</strong>, with constant properties (<code>k</code>, <code>rho</code>, <code>c</code>)</td>
+<td>Materials are isotropic, homogeneous per region, with constant properties (<code>k</code>, <code>rho</code>, <code>c</code>)</td>
 <td>No temperature or moisture dependence; hygroscopic or phase-change materials are out of scope</td>
 </tr>
 <tr class="even">
-<td><strong>Perfect thermal contact</strong> between layers (zero contact resistance)</td>
+<td>Perfect thermal contact between layers (zero contact resistance)</td>
 <td>Real assemblies with air gaps or poor contact will transfer less heat than modelled</td>
 </tr>
 <tr class="odd">
@@ -283,11 +283,11 @@ window.Quarto = {
 <td>Purely dry, sensible heat conduction</td>
 </tr>
 <tr class="even">
-<td>1D: heat flows <strong>perpendicular</strong> to the component, per unit area</td>
+<td>1D: heat flows perpendicular to the component, per unit area</td>
 <td>Edge effects, thermal bridges and 2D/3D paths are not captured (use the 2D model for in-width heterogeneity)</td>
 </tr>
 <tr class="odd">
-<td>2D: the cross-section is <strong>invariant out of plane</strong> and the lateral cuts of the repeating cell lie on <strong>mirror-symmetry planes</strong> (adiabatic)</td>
+<td>2D: the cross-section is invariant out of plane and the lateral cuts of the repeating cell lie on mirror-symmetry planes (adiabatic)</td>
 <td>Valid for the periodic <code>HollowBlock</code>/<code>Slab</code> patterns</td>
 </tr>
 </tbody>
@@ -308,19 +308,19 @@ window.Quarto = {
 </thead>
 <tbody>
 <tr class="odd">
-<td><strong>Constant film coefficients</strong> : <span class="math inline">\(h_o = 13\)</span>, <span class="math inline">\(h_i = 8.1\)</span> W/(m²·K) by default (NOM-008/020-ENER values; <span class="math inline">\(h_i\)</span> is the vertical-surface value applied to all orientations)</td>
-<td>No wind or flow-direction dependence; configurable via <code>config.ho</code>/<code>config.hi</code></td>
+<td>Prescribed film coefficients (NOM-008/020-ENER): <span class="math inline">\(h_o = 13\)</span> fixed; walls <span class="math inline">\(h_i = 8.1\)</span> W/(m²·K); roofs (<code>tilt &lt; 60°</code>, EnergyPlus/ISO 6946 boundary) switch every time step between <span class="math inline">\(h_i = 9.4\)</span> (upward flow) and <span class="math inline">\(6.6\)</span> (downward flow) from the indoor-surface vs indoor-air temperatures</td>
+<td>No wind dependence; indoor coefficients are step-wise constants, not full convection correlations; configurable via <code>config.ho</code>/<code>hi</code>/<code>hi_up</code>/<code>hi_down</code>, and <code>config.hi_flow = False</code> restores a fixed <span class="math inline">\(h_i\)</span> everywhere</td>
 </tr>
 <tr class="even">
-<td>Solar and long-wave loads enter through the <strong>sun–air temperature</strong>, with the empirical factor <span class="math inline">\(RF\)</span> linear in tilt (3.9 → 0 °C between 0° and 90°)</td>
+<td>Solar and long-wave loads enter through the sun–air temperature, with the empirical factor <span class="math inline">\(RF\)</span> linear in tilt (3.9 → 0 °C between 0° and 90°)</td>
 <td>No shading, no urban context</td>
 </tr>
 <tr class="odd">
-<td>The plane-of-array irradiance uses the <strong>isotropic-sky</strong> transposition with ground <strong>albedo 0.25</strong> (pvlib defaults)</td>
+<td>The plane-of-array irradiance uses the isotropic-sky transposition with ground albedo 0.25 (pvlib defaults)</td>
 <td>Anisotropic sky models or site-specific albedo are not applied</td>
 </tr>
 <tr class="even">
-<td>The indoor air is a <strong>single well-mixed node</strong> of depth <span class="math inline">\(L_a=2.5\,m\)</span> per unit area (free-running mode)</td>
+<td>The indoor air is a single well-mixed node of depth <span class="math inline">\(L_a=2.5\,m\)</span> per unit area (free-running mode)</td>
 <td>No furniture or other-surface thermal mass; <span class="math inline">\(L_a\)</span> is a volume-to-area ratio, not a room depth</td>
 </tr>
 </tbody>
@@ -341,15 +341,15 @@ window.Quarto = {
 </thead>
 <tbody>
 <tr class="odd">
-<td>The air of each cavity is <strong>well mixed</strong> (one temperature per cavity) and radiatively non-participating, with constant properties</td>
+<td>The air of each cavity is well mixed (one temperature per cavity) and radiatively non-participating, with constant properties</td>
 <td>Stratification inside a cavity is not resolved</td>
 </tr>
 <tr class="even">
-<td>One <strong>uniform</strong> <span class="math inline">\(h_c\)</span> per cavity, from the correlations of Xamán (walls) or Hollands (roofs), evaluated with the mean face temperatures</td>
+<td>One uniform <span class="math inline">\(h_c\)</span> per cavity, from the correlations of Xamán (walls) or Hollands (roofs), evaluated with the mean face temperatures</td>
 <td>Local convection patterns are not resolved</td>
 </tr>
 <tr class="odd">
-<td>Cavity surfaces are <strong>grey and diffuse</strong>, each emitting at its mean temperature, with uniform emissivity</td>
+<td>Cavity surfaces are grey and diffuse, each emitting at its mean temperature, with uniform emissivity</td>
 <td>The radiosity (Gebhart) solution is exact <em>within</em> these assumptions; spectral or specular effects are not modelled</td>
 </tr>
 </tbody>

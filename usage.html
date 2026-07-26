@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Usage — workflow and setup – EnerHabitat</title>
+<title>Usage — setup – EnerHabitat</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -106,35 +106,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   }
 }</script>
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 </head>
 
@@ -166,15 +137,15 @@ window.Quarto = {
     <ul class="dropdown-menu" aria-labelledby="nav-menu-usage">    
         <li>
     <a class="dropdown-item" href="./usage.html">
- <span class="dropdown-text">Workflow and setup</span></a>
+ <span class="dropdown-text">Setup</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-1d.html">
- <span class="dropdown-text">Usage — 1D</span></a>
+ <span class="dropdown-text">1D</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./usage-2d.html">
- <span class="dropdown-text">Usage — 2D</span></a>
+ <span class="dropdown-text">2D</span></a>
   </li>  
     </ul>
   </li>
@@ -232,11 +203,13 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#workflow" id="toc-workflow" class="nav-link active" data-scroll-target="#workflow">Workflow</a></li>
-  <li><a href="#recommended-folder-structure" id="toc-recommended-folder-structure" class="nav-link" data-scroll-target="#recommended-folder-structure">Recommended folder structure</a></li>
+  <li><a href="#recommended-folder-structure" id="toc-recommended-folder-structure" class="nav-link active" data-scroll-target="#recommended-folder-structure">Recommended folder structure</a></li>
   <li><a href="#materials-file" id="toc-materials-file" class="nav-link" data-scroll-target="#materials-file">Materials file</a></li>
-  <li><a href="#configuration" id="toc-configuration" class="nav-link" data-scroll-target="#configuration">Configuration</a></li>
-  <li><a href="#apply-it" id="toc-apply-it" class="nav-link" data-scroll-target="#apply-it">Apply it</a></li>
+  <li><a href="#configuration" id="toc-configuration" class="nav-link" data-scroll-target="#configuration">Configuration</a>
+  <ul class="collapse">
+  <li><a href="#config-physics-and-materials-1d-and-2d" id="toc-config-physics-and-materials-1d-and-2d" class="nav-link" data-scroll-target="#config-physics-and-materials-1d-and-2d"><code>config</code>: physics and materials, 1D and 2D</a></li>
+  <li><a href="#config2d-2d-mesh-and-convergence" id="toc-config2d-2d-mesh-and-convergence" class="nav-link" data-scroll-target="#config2d-2d-mesh-and-convergence"><code>config2d</code>: 2D mesh and convergence</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -245,7 +218,7 @@ window.Quarto = {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Usage — workflow and setup</h1>
+<h1 class="title">Usage — setup</h1>
 </div>
 
 
@@ -262,32 +235,12 @@ window.Quarto = {
 </header>
 
 
-<p>This page covers everything that comes <strong>before</strong> simulating: the workflow, the project layout, the materials file and the global configuration. The workflow is then applied, with executable examples, in <a href="./usage-1d.html">Usage — 1D</a> (homogeneous layer stacks) and <a href="./usage-2d.html">Usage — 2D</a> (hollow blocks and joist-and-block slabs).</p>
-<section id="workflow" class="level2">
-<h2 class="anchored" data-anchor-id="workflow">Workflow</h2>
-<p>To simulate a wall (or roof) you need to:</p>
-<ol type="1">
-<li><strong>Geolocate it</strong> — pass an EPW file to <code>Location</code>.</li>
-<li><strong>Orient it</strong> — set <code>azimuth</code> (and <code>tilt</code> if needed: <code>90</code> = wall, <code>0</code> = roof; 1D accepts any tilt, with <span class="math inline">\(RF\)</span> varying linearly between both; 2D only 0/90).</li>
-<li><strong>Define its solar absorptance</strong> — set <code>absortance</code> (intuitively the surface color, but coatings of the same visible color can differ in absorptance).</li>
-<li><strong>Define its layers</strong> — set <code>layers</code> from outside to inside.</li>
-<li><strong>Choose the period</strong> — call <code>location.meanDay(month, year)</code>.</li>
-<li><strong>Compute <code>Tsa()</code></strong>, then choose one solver:
-<ul>
-<li><strong><code>solve()</code></strong> — free-running: the indoor temperature <code>Ti</code> evolves with the dynamics of the constructive system.</li>
-<li><strong><code>solveAC()</code></strong> — air-conditioned: <code>Ti</code> is held at the comfort setpoint and the cooling/heating energies are reported.</li>
-</ul></li>
-</ol>
-<p>Both solvers return a <code>pandas.Series</code> named <code>"Ti"</code>, indexed by time of day on the same time grid as <code>Tsa()</code> — so results concatenate directly (<code>pd.concat([data, wall.Tsa()], axis=1)</code> promotes the named Series to a column. When a <code>DataFrame</code> is required, convert with <code>wall.solve().to_frame("Ti")</code>.</p>
-<blockquote class="blockquote">
-<p><code>Tsa</code> depends on <code>absortance</code>, <code>tilt</code>, <code>azimuth</code>, the month (<code>meanDay</code>) and the <code>Location</code> — the layer stack does <strong>not</strong> affect it. The setters invalidate the cache and the next call to <code>Tsa()</code> or to a solver recomputes automatically; a prior manual <code>Tsa()</code> call is optional (useful to inspect the forcing before solving).</p>
-</blockquote>
-</section>
+<p>This page covers what you prepare before simulating: the project layout, the materials file and the global configuration. The steps of a simulation are the <a href="./index.html#quickstart">Quickstart</a>; they run with real results in <a href="./usage-1d.html">Usage — 1D</a> (homogeneous layer stacks) and <a href="./usage-2d.html">Usage — 2D</a> (hollow blocks and joist-and-block slabs).</p>
 <section id="recommended-folder-structure" class="level2">
 <h2 class="anchored" data-anchor-id="recommended-folder-structure">Recommended folder structure</h2>
-<p>A plain text file named <code>materials.ini</code> is <strong>required</strong> — EnerHabitat ships with no default materials.</p>
+<p>A plain text file named <code>materials.ini</code> is required, because EnerHabitat bundles no default materials.</p>
 <pre><code>project/
-├── main.py
+├── 001_evaluate_CS_adobe.ipynb
 ├── materials.ini      # Material properties (REQUIRED — user-provided)
 └── epw/
     ├── ...
@@ -295,8 +248,8 @@ window.Quarto = {
 </section>
 <section id="materials-file" class="level2">
 <h2 class="anchored" data-anchor-id="materials-file">Materials file</h2>
-<p>Material properties are declared in an <code>.ini</code> file: the material name is the section header and <code>k</code>, <code>rho</code>, <code>c</code> the keys (case-sensitive, no Greek letters). Inline comments (<code>#</code> or <code>;</code>) are allowed. By default the package looks for <code>materials.ini</code> in the working directory; otherwise set <code>eh.config.file</code>.</p>
-<p>The file below defines <strong>every material used in these docs</strong> (<a href="./usage-1d.html">Usage — 1D</a> and <a href="./usage-2d.html">Usage — 2D</a>), so you can run all the snippets as-is (values are typical/illustrative — replace with your own data):</p>
+<p>Material properties are declared in an <code>.ini</code> file. The material name is the section header, and each material takes three keys: <code>k</code>, the thermal conductivity in W/(m·K); <code>rho</code>, the density in kg/m³; and <code>c</code>, the specific heat in J/(kg·K). The keys are case-sensitive, with no Greek letters. Inline comments (<code>#</code> or <code>;</code>) are allowed. By default the package looks for <code>materials.ini</code> in the working directory; otherwise set <code>eh.config.file</code>.</p>
+<p>The file below defines every material used in these docs (<a href="./usage-1d.html">Usage — 1D</a> and <a href="./usage-2d.html">Usage — 2D</a>), so you can run all the snippets as-is. The values are typical, for illustration; replace them with your own data:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode ini code-with-copy"><code class="sourceCode ini"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[Adobe]</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">k   </span><span class="ot">=</span><span class="st"> 0.58    # Thermal conductivity, W/(m·K)</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dt">rho </span><span class="ot">=</span><span class="st"> 1500    # Density, kg/m³</span></span>
@@ -341,11 +294,14 @@ window.Quarto = {
 <span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a><span class="dt">k   </span><span class="ot">=</span><span class="st"> </span><span class="fl">0.17</span></span>
 <span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a><span class="dt">rho </span><span class="ot">=</span><span class="st"> </span><span class="dv">1100</span></span>
 <span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a><span class="dt">c   </span><span class="ot">=</span><span class="st"> </span><span class="dv">1000</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Assigning a missing path to <code>config.file</code> raises <code>FileNotFoundError</code> immediately, and the previously loaded materials (and path) are kept untouched. If the default <code>materials.ini</code> is not present in the working directory when EnerHabitat is imported, <code>materials</code> starts empty (<code>{}</code>) — solving then fails because the layer materials cannot be resolved — so set <code>config.file</code> before building systems.</p>
+<p>Assigning a missing path to <code>config.file</code> raises <code>FileNotFoundError</code> immediately, and the previously loaded materials (and path) are kept untouched. If the default <code>materials.ini</code> is not present in the working directory when EnerHabitat is imported, <code>materials</code> starts empty (<code>{}</code>); solving then fails because the layer materials cannot be resolved. Set <code>config.file</code> before building systems.</p>
 </section>
 <section id="configuration" class="level2">
 <h2 class="anchored" data-anchor-id="configuration">Configuration</h2>
-<p><code>config</code> is a global singleton shared by every <code>Location</code> and <code>System</code>. Changing it affects <strong>all</strong> subsequent computations.</p>
+<p>You can run everything with the defaults; come back to this section when you need to override them. Two objects hold the parameters: <code>config</code> applies to both 1D and 2D (physics and materials), and <code>config2d</code> only to 2D (mesh and convergence). Changing an attribute takes effect for the computations that follow in your notebook or program; nothing is stored on disk, so a new session always starts from the defaults listed here.</p>
+<section id="config-physics-and-materials-1d-and-2d" class="level3">
+<h3 class="anchored" data-anchor-id="config-physics-and-materials-1d-and-2d"><code>config</code>: physics and materials, 1D and 2D</h3>
+<p><code>config</code> is shared by every <code>Location</code>, <code>System</code> and <code>System2D</code> in the session.</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 25%">
@@ -383,32 +339,97 @@ window.Quarto = {
 <tr class="odd">
 <td><code>hi</code></td>
 <td><code>8.1</code> W/(m²·K)</td>
-<td>Indoor film coefficient</td>
+<td>Indoor film coefficient for walls (vertical surfaces)</td>
 </tr>
 <tr class="even">
+<td><code>hi_up</code></td>
+<td><code>9.4</code> W/(m²·K)</td>
+<td>Indoor coefficient for roofs, upward heat flow (<code>Tsi &lt; Ti</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>hi_down</code></td>
+<td><code>6.6</code> W/(m²·K)</td>
+<td>Indoor coefficient for roofs, downward heat flow (<code>Tsi &gt; Ti</code>, stable stratification)</td>
+</tr>
+<tr class="even">
+<td><code>hi_flow</code></td>
+<td><code>True</code></td>
+<td>Roofs select <code>hi_up</code>/<code>hi_down</code> at every time step from the heat-flow direction; <code>False</code> forces the fixed <code>hi</code> on every orientation</td>
+</tr>
+<tr class="odd">
 <td><code>dt</code></td>
 <td><code>10</code> s <em>(fixed)</em></td>
-<td>Time step — <strong>not configurable</strong> (assignments are ignored)</td>
+<td>Time step; not configurable (assignments are ignored)</td>
 </tr>
 </tbody>
 </table>
-<p>The <code>ho</code>/<code>hi</code> defaults are the values prescribed by the Mexican standards <strong>NOM-008-ENER</strong> and <strong>NOM-020-ENER</strong> (<code>hi = 8.1</code> is the vertical-surface value, applied to all orientations); they can be overridden at any time. <code>dt</code> is locked because of the explicit indoor-air coupling — see <a href="./numerics.html#indoor-air-coupling-free-running-mode">the numerical method</a>.</p>
+<p>The film coefficients are the NOM-008-ENER and NOM-020-ENER values. Walls use <code>hi = 8.1</code> W/(m²·K). Roofs use <code>9.4</code> when the heat flows upward and <code>6.6</code> when it flows downward (a hot ceiling over cooler air stratifies, and convection is suppressed). By default (<code>hi_flow = True</code>) a roof picks the coefficient at every time step, comparing the indoor-surface temperature (its mean, in 2D) with the indoor-air temperature. A surface counts as a roof when <code>tilt &lt; 60°</code>, the same limit used by EnergyPlus and ISO 6946 (in 2D only 0 and 90 are allowed anyway). To fix a value: <code>hi_flow = False</code> uses <code>hi</code> on every orientation, and <code>hi_up = hi_down = value</code> fixes roofs while walls keep <code>hi</code>. <code>dt</code> is locked because of the explicit indoor-air coupling; see <a href="./numerics.html#indoor-air-coupling-free-running-mode">the numerical method</a>.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"./materials.ini"</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>eh.config.La <span class="op">=</span> <span class="fl">2.0</span></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>eh.config.ho <span class="op">=</span> <span class="dv">12</span>          <span class="co"># override the NOM defaults if needed</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>eh.config.reset()          <span class="co"># restore the numeric defaults (La, Nx, ho, hi, dt, air);</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>                           <span class="co"># config.file / materials are user-provided and are kept</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>eh.config.hi_flow <span class="op">=</span> <span class="va">False</span>  <span class="co"># force the fixed hi on roofs too (e.g. to compare)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>eh.config.reset()          <span class="co"># restore the numeric defaults (La, Nx, ho, hi, hi_up,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>                           <span class="co"># hi_down, hi_flow, dt, air); config.file / materials</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>                           <span class="co"># are user-provided and are kept</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><code>config.materials</code> is a read-only dict keyed by material name (<code>eh.config.materials["Adobe"].k</code>, <code>.rho</code>, <code>.c</code>).</p>
-<p>The 2D-only parameters (mesh and convergence) live in <code>config2d</code> — see <a href="./usage-2d.html#config2d-2d-mesh-and-convergence">Usage — 2D</a>.</p>
 </section>
-<section id="apply-it" class="level2">
-<h2 class="anchored" data-anchor-id="apply-it">Apply it</h2>
-<ul>
-<li><a href="./usage-1d.html">Usage — 1D</a> — the workflow on a homogeneous wall, free-running and air-conditioned, executed live.</li>
-<li><a href="./usage-2d.html">Usage — 2D</a> — hollow blocks and joist-and-block slabs: geometry schemes, section inspection, temperature fields.</li>
-</ul>
+<section id="config2d-2d-mesh-and-convergence" class="level3">
+<h3 class="anchored" data-anchor-id="config2d-2d-mesh-and-convergence"><code>config2d</code>: 2D mesh and convergence</h3>
+<p>The physics (<code>La</code>, <code>ho</code>, <code>hi</code>, <code>dt</code>, air properties) comes from <code>config</code>; <code>config2d</code> holds the parameters that only exist in 2D:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 37%">
+<col style="width: 24%">
+<col style="width: 37%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Attribute</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>nx</code></td>
+<td><code>80</code></td>
+<td>mesh nodes across the cell width (adiabatic sides)</td>
+</tr>
+<tr class="even">
+<td><code>ny</code></td>
+<td><code>160</code></td>
+<td>mesh nodes through the thickness (outside → inside)</td>
+</tr>
+<tr class="odd">
+<td><code>tol_inner</code></td>
+<td><code>1e-8</code> °C</td>
+<td>inner-step tolerance (max node update and max equation residual)</td>
+</tr>
+<tr class="even">
+<td><code>tol_day</code></td>
+<td><code>5e-4</code> °C</td>
+<td>day-to-day convergence tolerance</td>
+</tr>
+<tr class="odd">
+<td><code>max_days</code></td>
+<td><code>60</code></td>
+<td>cap on the day-to-day iterations</td>
+</tr>
+<tr class="even">
+<td><code>max_inner</code></td>
+<td><code>10000</code></td>
+<td>cap on inner sweeps per step (hit → <code>converged = False</code>)</td>
+</tr>
+</tbody>
+</table>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> enerhabitat <span class="im">import</span> config2d</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>config2d.nx, config2d.ny <span class="op">=</span> <span class="dv">120</span>, <span class="dv">160</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<blockquote class="blockquote">
+<p>Each 2D solve is single-threaded. For volume (many configurations), parallelise at the process level: run independent <code>solve()</code> calls in separate processes (<code>multiprocessing</code>, <code>joblib</code>).</p>
+</blockquote>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
