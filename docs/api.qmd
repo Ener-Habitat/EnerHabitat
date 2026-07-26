@@ -85,27 +85,14 @@ Methods:
   the inside).
 - `info()`.
 
-> `Tsa` depends on `absortance`, `tilt`, `azimuth`, `meanDay` (month) and `Location`;
-> it is recomputed automatically when any of these change (results are cached
-> otherwise), and a prior manual `Tsa()` call is optional, for inspection. `layers`
-> does not affect `Tsa`, but mutating it in place (`.append(...)`) bypasses the cache
-> invalidation of the solvers: assign the list or use
-> `add_layer()`/`remove_layer()`.
+> The caches (in 1D and 2D alike) compare the current inputs on every call:
+> `Tsa()` recomputes when `absortance`, `tilt`, `azimuth`, the `meanDay`
+> selection, the `Location` or the configuration change, and the solvers
+> additionally watch `layers`, including in-place mutations (`.append(...)`).
+> `solve()` and `solveAC()` keep separate caches, so alternating modes reuses
+> each result. A prior manual `Tsa()` call is optional, for inspection.
 
 ## `System2D`
-
-::: {.callout-warning title="Internal review note — remove before release"}
-Pending API decisions (guiding principle: `System2D` mirrors the 1D `System`
-public API unless the difference is intrinsic to 2D). Resolved already: `Qout`
-removed; `solve_dataframe` hidden behind the read-only Series `Tso`/`Tsi`/
-`Thueco` (concat pattern, as in 1D); result attributes turned into read-only
-properties like the 1D's; `copy()` removed from the three classes (build a new
-`System`/`System2D` with the same `Location` instead); `System.flag()` removed
-(internal cache bookkeeping without users; `Location.flag()` remains as the
-mean-day metadata accessor); `setpoint` added to the 1D `System`. Still to
-review: the solve/solveAC cache behaviour (separate caches here vs one cache
-tagged by the last mode in 1D).
-:::
 
 Mirror of `System` for cross-sections that are heterogeneous across their width. Same
 `Location`, `tilt`, `azimuth`, `absortance`, `setpoint`, `Tsa()`, `solve()`,
@@ -119,9 +106,6 @@ Mirror of `System` for cross-sections that are heterogeneous across their width.
   Exceeding it raises `ValueError: at most 7 layers (including the 2D element).`
   The 1D `System` has no layer limit.
 - Orientation is validated: `HollowBlock` requires `tilt = 90`, `Slab` `tilt = 0`.
-- `solve()` and `solveAC()` results are cached separately, so alternating modes
-  is free; the 1D `System` keeps one cache tagged by the last mode and recomputes
-  when alternating.
 - Additional outputs beyond the 1D set: `Tfield`, the `Thueco` Series and the
   inspectors `preview()` / `section_report()`.
 - Extra attributes:

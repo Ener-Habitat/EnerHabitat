@@ -321,24 +321,24 @@ class System():
         self.location = location
         self.layers= layers
         
-        self.__flag = {"recalculate": True,
-                       "tsa_date": None,
-                       "solve_date": None,
-                       "config": config.to_dict()
-                       }
-        # self.__update_flag_config()
+        # Caches governed by signatures (same pattern as System2D): the current
+        # inputs are hashed into a tuple and compared on every call, so ANY
+        # change (including mutating `layers` in place) triggers recomputation,
+        # and solve()/solveAC() keep separate caches per mode.
         self.__tsa_dataframe = None
-        self.__solve_dataframe = None
+        self.__tsa_sig = None
+        self.__free_df = None
+        self.__free_sig = None
+        self.__free_state = None
+        self.__ac_df = None
+        self.__ac_sig = None
+        self.__ac_state = None
         self.__Tso = None
         self.__Tsi = None
         # AC setpoint: if None, solveAC() holds Ti at Tn.mean() (like the 2D)
         self.setpoint = None
-        self.__last_setpoint = None
-        
-        self.__tsa_solver_version = -1
-        self.__solve_solver_version = -1
+
         self.__last_solve = None
-        
         self.__energy_transfer = None
         self.__cooling_energy = None
         self.__heating_energy = None
@@ -346,7 +346,6 @@ class System():
         self.__day_error = None
         self.__converged = None
         self.__energy_imbalance = None
-        self.__invalidate_cache()
         
     def Tsa(self,
             # solar_absortance:float=None,
@@ -375,25 +374,36 @@ class System():
             self.azimuth = surface_azimuth
         """
         
-        mean_date = self.location.flag()["date"]  # ensure the mean-day DataFrame is up to date
-        
-        if  self.__flag["tsa_date"] != mean_date:
-            self.__flag["tsa_date"] = mean_date
-            self.__invalidate_cache()
-        
-        self.__update_flag_config()
-        
-        recalculate = (self.__tsa_dataframe is None or
-                       self.__updated or 
-                       self.__tsa_solver_version != config.version
-                       )
-        
-        if recalculate:
-            self.__tsa_dataframe = self.__calc_tsa()  # the method that computes Tsa
-            self.__updated = False
-        
-        self.__flag['recalculate'] = recalculate
+        if self.location.flag()['date'] is None:
+            self.location.meanDay()      # never selected: default current month
+        sig = self._tsa_signature()
+        if self.__tsa_dataframe is None or self.__tsa_sig != sig:
+            self.__tsa_dataframe = self.__calc_tsa()
+            self.__tsa_sig = sig
         return self.__tsa_dataframe
+
+    def _tsa_signature(self):
+        """Inputs that determine ``Tsa()``: location (identity and selected
+        mean day), orientation, absorptance and the global config."""
+        return (id(self.location), self.location.flag().get("date"),
+                self.tilt, self.azimuth, self.absortance, config.version)
+
+    def _solve_signature(self):
+        """Inputs that determine a solve: the Tsa inputs plus the layers
+        (read at call time, so in-place mutations are detected)."""
+        return self._tsa_signature() + (tuple(tuple(l) for l in self.layers),)
+
+    def __results_snapshot(self):
+        return (self.__Tso, self.__Tsi, self.__energy_transfer,
+                self.__cooling_energy, self.__heating_energy, self.__days,
+                self.__day_error, self.__converged, self.__energy_imbalance,
+                self.__last_solve)
+
+    def __results_restore(self, state):
+        (self.__Tso, self.__Tsi, self.__energy_transfer,
+         self.__cooling_energy, self.__heating_energy, self.__days,
+         self.__day_error, self.__converged, self.__energy_imbalance,
+         self.__last_solve) = state
     
     def solve(self) -> pd.Series:
         """
@@ -406,29 +416,18 @@ class System():
             ``energy_transfer``, ``days``, ``day_error``, ``converged`` and
             ``energy_imbalance`` on the instance.
         """
-        constructive_system = self.layers
-        if len(constructive_system) == 0:
+        if len(self.layers) == 0:
             raise ValueError("Constructive system layers are not defined.")
-        
-        if self.__flag["tsa_date"] != self.__flag['solve_date']:
-            self.__flag["solve_date"] = self.__flag['tsa_date']
-            self.__invalidate_cache()
-        
-        self.__update_flag_config()
-        
-        recalculate = (self.__updated or 
-                        self.__solve_dataframe is None or 
-                        self.__solve_solver_version != config.version or
-                        self.__last_solve != 'temp'
-                        )
-        
-        self.__flag['recalculate'] = recalculate
-        
-        if recalculate:    
-            self.__solve_dataframe = self.__calc_solve(AC=False)
-            self.__updated = False
-            
-        return self.__solve_dataframe
+
+        sig = self._solve_signature()
+        if self.__free_df is not None and self.__free_sig == sig:
+            self.__results_restore(self.__free_state)
+            return self.__free_df
+
+        self.__free_df = self.__calc_solve(AC=False)
+        self.__free_sig = sig
+        self.__free_state = self.__results_snapshot()
+        return self.__free_df
     
     def solveAC(self) -> pd.Series:
         """
@@ -443,31 +442,18 @@ class System():
             ``cooling_energy`` and ``heating_energy`` (J/(m²·day)), along with
             ``days``, ``day_error`` and ``converged``.
         """
-        constructive_system = self.layers
-        if len(constructive_system) == 0:
+        if len(self.layers) == 0:
             raise ValueError("Constructive system layers are not defined.")
-        
-        if self.__flag["tsa_date"] != self.__flag['solve_date']:
-            self.__flag["solve_date"] = self.__flag['tsa_date']
-            self.__invalidate_cache()
-        
-        self.__update_flag_config()
-        
-        recalculate = (self.__updated or
-                        self.__solve_dataframe is None or
-                        self.__solve_solver_version != config.version or
-                        self.__last_solve != 'ac' or
-                        self.__last_setpoint != self.setpoint
-                       )
 
-        self.__flag['recalculate'] = recalculate
+        sig = self._solve_signature() + (self.setpoint,)
+        if self.__ac_df is not None and self.__ac_sig == sig:
+            self.__results_restore(self.__ac_state)
+            return self.__ac_df
 
-        if recalculate:
-            self.__solve_dataframe = self.__calc_solve(AC=True)
-            self.__updated = False
-            self.__last_setpoint = self.setpoint
-
-        return self.__solve_dataframe
+        self.__ac_df = self.__calc_solve(AC=True)
+        self.__ac_sig = sig
+        self.__ac_state = self.__results_snapshot()
+        return self.__ac_df
 
     def info(self):
         """
@@ -498,7 +484,6 @@ class System():
             width (float): Width of the material in meters.
         """
         self.__layers.append((material, width))
-        self.__invalidate_cache()
         return self.layers
     
     def remove_layer(self, index:int):
@@ -511,24 +496,17 @@ class System():
         if index < 0 or index >= len(self.__layers):
             raise IndexError("Layer index out of range.")
         del self.__layers[index]
-        self.__invalidate_cache()
         return self.layers
     
-    def __update_flag_config(self):
-        """
-        Checks for changes and updates the flag["config"] in the System instance.
-        """
-        if self.__flag["config"] != config.to_dict():
-            self.__flag["config"] = config.to_dict()
-            self.__invalidate_cache()
-
     def __calc_tsa(self) -> pd.DataFrame:
-        
-        if self.__flag['tsa_date'] is not None:
-            tsa_date = self.__flag['tsa_date'].split('-')
-            tsa_dataframe = self.location.meanDay(day=tsa_date[0], month=tsa_date[1], year=tsa_date[2]).copy()
-        else:
-            tsa_dataframe = self.location.meanDay().copy()
+
+        # Fetch the location's CURRENT mean-day selection (re-passing its own
+        # flag values does not change the selection, so the cached frame is
+        # reused); the System follows the Location, as the 2D does. Tsa()
+        # guarantees a selection exists before calling here.
+        f = self.location.flag()
+        tsa_dataframe = self.location.meanDay(day=f['day'], month=f['month'],
+                                              year=f['year']).copy()
             
         absortance = self.absortance
         tilt = self.tilt
@@ -563,8 +541,6 @@ class System():
         # the solver time step dt, so that Ti, Tsa, Is and Ig live at the same
         # instants and a concat aligns without NaN.
         tsa_dataframe = tsa_dataframe.iloc[::config.dt]
-
-        self.__tsa_solver_version = config.version
 
         return tsa_dataframe
 
@@ -642,8 +618,6 @@ class System():
         tol_day = 5e-4          # °C, same as config2d.tol_day
         days = 0
         day_error = 1.0e9
-
-        self.__solve_solver_version = config.version
 
         if AC:  # AC = True
             # Periodic convergence over ALL persisted states: the solid field
@@ -750,9 +724,8 @@ class System():
                 f"not be periodic. See enerhabitat.ehframe.MAX_DAYS.",
                 RuntimeWarning)
 
-    def __invalidate_cache(self):
-        self.__updated = True
-        
+    # Los setters no invalidan nada explícitamente: las firmas de caché leen
+    # los valores actuales en cada llamada (ver _tsa_signature/_solve_signature).
     @property
     def layers(self):
         return self.__layers
@@ -763,8 +736,7 @@ class System():
         Example: [('Brick',0.1), ('Insulation',0.05), ('Adobe',0.02)]
         """
         self.__layers = layers
-        self.__invalidate_cache()
-    
+
     @property
     def location(self):
         return self.__instance_location
@@ -774,7 +746,6 @@ class System():
         Location object containing climate data.
         """
         self.__instance_location = loc
-        self.__invalidate_cache()
 
     @property
     def tilt(self):
@@ -784,10 +755,8 @@ class System():
         """
         Tilt angle of the surface in degrees.
         """
-        if angle != getattr(self, "__tilt", None):
-            self.__tilt = angle
-            self.__invalidate_cache()
-        
+        self.__tilt = angle
+
     @property
     def azimuth(self):
         return self.__azimuth
@@ -796,9 +765,7 @@ class System():
         """
         Azimuth angle of the surface in degrees.
         """
-        if angle != getattr(self, "__azimuth", None):
-            self.__azimuth = angle
-            self.__invalidate_cache()
+        self.__azimuth = angle
 
     @property
     def absortance(self):
@@ -813,9 +780,7 @@ class System():
         """
         if not (0.0 <= value <= 1.0):
             raise ValueError(f"absortance must be in [0, 1], got {value!r}")
-        if value != getattr(self, "__absortance", None):
-            self.__absortance = value
-            self.__invalidate_cache()
+        self.__absortance = value
 
     # Solo lectura
     @property

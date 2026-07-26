@@ -722,22 +722,16 @@ class System2D:
         self._sys1 = None
         self._solve_df = None
         self._solve_sig = None
+        self._solve_state = None
         self._ac_df = None
         self._ac_sig = None
-        # NOTE(api-symmetry 2026-07): System2D should mirror the 1D System's
-        # public surface unless the difference is intrinsic to 2D (the 2D
-        # element in layers, the 7-layer cap, tilt validation, Tfield, Thueco
-        # and the section inspectors). Resolved in this branch: Qout removed
-        # (redundant with energy_transfer + energy_imbalance); solve_dataframe
-        # hidden as _last_df, with the read-only Series properties
-        # Tso/Tsi/Thueco as the access path (same concat pattern as the 1D);
-        # result attributes turned into read-only properties like the 1D's;
-        # copy() removed from Location/System/System2D (unused and with
-        # conflicting semantics; build a new System sharing the Location
-        # instead); System.flag() removed (internal cache bookkeeping without
-        # users; Location.flag() remains); setpoint added to the 1D System.
-        # Still to review: solve/solveAC cache behaviour (separate caches here
-        # vs one cache tagged by the last mode in 1D).
+        self._ac_state = None
+        # API principle: System2D mirrors the 1D System's public surface; the
+        # only differences are intrinsic to 2D (the 2D element in layers, the
+        # 7-layer cap, tilt validation, Tfield, Thueco, inner_iterations and
+        # the section inspectors). Both classes share the same access patterns
+        # (read-only result properties, Tso/Tsi Series, setpoint) and the same
+        # signature-based per-mode caching.
         self._energy_transfer = None
         self._cooling_energy = None
         self._heating_energy = None
@@ -872,6 +866,7 @@ class System2D:
         sig = self._signature()
         if self._solve_df is not None and self._solve_sig == sig:
             self._last_df = self._solve_df
+            self._restore_results(self._solve_state)
             return self._solve_df["Ti"]
 
         import numpy as _np
@@ -937,7 +932,22 @@ class System2D:
         qmax = max(Qin, Qout)
         self._energy_imbalance = abs(Qin - Qout) / qmax if qmax > 0.0 else 0.0
         self._store_convergence(day_err, inner_ok, inner_max, "solve")
+        self._solve_state = self._snapshot_results()
         return res["Ti"]
+
+    def _snapshot_results(self):
+        """Scalar results of the last compute, cached per mode so a cache hit
+        restores them (alternating solve()/solveAC() stays consistent)."""
+        return (self._energy_transfer, self._cooling_energy,
+                self._heating_energy, self._days, self._day_error,
+                self._converged, self._inner_iterations,
+                self._energy_imbalance, self._Tfield)
+
+    def _restore_results(self, state):
+        (self._energy_transfer, self._cooling_energy,
+         self._heating_energy, self._days, self._day_error,
+         self._converged, self._inner_iterations,
+         self._energy_imbalance, self._Tfield) = state
 
     def _store_convergence(self, day_err, inner_ok, inner_max, who):
         """Store the convergence diagnostics and warn if the solve did not
@@ -969,6 +979,7 @@ class System2D:
         sig = self._signature() + ("ac", self.setpoint)
         if self._ac_df is not None and self._ac_sig == sig:
             self._last_df = self._ac_df
+            self._restore_results(self._ac_state)
             return self._ac_df["Ti"]
 
         import numpy as _np
@@ -1031,6 +1042,7 @@ class System2D:
         self._days, self._Tfield = days, Tfield
         self._energy_imbalance = None  # closure check only defined free-running
         self._store_convergence(day_err, inner_ok, inner_max, "solveAC")
+        self._ac_state = self._snapshot_results()
         return res["Ti"]
 
     # --- utilities mirroring System ---
