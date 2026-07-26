@@ -275,20 +275,15 @@ The climate forcing, that is, the synthetic average day and `Tsa()`, is exactly 
 |---|---|---|---|
 | `Ti` (`pandas.Series`) | both | Indoor air temperature over the converged day | °C |
 | `energy_transfer` | `solve()` | Energy delivered to the indoor air | J/(m²·day) |
-| `Qout` | `solve()` | Gross energy leaving the indoor air (≈ `energy_transfer` in the periodic regime) | J/(m²·day) |
 | `cooling_energy` | `solveAC()` | Cooling demand to hold the setpoint | J/(m²·day) |
 | `heating_energy` | `solveAC()` | Heating demand to hold the setpoint | J/(m²·day) |
-| `solve_dataframe` | both | `Ti`, `Tso`, `Tsi`, `Thueco` on the `Tsa()` time grid | °C |
+| `Tso`, `Tsi`, `Thueco` | both | Surface and cavity-air temperature `Series` on the `Tsa()` time grid | °C |
 | `Tfield` | both | Temperature field `(nx, ny)` at the end of the last day | °C |
 
 Energies are per unit of indoor surface area (built from the width-averaged flux
 at $x = L$, so 1D and 2D results are directly comparable), accumulated over one
 day: divide by $3600$ for Wh/(m²·day) or by $3.6\times10^6$ for kWh/(m²·day).
 
-::: {.callout-warning title="Internal review note — remove before release"}
-`Qout` and `solve_dataframe` are under review (likely to be removed / hidden in
-favour of a 1D-symmetric API); see the note in [the API page](api.qmd#system2d).
-:::
 
 The convergence diagnostics (`days`, `day_error`, `converged`, `inner_iterations`,
 `energy_imbalance`) and the sampling conventions are described in the

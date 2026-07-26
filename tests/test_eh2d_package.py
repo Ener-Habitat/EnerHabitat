@@ -73,9 +73,8 @@ def test_periodicity():
 
 def test_energy_balance():
     _, _, _, sys2 = _run()
-    qin, qout = sys2.energy_transfer, sys2.Qout
-    rel = abs(qin - qout) / max(abs(qin), 1e-9)
-    assert rel <= 0.02, f"Qin≠Qout en régimen: Qin={qin:.1f} Qout={qout:.1f} ({rel:.1%})"
+    rel = sys2.energy_imbalance
+    assert rel <= 0.02, f"Qin≠Qout en régimen: desbalance = {rel:.1%}"
 
 
 def _demo():
@@ -94,10 +93,9 @@ def _demo():
     print(f"    max|Ti_2D − Ti_1D| = {d.max():.3e} °C   media = {d.mean():.3e} °C"
           f"   {'✓' if d.max()<=0.1 else '✗'}  (atol 0.1)")
 
-    qin, qout = sys2.energy_transfer, sys2.Qout
-    rel = abs(qin - qout) / max(abs(qin), 1e-9)
+    qin, rel = sys2.energy_transfer, sys2.energy_imbalance
     print(f"\n  Balance de energía en régimen:")
-    print(f"    Qin = {qin:.1f}   Qout = {qout:.1f} (J/m²·día)   "
+    print(f"    Qin = {qin:.1f} (J/m²·día)   "
           f"desbalance = {rel:.2%}   {'✓' if rel<=0.02 else '✗'}")
 
     # Curva Ti(t): 1D vs 2D superpuestas (deben verse iguales).

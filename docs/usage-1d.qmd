@@ -24,7 +24,7 @@ wall.location.meanDay(month=5, year=2025)
 wall.Tsa()
 
 data = wall.solve()                  # free-running Ti
-data = pd.concat([data, wall.Tsa()], axis=1)
+data = pd.concat([data, wall.Tso, wall.Tsi, wall.Tsa()], axis=1)
 
 print(f"energy_transfer = {wall.energy_transfer:,.0f} J/(m²·day)"
       f"  = {wall.energy_transfer/3600:,.1f} Wh/(m²·day)")
@@ -32,7 +32,9 @@ print(f"energy_transfer = {wall.energy_transfer:,.0f} J/(m²·day)"
 
 Both solvers return a `pandas.Series` named `"Ti"`, indexed by time of day on the
 same time grid as `Tsa()`; that is why the `pd.concat` above aligns without NaN and
-promotes the Series to a column. When a `DataFrame` is required, convert with
+promotes the Series to a column. The surface temperatures of the last solve are
+available the same way, as the read-only Series `wall.Tso` (outdoor surface) and
+`wall.Tsi` (indoor surface). When a `DataFrame` is required, convert with
 `wall.solve().to_frame("Ti")`.
 
 ```{python}

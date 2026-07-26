@@ -199,6 +199,7 @@ and `absortance`, and returns it on the same time grid used by the solvers.
 | Result | Mode | Meaning | Units |
 |---|---|---|---|
 | `Ti` (`pandas.Series`) | both | Indoor air temperature over the converged day | °C |
+| `Tso`, `Tsi` | both | Outdoor/indoor surface temperature `Series` on the `Tsa()` time grid | °C |
 | `energy_transfer` | `solve()` | Energy delivered to the indoor air (@eq-energy-transfer) | J/(m²·day) |
 | `cooling_energy` | `solveAC()` | Cooling demand to hold $T_n$ (@eq-energies-ac) | J/(m²·day) |
 | `heating_energy` | `solveAC()` | Heating demand to hold $T_n$ (@eq-energies-ac) | J/(m²·day) |

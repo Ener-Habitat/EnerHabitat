@@ -209,16 +209,17 @@ import json   # Required to save results and be read again later
 wall2d.location.meanDay(month=5, year=2025)
 wall2d.Tsa()
 
-wall2d.solve()                        # free-running — ~25 min (default mesh)
+ti = wall2d.solve()                   # free-running — ~25 min (default mesh)
 
 # Look at the results before saving them:
 print(wall2d.energy_transfer)         # J/(m²·day), per unit indoor area
 print(wall2d.days)                    # days iterated to reach the periodic regime
 
 # A 2D solve is expensive: SAVE the results, so you pay that time only once.
-# solve_dataframe holds Ti, Tso, Tsi, Thueco + the whole Tsa grid;
+# Ti and the surface/cavity Series concatenate with Tsa(), as in the 1D;
 # Tfield is the (nx, ny) °C field of the last (converged) day.
-wall2d.solve_dataframe.to_csv("data/results/hollow_free.csv")
+data = pd.concat([ti, wall2d.Tso, wall2d.Tsi, wall2d.Thueco, wall2d.Tsa()], axis=1)
+data.to_csv("data/results/hollow_free.csv")
 np.save("data/results/hollow_free_Tfield.npy", wall2d.Tfield)
 
 # The scalar results are attributes, not columns of the CSV: keep them too.
@@ -273,10 +274,11 @@ plt.show()
 ### 2D hollow-block wall, air-conditioned
 
 ```python
-wall2d.solveAC()                      # Ti held at Tn
+tiAC = wall2d.solveAC()               # Ti held at Tn
 print(wall2d.cooling_energy, wall2d.heating_energy)
 
-wall2d.solve_dataframe.to_csv("data/results/hollow_ac.csv")   # save, as before
+pd.concat([tiAC, wall2d.Tso, wall2d.Tsi, wall2d.Thueco, wall2d.Tsa()],
+          axis=1).to_csv("data/results/hollow_ac.csv")   # save, as before
 ```
 
 ```{python}
@@ -329,13 +331,14 @@ roof.preview(field="materials");
 roof.location.meanDay(month=5, year=2025)
 roof.Tsa()
 
-roof.solve()                             # or roof.solveAC()
+ti = roof.solve()                        # or roof.solveAC()
 
 print(roof.energy_transfer)              # J/(m²·day)
 print(roof.days)                         # days to the periodic regime
 
 # Same recommendation as with the wall: save, then analyse from the files.
-roof.solve_dataframe.to_csv("data/results/slab_free.csv")
+data = pd.concat([ti, roof.Tso, roof.Tsi, roof.Thueco, roof.Tsa()], axis=1)
+data.to_csv("data/results/slab_free.csv")
 np.save("data/results/slab_free_Tfield.npy", roof.Tfield)
 ```
 
@@ -354,9 +357,9 @@ Note how the roof's `Tsa` drops below `Ta` at night: that is the long-wave
 radiation factor ($RF = 3.9$ °C for horizontal surfaces) at work. The roof sees
 the cold sky (see [the 1D model](model-1d.qmd#outdoor-the-sunair-temperature)).
 
-The 2D results go beyond `Ti`: `solve_dataframe` also stores the surface
-temperatures `Tso` (outdoor surface), `Tsi` (indoor surface) and `Thueco`
-(cavity air), on the same time grid, plotted here alongside `Ti`:
+The 2D results go beyond `Ti`: the read-only Series `Tso` (outdoor surface),
+`Tsi` (indoor surface) and `Thueco` (cavity air) live on the same time grid,
+plotted here alongside `Ti`:
 
 ```{python}
 fig, ax = plt.subplots(figsize=(7.2, 3.6))

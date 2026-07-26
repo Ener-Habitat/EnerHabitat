@@ -71,6 +71,7 @@ J/(m²·day); divide by 3600 for Wh or 3.6e6 for kWh):
 | `day_error` | both | Final day-to-day error (°C): max of the solid-field mean change and the indoor-state change |
 | `converged` | both | `True` if the periodic regime was reached; otherwise a `RuntimeWarning` is emitted |
 | `energy_imbalance` | `solve()` | Energy-closure check $\|Q_{in}-Q_{out}\|/\max(Q_{in},Q_{out})$ (≈ 0 when periodic); `None` after `solveAC()` |
+| `Tso`, `Tsi` | both | Read-only surface temperature `Series` (outdoor/indoor surface, °C) of the last solve, on the `Tsa()` grid; `None` before solving. They concatenate directly with `Ti` and `Tsa()` |
 
 Methods:
 
@@ -96,24 +97,13 @@ Methods:
 ## `System2D`
 
 ::: {.callout-warning title="Internal review note — remove before release"}
-Pending API decisions (mirrored as `NOTE(...)` comments in `eh2d.py`):
-
-- Guiding principle: `System2D` should mirror the 1D `System` public API unless
-  the difference is intrinsic to 2D (the 2D element, the 7-layer cap, tilt
-  validation, `Tfield`, the section inspectors). The "Differences" list below is
-  the checklist to shrink.
-- `Qout`: remove from the public API. Redundant: in the periodic regime
-  `Qout ≈ energy_transfer`, and their difference is already `energy_imbalance`.
-  On removal, migrate the energy-balance tests and clean this table and the
-  `model-2d` outputs table.
-- `solve_dataframe`: a stored result with an action-sounding name, public and
-  writable here while the 1D keeps its equivalent private. Hide it later (make
-  it internal, expose the data via an explicit accessor or return value) and
-  migrate its consumers: `run_examples.py`, the `usage-2d` save/recover
-  snippets, this table, the `model-2d` outputs table and the 2D tests.
-- Also to review: result attributes writable here vs read-only in 1D, `copy()`
-  sharing the `Location` here vs re-creating it in 1D, `flag()` missing here,
-  `setpoint` existing only here.
+Pending API decisions (guiding principle: `System2D` mirrors the 1D `System`
+public API unless the difference is intrinsic to 2D). Resolved already: `Qout`
+removed; `solve_dataframe` hidden behind the read-only Series `Tso`/`Tsi`/
+`Thueco` (concat pattern, as in 1D). Still to review: result
+attributes writable here vs read-only in 1D, `copy()` sharing the `Location`
+here vs re-creating it in 1D, `flag()` missing here, `setpoint` existing only
+here.
 :::
 
 Mirror of `System` for cross-sections that are heterogeneous across their width. Same
@@ -138,9 +128,8 @@ result attributes. Differences:
 - `solve()` and `solveAC()` results are cached separately, so alternating modes
   is free; the 1D `System` keeps one cache tagged by the last mode and recomputes
   when alternating.
-- Additional outputs beyond the 1D set: `Qout`, `Tfield`, `solve_dataframe`
-  (see the attribute table below) and the inspectors `preview()` /
-  `section_report()`.
+- Additional outputs beyond the 1D set: `Tfield`, the `Thueco` Series and the
+  inspectors `preview()` / `section_report()`.
 - Extra attributes:
 
 | Attribute | Description |
@@ -151,8 +140,8 @@ result attributes. Differences:
 | `day_error` | Final day-to-day error (°C) of the last solve: max over the solid field, $\|\Delta T_i\|$ and each cavity $\|\Delta T_h\|$ |
 | `inner_iterations` | Largest inner sweep count observed in the last solve |
 | `energy_imbalance` | Energy-closure check $\|Q_{in}-Q_{out}\|/\max(Q_{in},Q_{out})$ of the last free-running solve (≈ 0 when periodic); `None` after `solveAC()` |
-| `Qout` | Gross energy leaving the indoor air over the converged day, J/(m²·day), counterpart of `energy_transfer` (= $Q_{in}$); in the periodic regime `Qout ≈ energy_transfer` |
-| `solve_dataframe` | Full result `DataFrame` on the `Tsa()` time grid: the forcing columns plus `Ti`, `Tso` (outer-surface mean), `Tsi` (inner-surface mean) and `Thueco` (cavity-air temperature; the mean over the N cavities in `Slab`, `NaN` with `Fill.SOLID`), all in °C. Sampling convention inherited from the C: `Tso` is recorded at the start of each time step, `Ti`/`Tsi` at the end |
+| `Tso`, `Tsi` | Read-only surface temperature `Series` (outer/inner-surface mean, °C) of the last solve, on the `Tsa()` grid; `None` before solving. As in 1D, they concatenate directly with `Ti` and `Tsa()`. Sampling convention inherited from the C: `Tso` is recorded at the start of each time step, `Ti`/`Tsi` at the end |
+| `Thueco` | Read-only cavity-air temperature `Series` (°C): the mean over the N cavities in `Slab`, `NaN` with `Fill.SOLID`; `None` before solving |
 | `Tfield` | Temperature field `(nx, ny)` in °C at the end of the last simulated day (outside → inside along the second axis), useful for cross-section plots |
 
 - Section inspector (before solving):

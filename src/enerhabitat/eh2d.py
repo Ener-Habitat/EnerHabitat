@@ -725,28 +725,16 @@ class System2D:
         self._ac_df = None
         self._ac_sig = None
         self.energy_transfer = None
-        # NOTE(api-symmetry 2026-07): guiding principle for the pending API
-        # review: System2D should mirror the 1D System's public surface unless
-        # the difference is intrinsic to 2D. Intrinsic (keep): the 2D element in
-        # layers, the 7-layer cap, tilt validation, Tfield and the section
-        # inspectors. To review as gratuitous asymmetries: Qout (note below),
-        # solve_dataframe public here vs private in 1D (note below), result
-        # attributes writable here vs read-only properties in 1D, copy()
-        # sharing the Location here vs re-creating it in 1D, flag() missing
-        # here, and setpoint existing only here (either add it to 1D or drop
-        # it). The "Differences" list in api.qmd#system2d documents today's
-        # behaviour and is the checklist to shrink.
-        # NOTE(review 2026-07): Qout should be REMOVED from the public API in the
-        # next minor release. It is redundant: in the converged periodic regime
-        # Qout ≈ energy_transfer (= Qin) by energy closure, and their difference
-        # is already exposed as `energy_imbalance`. The 1D System does not expose
-        # it either, so removing it restores 1D/2D API symmetry. Keep Qin/Qout
-        # INTERNAL (the kernels must still return both to build
-        # energy_imbalance). On removal also update: the energy-balance tests
-        # (test_eh2d_hollowblock/_slab/_package -> use energy_imbalance), the
-        # api.qmd System2D table, the model-2d.qmd outputs table, and the
-        # solve() docstring.
-        self.Qout = None
+        # NOTE(api-symmetry 2026-07): System2D should mirror the 1D System's
+        # public surface unless the difference is intrinsic to 2D (the 2D
+        # element in layers, the 7-layer cap, tilt validation, Tfield, Thueco
+        # and the section inspectors). Resolved in this branch: Qout removed
+        # (redundant with energy_transfer + energy_imbalance); solve_dataframe
+        # hidden as _last_df, with the read-only Series properties
+        # Tso/Tsi/Thueco as the access path (same concat pattern as the 1D).
+        # Still to review: result attributes writable here vs read-only
+        # properties in 1D, copy() sharing the Location here vs re-creating it
+        # in 1D, flag() missing here, and setpoint existing only here.
         self.cooling_energy = None
         self.heating_energy = None
         self.days = None
@@ -754,19 +742,8 @@ class System2D:
         self.converged = None
         self.inner_iterations = None
         self.energy_imbalance = None
-        # NOTE(review 2026-07): solve_dataframe is a stored RESULT, not an
-        # action (the "solve" in the name misleads), and it is a plain writable
-        # PUBLIC attribute: the full DataFrame (Tsa() forcing columns + Ti, Tso,
-        # Tsi, Thueco) that solve()/solveAC() fill. Pending decision: HIDE it
-        # later and make it part of the internal process, as the 1D already
-        # does (ehframe.System keeps its __solve_dataframe private and only
-        # returns Ti); the internal caches _solve_df/_ac_df below already cover
-        # that role. If hidden, expose the data through an explicit accessor or
-        # return value, and migrate the current consumers: docs/run_examples.py
-        # (to_csv), usage-2d.qmd (save/recover snippets and the surface-
-        # temperatures section), api.qmd System2D table, model-2d.qmd outputs
-        # table, and tests test_eh2d_hollowblock/test_eh2d_slab.
-        self.solve_dataframe = None
+        self._last_df = None          # full frame of the LAST solve (internal);
+                                      # sliced by the Tso/Tsi/Thueco properties
 
     # --- weather/solar: the 1D chain is reused ---
     def _system1d(self):
@@ -881,13 +858,15 @@ class System2D:
         """
         Runs the day to periodic steady state and returns ``Ti`` as a
         ``pandas.Series`` (aligned to the ``Tsa()`` grid). Stores
-        ``energy_transfer`` (= Qin), ``Qout``, ``days`` and ``solve_dataframe``
-        (with columns ``Ti, Tso, Tsi, Thueco``).
+        ``energy_transfer`` and ``days``; the surface and cavity series are the
+        read-only properties ``Tso``, ``Tsi`` and ``Thueco``, which concatenate
+        with ``Ti`` and ``Tsa()`` exactly as in the 1D.
         """
         self._validate()
         df = self.Tsa()
         sig = self._signature()
         if self._solve_df is not None and self._solve_sig == sig:
+            self._last_df = self._solve_df
             return self._solve_df["Ti"]
 
         import numpy as _np
@@ -944,9 +923,9 @@ class System2D:
         res["Tso"] = Tso
         res["Tsi"] = Tsi
         res["Thueco"] = Th
-        self.solve_dataframe = res
+        self._last_df = res
         self._solve_df, self._solve_sig = res, sig
-        self.energy_transfer, self.Qout = Qin, Qout
+        self.energy_transfer = Qin
         self.cooling_energy = self.heating_energy = None
         self.days, self.Tfield = days, Tfield
         # Energy-closure diagnostic: in the periodic regime Qin == Qout.
@@ -984,6 +963,7 @@ class System2D:
         df = self.Tsa()
         sig = self._signature() + ("ac", self.setpoint)
         if self._ac_df is not None and self._ac_sig == sig:
+            self._last_df = self._ac_df
             return self._ac_df["Ti"]
 
         import numpy as _np
@@ -1039,7 +1019,7 @@ class System2D:
         res["Tso"] = Tso
         res["Tsi"] = Tsi
         res["Thueco"] = Th
-        self.solve_dataframe = res
+        self._last_df = res
         self._ac_df, self._ac_sig = res, sig
         self.cooling_energy, self.heating_energy = Qcool, Qheat
         self.energy_transfer = None
@@ -1051,13 +1031,33 @@ class System2D:
     # --- utilities mirroring System ---
     def add_layer(self, material, width):
         self.layers.append((material, width))
-        self._solve_df = self._ac_df = None
+        self._solve_df = self._ac_df = self._last_df = None
         return self.layers
 
     def remove_layer(self, index):
         del self.layers[index]
-        self._solve_df = self._ac_df = None
+        self._solve_df = self._ac_df = self._last_df = None
         return self.layers
+
+    @property
+    def Tso(self):
+        """Outer-surface mean temperature ``Series`` (named ``"Tso"``) of the
+        last solve, on the ``Tsa()`` time grid; ``None`` before solving. It
+        concatenates directly: ``pd.concat([ti, w.Tso, w.Tsa()], axis=1)``."""
+        return None if self._last_df is None else self._last_df["Tso"]
+
+    @property
+    def Tsi(self):
+        """Inner-surface mean temperature ``Series`` (named ``"Tsi"``) of the
+        last solve, on the ``Tsa()`` time grid; ``None`` before solving."""
+        return None if self._last_df is None else self._last_df["Tsi"]
+
+    @property
+    def Thueco(self):
+        """Cavity-air temperature ``Series`` (named ``"Thueco"``) of the last
+        solve: the mean over the N cavities in ``Slab``, ``NaN`` with
+        ``Fill.SOLID``; ``None`` before solving."""
+        return None if self._last_df is None else self._last_df["Thueco"]
 
     def copy(self):
         return System2D(self.location, tilt=self.tilt, azimuth=self.azimuth,

@@ -184,8 +184,8 @@ joist-and-block roof, and the to-scale section inspector) are in the
 | Object | Purpose | Key methods / attributes |
 | ------ | ------- | ------------------------ |
 | `Location` | Reads an EPW file, builds the average day | `meanDay(month, year)` |
-| `System` | 1D multilayer wall/roof | `layers`, `Tsa()`, `solve()`, `solveAC()`, `energy_transfer`, `cooling_energy`, `heating_energy`, `days`, `converged` |
-| `System2D` | 2D heterogeneous wall/roof | mirror of `System` (see the [API page](https://ener-habitat.github.io/EnerHabitat/api.html#system2d) for the differences), plus `preview()`, `section_report()`, `solve_dataframe`, `Tfield` |
+| `System` | 1D multilayer wall/roof | `layers`, `Tsa()`, `solve()`, `solveAC()`, `Tso`, `Tsi`, `energy_transfer`, `cooling_energy`, `heating_energy`, `days`, `converged` |
+| `System2D` | 2D heterogeneous wall/roof | mirror of `System` (see the [API page](https://ener-habitat.github.io/EnerHabitat/api.html#system2d) for the differences), plus `preview()`, `section_report()`, `Thueco`, `Tfield` |
 | `HollowBlock` / `Slab` | The 2D element inside `System2D.layers` | `material(s)`, `fill_type` (`Fill.AIR`/`Fill.SOLID`), `geometry` |
 | `config` | Global parameters | `file`, `La`, `Nx`, `ho`, `hi`, `hi_up`, `hi_down`, `hi_flow`, `dt` *(fixed)* |
 | `config2d` | 2D mesh & convergence | `nx`, `ny`, `tol_inner`, `tol_day`, `max_days`, `max_inner` |

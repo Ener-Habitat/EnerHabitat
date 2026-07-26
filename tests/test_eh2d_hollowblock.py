@@ -97,9 +97,8 @@ def test_periodicity():
 
 def test_energy_balance():
     w, _ = _solved()
-    qin, qout = w.energy_transfer, w.Qout
-    rel = abs(qin - qout) / max(abs(qin), 1e-9)
-    assert rel <= 0.02, f"Qin={qin:.1f} Qout={qout:.1f} ({rel:.1%})"
+    rel = w.energy_imbalance
+    assert rel <= 0.02, f"desbalance Qin/Qout = {rel:.1%}"
 
 
 def test_orientation_guard():
@@ -151,8 +150,7 @@ def test_filled_methodology():
     w, ti = _solved_filled()               # relleno con EPS (núcleo aislante)
     assert isinstance(ti, pd.Series) and len(ti) == len(w.Tsa())
     assert 0 < w.days < config2d.max_days
-    qin, qout = w.energy_transfer, w.Qout
-    assert abs(qin - qout) / max(abs(qin), 1e-9) <= 0.02
+    assert w.energy_imbalance <= 0.02
 
 
 def test_filled_requires_fill_material():
@@ -171,14 +169,12 @@ def _demo():
     print("  FASE 8a · Muro con bloque hueco de concreto (System2D + HollowBlock)")
     print(bar)
     w.info()
-    df = w.solve_dataframe
-    Tsa = df["Tsa"].to_numpy()
-    Ti = df["Ti"].to_numpy()
-    Th = df["Thueco"].to_numpy()
+    Tsa = w.Tsa()["Tsa"].to_numpy()
+    Ti = w.solve().to_numpy()
+    Th = w.Thueco.to_numpy()
     print(f"\n  Convergió en {w.days} días (tope {config2d.max_days})")
-    qin, qout = w.energy_transfer, w.Qout
-    rel = abs(qin - qout) / max(abs(qin), 1e-9)
-    print(f"  Balance: Qin={qin:.1f}  Qout={qout:.1f}  desbalance={rel:.2%}")
+    print(f"  Balance: Qin={w.energy_transfer:.1f}  "
+          f"desbalance={w.energy_imbalance:.2%}")
     dec = (Ti.max() - Ti.min()) / (Tsa.max() - Tsa.min())
     print(f"  Tint rango {Ti.min():.2f}..{Ti.max():.2f} °C  ·  factor de decremento {dec:.3f}")
     print(f"  Thueco (aire del bloque) rango {Th.min():.2f}..{Th.max():.2f} °C")

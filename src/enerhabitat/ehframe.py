@@ -338,6 +338,8 @@ class System():
         # self.__update_flag_config()
         self.__tsa_dataframe = None
         self.__solve_dataframe = None
+        self.__Tso = None
+        self.__Tsi = None
         
         self.__tsa_solver_version = -1
         self.__solve_solver_version = -1
@@ -645,6 +647,8 @@ class System():
         Tsa_vals = SC_dataframe['Tsa'].to_numpy()
         Ti_vals = SC_dataframe['Ti'].to_numpy(copy=True)
         n_steps = Tsa_vals.shape[0]
+        Tso_vals = np.empty(n_steps)
+        Tsi_vals = np.empty(n_steps)
 
         tol_day = 5e-4          # °C, same as config2d.tol_day
         days = 0
@@ -667,6 +671,8 @@ class System():
                     calculate_coefficients(mass_coeff, T, Tsa_vals[idx], ho, Ti_vals[idx], hi_s, d)
                     # Llamado de funcion para Acc
                     T, Ti = solve_PQ_AC(a_s, b_static, c_static, d, T, Nx, Ti_vals[idx], P, Q, Tn_aux)
+                    Tso_vals[idx] = T[0]
+                    Tsi_vals[idx] = T[Nx - 1]
                     if (T[Nx-1] > Ti):
                         Qcool += hi_s*dt*(T[Nx-1]-Ti)
                     if (T[Nx-1] < Ti):
@@ -679,6 +685,8 @@ class System():
                 days += 1
 
             SC_dataframe['Ti'] = Ti_vals
+            self.__Tso = pd.Series(Tso_vals, index=SC_dataframe.index, name="Tso")
+            self.__Tsi = pd.Series(Tsi_vals, index=SC_dataframe.index, name="Tsi")
 
             self.__last_solve = 'ac'
             self.__energy_transfer = None
@@ -713,6 +721,8 @@ class System():
                     calculate_coefficients(mass_coeff, T, Tsa_vals[idx], ho, tinn, hi_s, d)
                     T, tint = solve_PQ(a_s, b_static, c_static, d, T, Nx, tinn, cap_s, P, Q, Tn_aux)
                     Ti_vals[idx] = tint
+                    Tso_vals[idx] = T[0]
+                    Tsi_vals[idx] = T[Nx - 1]
                     flux = hi_s * (T[Nx - 1] - tinn) * dt
                     if flux > 0:
                         Qin += flux
@@ -724,6 +734,8 @@ class System():
                 days += 1
 
             SC_dataframe['Ti'] = Ti_vals
+            self.__Tso = pd.Series(Tso_vals, index=SC_dataframe.index, name="Tso")
+            self.__Tsi = pd.Series(Tsi_vals, index=SC_dataframe.index, name="Tsi")
 
             self.__last_solve = 'temp'
             self.__energy_transfer = Qin   # oscillatory steady state: Qin == Qout
@@ -872,4 +884,23 @@ class System():
         return self.__energy_imbalance
     @energy_imbalance.setter
     def energy_imbalance(self, value):
+        pass
+
+    @property
+    def Tso(self):
+        """Outdoor-surface temperature Series (named "Tso") of the last solve,
+        on the Tsa() time grid; None before solving. Concatenates directly:
+        pd.concat([wall.solve(), wall.Tso, wall.Tsi, wall.Tsa()], axis=1)."""
+        return self.__Tso
+    @Tso.setter
+    def Tso(self, value):
+        pass
+
+    @property
+    def Tsi(self):
+        """Indoor-surface temperature Series (named "Tsi") of the last solve,
+        on the Tsa() time grid; None before solving."""
+        return self.__Tsi
+    @Tsi.setter
+    def Tsi(self, value):
         pass

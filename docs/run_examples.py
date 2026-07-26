@@ -66,20 +66,23 @@ def _slab_roof():
 
 def run_case(name):
     import numpy as np
+    import pandas as pd
     t0 = time.perf_counter()
     sys2d = _hollow_wall() if name.startswith("hollow") else _slab_roof()
     if name.endswith("_ac"):
-        sys2d.solveAC()
+        ti = sys2d.solveAC()
         extra = {"cooling_energy": float(sys2d.cooling_energy),
                  "heating_energy": float(sys2d.heating_energy)}
     else:
-        sys2d.solve()
+        ti = sys2d.solve()
         extra = {"energy_transfer": float(sys2d.energy_transfer)}
     runtime = time.perf_counter() - t0
     OUT.mkdir(parents=True, exist_ok=True)
-    # full results: Ti, Tso, Tsi, Thueco + the whole Tsa grid, and the (nx, ny)
-    # temperature field of the last (converged) day, with the mesh extent in mm
-    sys2d.solve_dataframe.to_csv(OUT / f"{name}.csv")
+    # full results: Ti + the surface/cavity series + the whole Tsa grid (the
+    # same concat the usage pages teach), and the (nx, ny) temperature field of
+    # the last (converged) day, with the mesh extent in mm
+    df = pd.concat([ti, sys2d.Tso, sys2d.Tsi, sys2d.Thueco, sys2d.Tsa()], axis=1)
+    df.to_csv(OUT / f"{name}.csv")
     np.save(OUT / f"{name}_Tfield.npy", sys2d.Tfield)
     mesh = sys2d.section().mesh
     days = sys2d.days

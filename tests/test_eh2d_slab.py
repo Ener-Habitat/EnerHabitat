@@ -76,8 +76,8 @@ def _solved(key, **kw):
 
 
 def _decrement(r):
-    df = r.solve_dataframe
-    Tsa = df["Tsa"].to_numpy(); Ti = df["Ti"].to_numpy()
+    Ti = r.solve().to_numpy()          # cached: the solve already ran
+    Tsa = r.Tsa()["Tsa"].to_numpy()
     return (Ti.max() - Ti.min()) / (Tsa.max() - Tsa.min())
 
 
@@ -98,9 +98,8 @@ def test_periodicity():
 
 def test_energy_balance():
     r, _ = _solved("aire")
-    qin, qout = r.energy_transfer, r.Qout
-    rel = abs(qin - qout) / max(abs(qin), 1e-9)
-    assert rel <= 0.02, f"Qin={qin:.1f} Qout={qout:.1f} ({rel:.1%})"
+    rel = r.energy_imbalance
+    assert rel <= 0.02, f"desbalance Qin/Qout = {rel:.1%}"
 
 
 def test_air_vs_insulating_fill():
@@ -169,12 +168,11 @@ def _demo():
     print("  FASE 8b · Techo de vigueta y bovedilla (System2D + Slab)")
     print(bar)
     ra.info()
-    df = ra.solve_dataframe
-    Tsa = df["Tsa"].to_numpy(); Ti = df["Ti"].to_numpy(); Th = df["Thueco"].to_numpy()
+    Tsa = ra.Tsa()["Tsa"].to_numpy()
+    Ti = ra.solve().to_numpy(); Th = ra.Thueco.to_numpy()
     print(f"\n  Convergió en {ra.days} días (tope {config2d.max_days})")
-    qin, qout = ra.energy_transfer, ra.Qout
-    rel = abs(qin - qout) / max(abs(qin), 1e-9)
-    print(f"  Balance: Qin={qin:.1f}  Qout={qout:.1f}  desbalance={rel:.2%}")
+    print(f"  Balance: Qin={ra.energy_transfer:.1f}  "
+          f"desbalance={ra.energy_imbalance:.2%}")
     print(f"  Factor de decremento — AIRE: {_decrement(ra):.3f}   "
           f"RELLENA(EPS): {_decrement(rf):.3f}")
     print(f"  Tint(aire) rango {Ti.min():.2f}..{Ti.max():.2f} °C  ·  "
