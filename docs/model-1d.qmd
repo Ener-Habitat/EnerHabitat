@@ -2,18 +2,15 @@
 title: "1D model: homogeneous multilayer systems"
 ---
 
-EnerHabitat evaluates the thermal performance of a **single opaque component of the
-building envelope** — a wall or a roof. It considers that the only heat path into the
+EnerHabitat evaluates the thermal performance of a single opaque component of the
+building envelope by solving the one dimensional time dependent heat transfer equation for a wall or a roof. It considers that the only heat path into the
 indoor space is through the component under evaluation: there are no windows, no
-ventilation, no infiltration and no internal heat gains [@barrios2016]. This makes
-results directly comparable
-across constructive systems: whatever difference appears in the indoor temperature or in
-the energy demand is caused by the constructive system alone.
+ventilation, no infiltration and no internal heat gains [@barrios2016]. 
 
-The simulation runs over the **average day** of a chosen month, built from the EPW weather
-file (see [The average day](#the-average-day)), and is iterated day after day until the
-solution becomes periodic — the daily cycle repeats itself. All reported results
-correspond to that converged, periodic day.
+The simulation runs over the average day of a chosen month, built from the EPW
+weather file (see [The average day](#the-average-day)), and is iterated day after
+day until the solution becomes periodic, that is, until the daily cycle repeats
+itself. All reported results correspond to that converged, periodic day.
 
 ## Domain and assumptions
 
@@ -27,18 +24,18 @@ node.](img/domain_1d.png){#fig-domain}
 
 The model assumes:
 
-- **1D conduction** perpendicular to the surface (the $x$ direction); layers are
+- 1D conduction perpendicular to the surface (the $x$ direction); layers are
   homogeneous, so there is no in-plane heat flow.
-- **Constant thermal properties** per layer (no temperature dependence, no moisture).
-- **Convective boundary conditions** with fixed film coefficients $h_o$ (outdoor) and
-  $h_i$ (indoor). The defaults, $h_o = 13$ and $h_i = 8.1$ W/(m²·K), are the values
-  prescribed by the Mexican standards NOM-008-ENER-2001 (Appendix B) and
-  NOM-020-ENER-2011 [@nom008; @nom020] ($h_i = 8.1$ is the vertical-surface value,
-  applied here to all orientations); both are configurable.
-- **Solar and long-wave radiation** on the outdoor surface enter through the sun–air
+- Constant thermal properties per layer (no temperature dependence, no moisture, no phase change).
+- Convective boundary conditions with prescribed film coefficients, $h_o$ at the
+  outdoor surface and $h_i$ at the indoor one, taken from
+  NOM-008-ENER and NOM-020-ENER [@nom008; @nom020]. Their values, and how roofs
+  select $h_i$ from the heat-flow direction, are given in
+  [the configuration](usage.qmd#configuration).
+- Solar and long-wave radiation on the outdoor surface considered through the sun–air
   temperature (@eq-tsa).
-- The indoor space is a **lumped air node** of depth $L_a$ (2.5 m by default) in the
-  free-running mode, or a **fixed setpoint** in the air-conditioned mode.
+- The indoor space is a lumped air node of depth $L_a$ (2.5 m by default) in the
+  free-running mode, or a fixed setpoint in the air-conditioned mode.
 
 The canonical list of assumptions, with the consequence each one has for
 interpreting the results, is in [Assumptions and limits](assumptions.qmd).
@@ -67,7 +64,7 @@ $$ {#eq-continuity}
 
 ### Outdoor: the sun–air temperature
 
-At the outdoor surface, $x = 0$, convection against the **sun–air temperature** $T_{sa}$
+At the outdoor surface, $x = 0$, convection against the sun–air temperature $T_{sa}$
 balances the conducted flux:
 
 $$
@@ -76,9 +73,10 @@ h_o \left( T_{sa} - T_{x=0} \right)
 -\,k_1 \left.\frac{\partial T_1}{\partial x}\right|_{x=0}.
 $$ {#eq-bc-out}
 
-$T_{sa}$ is a fictitious temperature that lumps together the three thermal loads on the
-exterior surface — convection with outdoor air, absorbed short-wave solar radiation, and
-the long-wave radiative exchange with the sky [@mackey1944; @ashrae1997]:
+$T_{sa}$ is an equivalent temperature that lumps together the three thermal loads on
+the exterior surface: convection with outdoor air, absorbed short-wave solar
+radiation, and the long-wave radiative exchange with the sky
+[@mackey1944; @ashrae1997]:
 
 $$
 T_{sa} \;=\; T_a \;+\; \frac{a\, I_s}{h_o} \;-\; RF,
@@ -86,29 +84,21 @@ $$ {#eq-tsa}
 
 where:
 
-- $T_a$ — outdoor air temperature of the average day;
-- $I_s$ — solar irradiance on the (tilted, oriented) surface, W/m²;
-- $a$ — solar absorptance of the outdoor surface (intuitively, the *color* of the
-  wall/roof — though coatings of the same visible color can have quite different
+- $T_a$: outdoor air temperature of the average day;
+- $I_s$: solar irradiance on the (tilted, oriented) surface, W/m²;
+- $a$: solar absorptance of the outdoor surface (intuitively, the *color* of the
+  wall/roof, although coatings of the same visible color can have quite different
   solar absorptance, e.g. cool-roof paints);
-- $h_o$ — outdoor film coefficient;
-- $RF$ — long-wave radiation factor, decreasing linearly with the surface tilt
-  $\beta$: $RF = 3.9\,(1 - \beta/90°)$ °C for $0° \le \beta \le 90°$ (3.9 °C for a
-  horizontal roof facing the cold sky, 0 for a vertical wall) and 0 beyond — the
-  same rule as the 2016 online tool [@barrios2016]. The 3.9 °C (7 °F) horizontal
-  value is the classical $\varepsilon \Delta R / h_o$ long-wave correction of the
-  sol–air method [@ashrae1997], whose concept goes back to Mackey & Wright
-  [-@mackey1944]. It is an empirical correction, not an explicit sky/surroundings
-  radiative balance.
+- $h_o$: outdoor film coefficient;
+- $RF$: long-wave radiation factor, an empirical correction for the radiative
+  exchange with the sky [@mackey1944; @ashrae1997]. It decreases linearly with
+  the tilt $\beta$, $RF = 3.9\,(1 - \beta/90°)$ °C: 3.9 °C for a horizontal roof
+  facing the cold sky, 0 for a vertical wall [@barrios2016].
 
-$I_s$ is computed with [pvlib](https://pvlib-python.readthedocs.io/)'s
-`get_total_irradiance` [@holmgren2018] from the average-day DNI ($I_b$), DHI ($I_d$)
-and GHI ($I_g$) and the solar position at the site, for the surface `tilt` and
-`azimuth`, using the **isotropic-sky** transposition model and ground **albedo 0.25**
-(the pvlib defaults); $I_s$ (`poa_global`) includes the beam, sky-diffuse and
-ground-reflected components. This is why `Tsa()` is recomputed —
-automatically, on the next call — whenever the absorptance, the orientation, the month
-or the location change.
+$I_s$ is computed with [pvlib](https://pvlib-python.readthedocs.io/)
+[@holmgren2018] from the average-day irradiances $I_b$, $I_d$ and $I_g$ and the
+solar position at the site, for the surface `tilt` and `azimuth`. It includes
+the beam, sky-diffuse and ground-reflected components.
 
 ### Indoor boundary condition
 
@@ -123,10 +113,11 @@ $$ {#eq-bc-in}
 
 What happens to $T_i$ defines the two solution modes.
 
-### Free-running mode — `solve()`
+### Free-running mode: `solve()`
 
-The indoor air is a lumped thermal mass — density $\rho_a$, specific heat $c_a$, depth
-$L_a$ — whose temperature evolves with the heat received from the indoor surface:
+The indoor air is a lumped thermal mass of density $\rho_a$, specific heat $c_a$ and
+depth $L_a$, whose temperature evolves with the heat received from the indoor
+surface:
 
 $$
 L_a\, \rho_a\, c_a\, \frac{dT_i}{dt} \;=\; h_i \left( T_{x=L} - T_i \right),
@@ -134,12 +125,12 @@ $$ {#eq-air}
 
 with $L_a = 2.5$ m by default (`config.La`). The air properties are
 $\rho_a \approx 1.18$ kg/m³ and $c_a \approx 1005$ J/(kg·K) (`config.AIR_DENSITY`,
-`config.AIR_HEAT_CAPACITY`). Because @eq-air is integrated in time alongside the wall,
-the time step is constrained by this coupling — see the
+`config.AIR_HEAT_CAPACITY`). Because @eq-air is integrated in time alongside the
+wall, the time step is constrained by this coupling; see the
 [numerical method](numerics.qmd#indoor-air-coupling-free-running-mode) for why
 `config.dt` is fixed at 10 s.
 
-The reported **`energy_transfer`** is the heat delivered by the indoor surface to the
+The reported `energy_transfer` is the heat delivered by the indoor surface to the
 air, accumulated over the converged day:
 
 $$
@@ -151,9 +142,9 @@ where $(\,\cdot\,)^{+}$ keeps the positive part (heat entering the room). In the
 periodic regime the daily energy entering equals the energy leaving, so either one
 represents the transfer through the system.
 
-### Air-conditioned mode — `solveAC()`
+### Air-conditioned mode: `solveAC()`
 
-The indoor air temperature is held constant at the **neutrality temperature** of the
+The indoor air temperature is held constant at the neutrality temperature of the
 adaptive comfort model of Humphreys & Nicol [-@humphreys2000]:
 
 $$
@@ -170,35 +161,35 @@ E_c \;=\; \int_{24\,\mathrm{h}} h_i \left( T_{x=L} - T_n \right)^{+} dt,
 E_h \;=\; \int_{24\,\mathrm{h}} h_i \left( T_n - T_{x=L} \right)^{+} dt,
 $$ {#eq-energies-ac}
 
-reported as **`cooling_energy`** and **`heating_energy`** in J/(m²·day).
+reported as `cooling_energy` and `heating_energy` in J/(m²·day), respectively.
 
 ::: {.callout-note}
-The average-day DataFrame also carries **`DeltaTn`**, the half-width of the comfort zone
+The average-day DataFrame also carries `DeltaTn`, the half-width of the comfort zone
 around $T_n$ as a function of the daily outdoor temperature swing, following the
-bioclimatic proposal of Morillón [@morillon2004] (from ±1.25 °C for swings below 13 °C up
-to ±3.5 °C for swings above 52 °C). It is provided as data for comfort analyses — e.g.
-checking how long the free-running $T_i$ stays inside $T_n \pm \Delta T_n$ — but
-`solveAC()` holds the setpoint at $T_n$ itself.
+bioclimatic proposal of Morillón [@morillon2004] (from ±1.25 °C for swings below
+13 °C up to ±3.5 °C for swings above 52 °C). It is provided as data for comfort
+analyses, such as checking how long the free-running $T_i$ stays inside
+$T_n \pm \Delta T_n$, but `solveAC()` holds the setpoint at $T_n$ itself.
 :::
 
 ## The average day
 
 The climate forcing is built from the EPW file for the selected month
-(`Location.meanDay(month, year)`), at 1-second resolution:
+(`Location.meanDay(month, year)`), at 1-second resolution. The time grid is
+civil (clock) time, the local standard time of the EPW site, not solar time
+(solar noon generally does not fall at 12:00). The average day contains:
 
-- **Outdoor temperature $T_a$** — the monthly means of the daily minimum and maximum,
+- Outdoor temperature $T_a$: the monthly means of the daily minimum and maximum,
   $T_{min}$ and $T_{max}$, are interpolated with the cosine model of Chow & Levermore
-  [-@chow2007]: the minimum is assumed at sunrise and the maximum at the month's mean
+  [-@chow2007]; the minimum is assumed at sunrise and the maximum at the month's mean
   time of daily maximum, both extracted from the EPW.
-- **Irradiances** — the month's hour-by-hour means of the EPW solar fields:
-  $I_g$ = global **horizontal** irradiance (GHI), $I_b$ = direct **normal**
-  irradiance (DNI) and $I_d$ = diffuse **horizontal** irradiance (DHI), linearly
-  interpolated in time to the simulation grid. (The EPW records each value as the
-  energy accumulated over the preceding hour [@epwspec]; the hourly means are
-  treated as mean-power samples, in W/m², placed on the hour.)
-- **Solar position and sunrise** — computed with pvlib for the site's latitude,
+- Irradiances: the month's hour-by-hour means of the EPW solar fields,
+  $I_g$ = global horizontal irradiance (GHI), $I_b$ = direct normal irradiance
+  (DNI) and $I_d$ = diffuse horizontal irradiance (DHI), linearly interpolated in
+  time to the simulation grid. 
+- Solar position and sunrise: computed with pvlib for the site's latitude,
   longitude, altitude and timezone (read from the EPW header).
-- **Comfort quantities** — $T_n$ (@eq-tn) and `DeltaTn` (constant columns).
+- Comfort quantities: $T_n$ (@eq-tn) and `DeltaTn` (constant columns).
 
 `Tsa()` then evaluates @eq-tsa on this average day for the system's `tilt`, `azimuth`
 and `absortance`, and returns it on the same time grid used by the solvers.

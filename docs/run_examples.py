@@ -8,6 +8,11 @@ files and plot.
 
 Usage (from the repo root; the three cases run in parallel processes):
     uv run python docs/run_examples.py
+
+After regenerating, render the page that consumes these files DIRECTLY:
+    cd docs && quarto render usage-2d.qmd
+A project-wide `quarto render` may reuse the frozen execution (freeze: auto),
+which only invalidates when the .qmd source changes, not its data files.
 """
 import json
 import time

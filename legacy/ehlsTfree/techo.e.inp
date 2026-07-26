@@ -1,0 +1,42 @@
+# program: ./techo.e
+# cwd: /home/gbv/ciencia/arts-proceso/ehls-simple/C/Tfree
+# hostname: chilpayatl
+# localtime: Fri Nov 24 11:52:47 2017
+#
+# parameters: 
+         N : 250  # Number of elements
+      mDTK : 100  # Mini DeltaTK
+        tT : 16 # Hour of maximum temperature 
+      Tmax : 40.4 # Maximum temperature
+      Tmin : 15.3 # Minimum temperature
+        Id : 640.46 # Diffuse solar radiation
+        Ib : 324.44 # Beam solar radiation
+      beta : 0 # Wall inclination [degree]
+     gamma : 0 # Wall orientation [degree]
+         a : 0.25 # Absortance 
+        La : 2.5 # Room lenght
+        Fc : 0.8108 # Correction factor(0,1]
+        d1 : 0.05 # d1 [m]
+        d2 : 0.05 # d2 [m]
+        d3 : 0.103 # d3 [m]
+     kbeam : 2 # thermal conductivity T-beam       [W/mK]
+   khollow : 1.3 # thermal conductivity hollow-block [W/mK]
+      ktop : 1.5 # thermal conductivity top-concrete [W/mK]
+   kfinish : 0.3 # thermal conductivity plaster      [W/mK]
+  rhocbeam : 2.66e+06 # thermal capacitance T-beam       []
+rhochollow : 1.83592e+06 # thermal capacitance hollow-block []
+   rhoctop : 2.50425e+06 # thermal capacitance top-concrete []
+rhocfinish : 600000 # thermal capacitance plaster      []
+        L1 : 0.003 # L1 [m]
+        L2 : 0.05 # L2 [m]
+        L3 : 0.05 # L3 [m]
+        L4 : 0.03 # L4 [m]
+        L5 : 0.04 # L5 [m]
+        L6 : 0.03 # L6 [m]
+        ho : 13 # h outside [W/m2 oC]
+        hi : 6.6 # h inside [W/m2 oC]
+      user : gbv # usuario
+       mes : 5  # mes
+        Lo : 99.23 # Longitud
+       Lat : 25.47 # Latitud
+      cont : 1  # contador

@@ -18,7 +18,7 @@ Reads an EPW file and builds the average day of a month.
 loc = eh.Location("./epw/example.epw")
 ```
 
-**Attributes.** The EPW path is stored in `file`; assigning a new path reloads the
+Attributes: the EPW path is stored in `file`; assigning a new path reloads the
 header. The rest are read-only, recovered from the EPW header:
 
 | Attribute | Type | Description |
@@ -29,17 +29,17 @@ header. The rest are read-only, recovered from the EPW header:
 | `altitude` | `float` | Metres |
 | `timezone` | `datetime.timezone` | Fixed offset built from the EPW decimal UTC offset (local standard time, no DST; fractional offsets like +5.5/+5.75 preserved) |
 
-**Methods**
+Methods:
 
-- `meanDay(day="15", month="current", year="current")` — average-day DataFrame
-  (`Ta`; `Ig` GHI, `Ib` **DNI**, `Id` DHI; `Tn`, `DeltaTn`; solar position), cached;
+- `meanDay(day="15", month="current", year="current")`: average-day DataFrame
+  (`Ta`; `Ig` GHI, `Ib` DNI, `Id` DHI; `Tn`, `DeltaTn`; solar position), cached;
   see [how it is built](model-1d.qmd#the-average-day). `month` selects which EPW rows
-  are averaged; `day` and `year` only set the **synthetic date** used for the solar
-  geometry and the index — in a TMY, `year=2025` does **not** select observations
+  are averaged; `day` and `year` only set the synthetic date used for the solar
+  geometry and the index. In a TMY, `year=2025` does not select observations
   from 2025.
-- `copy()` — independent copy of the instance.
-- `info()` — prints the attributes.
-- `flag()` — dict with metadata of the last `meanDay()` call (e.g. `flag()["date"]`).
+- `copy()`: independent copy of the instance.
+- `info()`: prints the attributes.
+- `flag()`: dict with metadata of the last `meanDay()` call (e.g. `flag()["date"]`).
 
 ## `System` (1D)
 
@@ -49,18 +49,18 @@ A multilayer wall or roof tied to a `Location`.
 wall = eh.System(location=loc, tilt=90, azimuth=0, absortance=0.8, layers=[])
 ```
 
-**Attributes**
+Attributes:
 
 | Attribute | Type | Description |
 |---|---|---|
 | `location` | `Location` | Climate source |
-| `tilt` | `float` | Degrees from horizontal: `0` roof, `90` vertical wall. Any tilt is accepted in 1D — $I_s$ is transposed by pvlib and $RF$ varies linearly from 3.9 °C (0°) to 0 (90°); the 2D elements only admit 0/90 |
+| `tilt` | `float` | Degrees from horizontal: `0` roof, `90` vertical wall. Any tilt is accepted in 1D ($I_s$ is transposed by pvlib and $RF$ varies linearly from 3.9 °C at 0° to 0 at 90°); the 2D elements only admit 0/90 |
 | `azimuth` | `float` | Surface azimuth, pvlib convention (N=0, E=90, S=180, W=270) |
-| `absortance` | `float` | Solar absorptance of the outdoor surface, `[0, 1]` — **validated**: values outside the range raise `ValueError` |
-| `layers` | `list[tuple[str, float]]` | `(material, thickness_m)`, **outside → inside** |
+| `absortance` | `float` | Solar absorptance of the outdoor surface, `[0, 1]`; validated, so values outside the range raise `ValueError` |
+| `layers` | `list[tuple[str, float]]` | `(material, thickness_m)`, outside → inside |
 
-Read-only results (energy per unit surface area over the converged day, **J/(m²·day)**
-— divide by 3600 for Wh or 3.6e6 for kWh):
+Read-only results (energy per unit surface area over the converged day, in
+J/(m²·day); divide by 3600 for Wh or 3.6e6 for kWh):
 
 | Attribute | Set by | Meaning |
 |---|---|---|
@@ -72,49 +72,70 @@ Read-only results (energy per unit surface area over the converged day, **J/(m²
 | `converged` | both | `True` if the periodic regime was reached; otherwise a `RuntimeWarning` is emitted |
 | `energy_imbalance` | `solve()` | Energy-closure check $\|Q_{in}-Q_{out}\|/\max(Q_{in},Q_{out})$ (≈ 0 when periodic); `None` after `solveAC()` |
 
-**Methods**
+Methods:
 
-- `Tsa()` — sun–air temperature and `Is` for the current absorptance/orientation/month, on
-  the solver's time grid (results concatenate directly with `solve()` output).
-- `solve()` — free-running indoor temperature `Ti` (`pandas.Series` named `"Ti"`;
+- `Tsa()`: sun–air temperature and `Is` for the current absorptance/orientation/month,
+  on the solver's time grid (results concatenate directly with `solve()` output).
+- `solve()`: free-running indoor temperature `Ti` (`pandas.Series` named `"Ti"`;
   use `.to_frame("Ti")` when a DataFrame is needed).
-- `solveAC()` — `Ti` held at $T_n$ (constant `pandas.Series`); sets
+- `solveAC()`: `Ti` held at $T_n$ (constant `pandas.Series`); sets
   `cooling_energy`/`heating_energy`.
-- `add_layer(material, width)` / `remove_layer(index)` — edit the stack (appends at
+- `add_layer(material, width)` / `remove_layer(index)`: edit the stack (appends at
   the inside).
-- `copy()` — re-creates the `Location` from the EPW file, so the `meanDay()`
+- `copy()`: re-creates the `Location` from the EPW file, so the `meanDay()`
   selection must be re-applied on the copy (`System2D.copy()` shares the
-  `Location` instead), `info()`, `flag()`.
+  `Location` instead). Also `info()`, `flag()`.
 
 > `Tsa` depends on `absortance`, `tilt`, `azimuth`, `meanDay` (month) and `Location`;
 > it is recomputed automatically when any of these change (results are cached
-> otherwise) — a prior manual `Tsa()` call is optional, for inspection. `layers` does
-> not affect `Tsa`, but mutating it in place (`.append(...)`) bypasses the cache
-> invalidation of the **solvers**: assign the list or use
+> otherwise), and a prior manual `Tsa()` call is optional, for inspection. `layers`
+> does not affect `Tsa`, but mutating it in place (`.append(...)`) bypasses the cache
+> invalidation of the solvers: assign the list or use
 > `add_layer()`/`remove_layer()`.
 
 ## `System2D`
+
+::: {.callout-warning title="Internal review note — remove before release"}
+Pending API decisions (mirrored as `NOTE(...)` comments in `eh2d.py`):
+
+- Guiding principle: `System2D` should mirror the 1D `System` public API unless
+  the difference is intrinsic to 2D (the 2D element, the 7-layer cap, tilt
+  validation, `Tfield`, the section inspectors). The "Differences" list below is
+  the checklist to shrink.
+- `Qout`: remove from the public API. Redundant: in the periodic regime
+  `Qout ≈ energy_transfer`, and their difference is already `energy_imbalance`.
+  On removal, migrate the energy-balance tests and clean this table and the
+  `model-2d` outputs table.
+- `solve_dataframe`: a stored result with an action-sounding name, public and
+  writable here while the 1D keeps its equivalent private. Hide it later (make
+  it internal, expose the data via an explicit accessor or return value) and
+  migrate its consumers: `run_examples.py`, the `usage-2d` save/recover
+  snippets, this table, the `model-2d` outputs table and the 2D tests.
+- Also to review: result attributes writable here vs read-only in 1D, `copy()`
+  sharing the `Location` here vs re-creating it in 1D, `flag()` missing here,
+  `setpoint` existing only here.
+:::
 
 Mirror of `System` for cross-sections that are heterogeneous across their width. Same
 `Location`, `tilt`, `azimuth`, `absortance`, `Tsa()`, `solve()`, `solveAC()` and
 result attributes. Differences:
 
-- `layers` contains, besides ordinary `(material, thickness)` tuples, **exactly one**
+- `layers` contains, besides ordinary `(material, thickness)` tuples, exactly one
   2D element: a [`HollowBlock`](#hollowblock) or a [`Slab`](#slab). The element's
   thickness is derived from its `geometry`.
-- The stack accepts at most **7 layers, including the 2D element** — the section
+- The stack accepts at most 7 layers, including the 2D element; the section
   builder uses the fixed seven slots (`L1…L7`) inherited from the C engine.
   Exceeding it raises `ValueError: at most 7 layers (including the 2D element).`
   The 1D `System` has no layer limit.
 - Orientation is validated: `HollowBlock` requires `tilt = 90`, `Slab` `tilt = 0`.
-- `setpoint` exists **only** in 2D; the 1D `System` always uses the mean neutrality
+- `setpoint` exists only in 2D; the 1D `System` always uses the mean neutrality
   temperature as the AC setpoint.
 - `flag()` is not available (1D only).
-- `copy()` **shares** the `Location` instance — a later `meanDay()` affects the
+- `copy()` shares the `Location` instance, so a later `meanDay()` affects the
   original and the copy alike (the 1D `System.copy()` re-creates it instead).
 - Result attributes are plain writable attributes, not read-only properties as in
   the 1D `System`.
-- `solve()` and `solveAC()` results are cached **separately**, so alternating modes
+- `solve()` and `solveAC()` results are cached separately, so alternating modes
   is free; the 1D `System` keeps one cache tagged by the last mode and recomputes
   when alternating.
 - Additional outputs beyond the 1D set: `Qout`, `Tfield`, `solve_dataframe`
@@ -126,13 +147,13 @@ result attributes. Differences:
 |---|---|
 | `setpoint` | AC setpoint override; `None` (default) → the neutrality temperature $T_n$ |
 | `days` | Day-to-day iterations used by the last solve |
-| `converged` | `True` if the last solve met `tol_day` **and** every inner step converged; a `RuntimeWarning` is emitted otherwise |
+| `converged` | `True` if the last solve met `tol_day` and every inner step converged; a `RuntimeWarning` is emitted otherwise |
 | `day_error` | Final day-to-day error (°C) of the last solve: max over the solid field, $\|\Delta T_i\|$ and each cavity $\|\Delta T_h\|$ |
 | `inner_iterations` | Largest inner sweep count observed in the last solve |
 | `energy_imbalance` | Energy-closure check $\|Q_{in}-Q_{out}\|/\max(Q_{in},Q_{out})$ of the last free-running solve (≈ 0 when periodic); `None` after `solveAC()` |
-| `Qout` | Gross energy **leaving** the indoor air over the converged day, J/(m²·day) — counterpart of `energy_transfer` (= $Q_{in}$); in the periodic regime `Qout ≈ energy_transfer` |
-| `solve_dataframe` | Full result `DataFrame` on the `Tsa()` time grid: the forcing columns plus `Ti`, `Tso` (outer-surface mean), `Tsi` (inner-surface mean) and `Thueco` (cavity-air temperature; the mean over the N cavities in `Slab`, `NaN` with `Fill.SOLID`), all in °C. Sampling convention inherited from the C: `Tso` is recorded at the **start** of each time step, `Ti`/`Tsi` at the **end** |
-| `Tfield` | Temperature field `(nx, ny)` in °C at the end of the last simulated day (outside → inside along the second axis) — useful for cross-section plots |
+| `Qout` | Gross energy leaving the indoor air over the converged day, J/(m²·day), counterpart of `energy_transfer` (= $Q_{in}$); in the periodic regime `Qout ≈ energy_transfer` |
+| `solve_dataframe` | Full result `DataFrame` on the `Tsa()` time grid: the forcing columns plus `Ti`, `Tso` (outer-surface mean), `Tsi` (inner-surface mean) and `Thueco` (cavity-air temperature; the mean over the N cavities in `Slab`, `NaN` with `Fill.SOLID`), all in °C. Sampling convention inherited from the C: `Tso` is recorded at the start of each time step, `Ti`/`Tsi` at the end |
+| `Tfield` | Temperature field `(nx, ny)` in °C at the end of the last simulated day (outside → inside along the second axis), useful for cross-section plots |
 
 - Section inspector (before solving):
 
@@ -144,7 +165,7 @@ wall.section()          # NT / k / rhoc arrays + mesh
 
 ## `HollowBlock`
 
-Concrete hollow block for **walls** (`tilt = 90`): a shell of one material with one
+Concrete hollow block for walls (`tilt = 90`): a shell of one material with one
 cavity per repeating cell.
 
 ```python
@@ -159,7 +180,7 @@ block = eh.HollowBlock(
 
 | `geometry` key | Meaning |
 |---|---|
-| `web` | Half web (rib) thickness — the full web between cavities is `2·web` |
+| `web` | Half web (rib) thickness; the full web between cavities is `2·web` |
 | `block_width` | Cavity width |
 | `cover_top` | Outer shell |
 | `cavity` | Cavity height (through the thickness) |
@@ -169,7 +190,7 @@ Cell width = `2·web + block_width`; thickness = `cover_top + cavity + cover_bot
 
 ## `Slab`
 
-Joist-and-block (*vigueta y bovedilla*) unit for **roofs** (`tilt = 0`): compression
+Joist-and-block (*vigueta y bovedilla*) unit for roofs (`tilt = 0`): compression
 topping, L-shaped rib (web + foot) at each cell edge, filler block, and `n_cavities`
 equal cavities.
 
@@ -213,20 +234,23 @@ Global singleton; changing it affects all subsequent computations.
 | `La` | `2.5` m | Indoor air depth |
 | `Nx` | `200` | 1D control volumes |
 | `ho` | `13` W/(m²·K) | Outdoor film coefficient (NOM) |
-| `hi` | `8.1` W/(m²·K) | Indoor film coefficient (NOM, vertical-surface value) |
-| `dt` | `10` s | **Fixed** — assignments are ignored ([why](numerics.qmd#indoor-air-coupling-free-running-mode)) |
+| `hi` | `8.1` W/(m²·K) | Indoor film coefficient for walls (NOM, vertical-surface value) |
+| `hi_up` | `9.4` W/(m²·K) | Indoor coefficient for roofs, upward heat flow (NOM) |
+| `hi_down` | `6.6` W/(m²·K) | Indoor coefficient for roofs, downward heat flow (NOM) |
+| `hi_flow` | `True` | Roofs (`tilt < 60°`) pick `hi_up`/`hi_down` per time step; `False` → fixed `hi` everywhere |
+| `dt` | `10` s | Fixed; assignments are ignored ([why](numerics.qmd#indoor-air-coupling-free-running-mode)) |
 | `AIR_DENSITY` | `1.18` kg/m³ | Indoor/cavity air density |
 | `AIR_HEAT_CAPACITY` | `1005` J/(kg·K) | Indoor/cavity air specific heat |
 
-**Methods**: `info()`, `to_dict()`, `reset()` (restores the numeric defaults;
+Methods: `info()`, `to_dict()`, `reset()` (restores the numeric defaults;
 `file`/`materials` are user-provided and are kept), `materials_list()`,
 `materials_dict()`; `config.materials` is a read-only dict of material properties
 (`.k`, `.rho`, `.c`).
 
-Setters **validate** (raising `ValueError`): `La`, `ho`, `hi` and the air properties
-must be > 0; `Nx` must be an integer ≥ 3; materials must have `k`, `rho`, `c` > 0
-(checked when the `.ini` is loaded; on failure the previous materials are kept).
-Layer thicknesses must be > 0 (checked at solve time).
+Setters validate, raising `ValueError`: `La`, `ho`, `hi`, `hi_up`, `hi_down` and the
+air properties must be > 0; `Nx` must be an integer ≥ 3; materials must have `k`,
+`rho`, `c` > 0 (checked when the `.ini` is loaded; on failure the previous materials
+are kept). Layer thicknesses must be > 0 (checked at solve time).
 
 ## `config2d` (2D)
 
@@ -234,12 +258,12 @@ Layer thicknesses must be > 0 (checked at solve time).
 |---|---|---|
 | `nx` | `80` | Nodes across the cell width (adiabatic sides) |
 | `ny` | `160` | Nodes through the thickness (outside → inside) |
-| `tol_inner` | `1e-8` °C | Inner-step tolerance: max node update **and** max scaled equation residual must both fall below it |
+| `tol_inner` | `1e-8` °C | Inner-step tolerance: max node update and max scaled equation residual must both fall below it |
 | `tol_day` | `5e-4` °C | Day-to-day convergence tolerance |
 | `max_days` | `60` | Cap on day-to-day iterations |
 | `max_inner` | `10000` | Cap on inner sweeps per time step; if hit, the solve is flagged `converged = False` |
 
-**Methods**: `info()`, `to_dict()`, `reset()`, `validate()`.
+Methods: `info()`, `to_dict()`, `reset()`, `validate()`.
 
 The attributes are plain (assignment is not checked); `validate()` runs at the start
 of every `System2D` solve and raises `ValueError` if `nx`/`ny` are not integers ≥ 3,

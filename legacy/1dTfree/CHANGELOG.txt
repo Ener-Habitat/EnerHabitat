@@ -1,0 +1,11 @@
+************************************************************************************
+05-Abril-2017
+
+*Lo nombres de los archivos de resultados se han reducido a
+./dat/user_mes_contadorherramienta.csv   para los archivos que contienen datos del tiempo
+y
+./dat/indice_user_mes_contadorherramienta.csv  para los archivos de los par'ametros de desempe~no t'ermico.
+
+*Los archivos de resultados ya no contienen la columna de tiempo y van en este orden:
+ Is	Tsa	Ta	Tparedext	Tparedint	Tint	Tn	DeltaTn
+

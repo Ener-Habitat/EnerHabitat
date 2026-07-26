@@ -35,22 +35,22 @@ from it).
 See the full
 [CHANGELOG](https://github.com/Ener-Habitat/EnerHabitat/blob/main/CHANGELOG.md).
 
-- **0.2.1** — documentation release: this site (theory, executable examples, API),
+- 0.2.1, documentation release: this site (theory, executable examples, API),
   restructured README, `CITATION.cff`; no changes to the solvers or the API.
-- **0.2.0** — 2D constructive systems: `System2D`, `HollowBlock` (walls), `Slab`
+- 0.2.0, 2D constructive systems: `System2D`, `HollowBlock` (walls), `Slab`
   (joist-and-block roofs) with air or solid-filled cavities, 2D `solveAC()`,
   to-scale section inspector, `config2d`.
-- **0.1.x** — 1D multilayer systems: `Location`, `System` (free-running and
+- 0.1.x, 1D multilayer systems: `Location`, `System` (free-running and
   air-conditioned), global `config`, EPW + pvlib sun–air temperature,
   finite-volume TDMA solver over an average day.
 
 ## Authors
 
-Developed at the **Instituto de Energías Renovables,
-[UNAM](https://www.unam.mx/)**.
+Developed at the Instituto de Energías Renovables,
+[UNAM](https://www.unam.mx/).
 
-- Guillermo Barrios del Valle — <gbv@ier.unam.mx>
-- Fernando Rodríguez Calderón — <ferrodriguez2509@gmail.com>
+- Guillermo Barrios del Valle, <gbv@ier.unam.mx>
+- Fernando Rodríguez Calderón, <ferrodriguez2509@gmail.com>
 
 Source code: <https://github.com/Ener-Habitat/EnerHabitat> ·
 Issues: <https://github.com/Ener-Habitat/EnerHabitat/issues>

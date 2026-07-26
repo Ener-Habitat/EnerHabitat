@@ -43,7 +43,16 @@ class Config:
         La (float): Length of the dummy frame (m).
         Nx (int): Number of discretization elements.
         ho (float): Outdoor convective coefficient (W/(m²·K)).
-        hi (float): Indoor convective coefficient (W/(m²·K)).
+        hi (float): Indoor convective coefficient, vertical surfaces (W/(m²·K)).
+        hi_up (float): Indoor coefficient for roofs with **upward** heat flow
+            (indoor surface colder than the indoor air; NOM-020: 9.4 W/(m²·K)).
+        hi_down (float): Indoor coefficient for roofs with **downward** heat
+            flow (indoor surface warmer than the indoor air, stable
+            stratification; NOM-020: 6.6 W/(m²·K)).
+        hi_flow (bool): If True (default), systems with ``tilt == 0`` (roofs)
+            select ``hi_up``/``hi_down`` at every time step from the direction
+            of the heat flow at the indoor surface; walls always use ``hi``.
+            Set to False to force the fixed ``hi`` on every orientation.
         dt (float): Time step (seconds). Fixed at 10 s, not configurable.
         AIR_DENSITY (float): Density of air (kg/m³).
         AIR_HEAT_CAPACITY (float): Heat capacity of air (J/(kg·K)).
@@ -73,6 +82,9 @@ class Config:
         self.__Nx = 200
         self.__ho = 13
         self.__hi = 8.1
+        self.__hi_up = 9.4
+        self.__hi_down = 6.6
+        self.__hi_flow = True
         self.__dt = 10
         self.__AIR_DENSITY = 1.1797660470258469
         self.__AIR_HEAT_CAPACITY = 1005.458757
@@ -86,6 +98,8 @@ class Config:
         print(f"Nx (Number of discretization elements):\t{self.Nx}")
         print(f"ho (Outdoor convective coefficient): \t{self.ho} W/(m²·K)")
         print(f"hi (Indoor convective coefficient): \t{self.hi} W/(m²·K)")
+        print(f"hi_up / hi_down (roofs, by heat flow): \t{self.hi_up} / {self.hi_down} W/(m²·K)"
+              f"  [hi_flow={'on' if self.hi_flow else 'off'}]")
         print(f"dt (Time step): \t\t\t{self.dt} seconds")
         print(f"\nAIR_DENSITY: \t\t\t\t{self.AIR_DENSITY} kg/m³")
         print(f"AIR_HEAT_CAPACITY: \t\t\t{self.AIR_HEAT_CAPACITY} J/(kg·K)")
@@ -96,6 +110,9 @@ class Config:
             "Nx": self.Nx,
             "ho": self.ho,
             "hi": self.hi,
+            "hi_up": self.hi_up,
+            "hi_down": self.hi_down,
+            "hi_flow": self.hi_flow,
             "dt": self.dt,
             "AIR_DENSITY": self.AIR_DENSITY,
             "AIR_HEAT_CAPACITY": self.AIR_HEAT_CAPACITY,
@@ -203,6 +220,34 @@ class Config:
         self.__hi = value
         self.version += 1
         
+    @property
+    def hi_up(self):
+        return self.__hi_up
+    @hi_up.setter
+    def hi_up(self, value):
+        if not (value > 0):
+            raise ValueError(f"hi_up must be > 0 W/(m2K), got {value!r}")
+        self.__hi_up = value
+        self.version += 1
+
+    @property
+    def hi_down(self):
+        return self.__hi_down
+    @hi_down.setter
+    def hi_down(self, value):
+        if not (value > 0):
+            raise ValueError(f"hi_down must be > 0 W/(m2K), got {value!r}")
+        self.__hi_down = value
+        self.version += 1
+
+    @property
+    def hi_flow(self):
+        return self.__hi_flow
+    @hi_flow.setter
+    def hi_flow(self, value):
+        self.__hi_flow = bool(value)
+        self.version += 1
+
     @property
     def dt(self):
         return self.__dt

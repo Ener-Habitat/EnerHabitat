@@ -1,13 +1,13 @@
 ---
-title: "Usage — 1D"
+title: "Usage: 1D"
 lightbox: true
 ---
 
-The [workflow](usage.qmd) applied to a homogeneous layer stack, in both modes —
-free-running and air-conditioned. The examples show **real results** for the average
-day of May in Cuernavaca, Mexico (the EPW and `materials.ini` used here live in
-`docs/data/` in the repository), and are executed when this documentation is
-rendered.
+The [Quickstart steps](index.qmd#quickstart) applied to a homogeneous layer stack,
+in both modes, free-running and air-conditioned. The examples show real results for
+the average day of May in Cuernavaca, Mexico (the EPW and `materials.ini` used here
+live in `docs/data/` in the repository), and are executed when this documentation
+is rendered.
 
 Setup shared by all the examples:
 
@@ -27,16 +27,28 @@ data = wall.solve()                  # free-running Ti
 data = pd.concat([data, wall.Tsa()], axis=1)
 
 print(f"energy_transfer = {wall.energy_transfer:,.0f} J/(m²·day)"
-      f"  = {wall.energy_transfer/3600:,.0f} Wh/(m²·day)")
+      f"  = {wall.energy_transfer/3600:,.1f} Wh/(m²·day)")
 ```
+
+Both solvers return a `pandas.Series` named `"Ti"`, indexed by time of day on the
+same time grid as `Tsa()`; that is why the `pd.concat` above aligns without NaN and
+promotes the Series to a column. When a `DataFrame` is required, convert with
+`wall.solve().to_frame("Ti")`.
 
 ```{python}
 plot_day(data, title="Mortero + Ladrillo wall, east, free-running — May, Cuernavaca")
 ```
 
-The indoor temperature `Ti` oscillates with a smaller amplitude than the sun–air
-temperature `Tsa` and lags behind it — the damping and the delay are the thermal
-mass at work.
+<!-- The indoor temperature `Ti` oscillates with a smaller amplitude than the sun–air
+temperature `Tsa` and lags behind it. The damping and the delay are the thermal
+mass at work. -->
+
+The time axis is civil (clock) time, inherited from the EPW, not solar time.
+That is why this east-facing wall keeps direct sun past 12:00: solar noon in
+Cuernavaca falls at about 12:33 (the site lies 9.2° west of the UTC−6 reference
+meridian, which adds 37 min, minus some 4 min of equation of time in May). The
+sharp drop in `Is` (mirrored by `Tsa`) marks that moment: the sun crosses due
+south and the east wall is left with diffuse irradiance only.
 
 ## 1D wall, air-conditioned
 
@@ -48,9 +60,9 @@ dataAC = wall.solveAC()
 dataAC = pd.concat([dataAC, wall.Tsa()], axis=1)
 
 print(f"cooling_energy = {wall.cooling_energy:,.0f} J/(m²·day)"
-      f"  = {wall.cooling_energy/3600:,.0f} Wh/(m²·day)")
+      f"  = {wall.cooling_energy/3600:,.1f} Wh/(m²·day)")
 print(f"heating_energy = {wall.heating_energy:,.0f} J/(m²·day)"
-      f"  = {wall.heating_energy/3600:,.0f} Wh/(m²·day)")
+      f"  = {wall.heating_energy/3600:,.1f} Wh/(m²·day)")
 ```
 
 ```{python}
@@ -59,7 +71,7 @@ plot_day(dataAC, title="Same wall, air-conditioned (Ti = Tn) — May, Cuernavaca
 
 ## Where to go next
 
-For systems whose section is not a simple layer stack — hollow blocks,
-joist-and-block slabs — continue with [Usage — 2D](usage-2d.qmd). The global
+For systems whose section is not a simple layer stack (hollow blocks,
+joist-and-block slabs), continue with [Usage — 2D](usage-2d.qmd). The global
 parameters (`La`, `ho`, `hi`, `Nx`) are documented in
 [the configuration](usage.qmd#configuration).

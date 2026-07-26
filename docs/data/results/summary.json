@@ -15,10 +15,10 @@
     "heating_energy": 287568.39500298304
   },
   "slab_free": {
-    "runtime_s": 1129.8,
+    "runtime_s": 1076.9,
     "days": 6,
     "X_mm": 609.0,
     "Y_mm": 218.0,
-    "energy_transfer": 26548.29906179595
+    "energy_transfer": 26544.60144524925
   }
 }

@@ -611,15 +611,32 @@ class System():
         
         materials = config.materials
 
+        # Roof-like surfaces: hi depends on the heat-flow direction at the
+        # indoor surface, evaluated every time step (NOM-020): hi_down when
+        # Tsi > Ti (stable stratification, downward flow), hi_up when Tsi <= Ti
+        # (unstable, upward flow). The wall treatment (fixed hi) applies for
+        # tilt >= 60 deg — the same boundary EnergyPlus uses to classify a
+        # surface as roof (tilt < 60) vs wall (60-120), and equivalent to the
+        # ISO 6946 rule (heat flow within +-30 deg of the horizontal is
+        # "horizontal"). config.hi_flow = False forces the fixed hi everywhere.
+        hi_flow = bool(config.hi_flow) and float(self.tilt) < 60.0
+        hi_up = config.hi_up if hi_flow else hi
+        hi_down = config.hi_down if hi_flow else hi
+
         cs = set_construction(materials, constructive_system)
         k, rhoc, dx, Gf = set_k_rhoc(cs, Nx)
-        mass_coeff, a_static, b_static, c_static = prepare_static_coefficients(k, rhoc, dx, dt, ho, hi, Gf)
+        # hi only enters the last-node diagonal: build the "up" set and derive
+        # the "down" one from it.
+        mass_coeff, a_up, b_static, c_static = prepare_static_coefficients(k, rhoc, dx, dt, ho, hi_up, Gf)
+        a_down = a_up.copy()
+        a_down[Nx - 1] += hi_down - hi_up
 
         d = np.empty(Nx)
         P = np.empty(Nx)
         Q = np.empty(Nx)
         Tn_aux = np.empty(Nx)
-        capacitance_factor = hi * dt / (AIR_DENSITY * AIR_HEAT_CAPACITY * La)
+        cap_up = hi_up * dt / (AIR_DENSITY * AIR_HEAT_CAPACITY * La)
+        cap_down = hi_down * dt / (AIR_DENSITY * AIR_HEAT_CAPACITY * La)
 
         T = np.full(Nx, SC_dataframe.Tn.mean())
         SC_dataframe['Ti'] = SC_dataframe.Tn.mean()
@@ -643,13 +660,17 @@ class System():
                 Told = T.copy()
                 Qcool = Qheat = 0.
                 for idx in range(n_steps):
-                    calculate_coefficients(mass_coeff, T, Tsa_vals[idx], ho, Ti_vals[idx], hi, d)
+                    if T[Nx - 1] > Ti_vals[idx]:
+                        hi_s, a_s = hi_down, a_down
+                    else:
+                        hi_s, a_s = hi_up, a_up
+                    calculate_coefficients(mass_coeff, T, Tsa_vals[idx], ho, Ti_vals[idx], hi_s, d)
                     # Llamado de funcion para Acc
-                    T, Ti = solve_PQ_AC(a_static, b_static, c_static, d, T, Nx, Ti_vals[idx], P, Q, Tn_aux)
+                    T, Ti = solve_PQ_AC(a_s, b_static, c_static, d, T, Nx, Ti_vals[idx], P, Q, Tn_aux)
                     if (T[Nx-1] > Ti):
-                        Qcool += hi*dt*(T[Nx-1]-Ti)
+                        Qcool += hi_s*dt*(T[Nx-1]-Ti)
                     if (T[Nx-1] < Ti):
-                        Qheat += hi*dt*(Ti-T[Nx-1])
+                        Qheat += hi_s*dt*(Ti-T[Nx-1])
                     Ti_vals[idx] = Ti
                 C = np.abs(Told - T).mean()
                 dTi = np.abs(Ti_vals - Ti_prev).max()
@@ -685,10 +706,14 @@ class System():
                 Qin = Qout = 0.0
                 for idx in range(n_steps):
                     tinn = tint
-                    calculate_coefficients(mass_coeff, T, Tsa_vals[idx], ho, tinn, hi, d)
-                    T, tint = solve_PQ(a_static, b_static, c_static, d, T, Nx, tinn, capacitance_factor, P, Q, Tn_aux)
+                    if T[Nx - 1] > tinn:
+                        hi_s, a_s, cap_s = hi_down, a_down, cap_down
+                    else:
+                        hi_s, a_s, cap_s = hi_up, a_up, cap_up
+                    calculate_coefficients(mass_coeff, T, Tsa_vals[idx], ho, tinn, hi_s, d)
+                    T, tint = solve_PQ(a_s, b_static, c_static, d, T, Nx, tinn, cap_s, P, Q, Tn_aux)
                     Ti_vals[idx] = tint
-                    flux = hi * (T[Nx - 1] - tinn) * dt
+                    flux = hi_s * (T[Nx - 1] - tinn) * dt
                     if flux > 0:
                         Qin += flux
                     else:

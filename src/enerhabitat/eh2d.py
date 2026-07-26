@@ -725,6 +725,27 @@ class System2D:
         self._ac_df = None
         self._ac_sig = None
         self.energy_transfer = None
+        # NOTE(api-symmetry 2026-07): guiding principle for the pending API
+        # review: System2D should mirror the 1D System's public surface unless
+        # the difference is intrinsic to 2D. Intrinsic (keep): the 2D element in
+        # layers, the 7-layer cap, tilt validation, Tfield and the section
+        # inspectors. To review as gratuitous asymmetries: Qout (note below),
+        # solve_dataframe public here vs private in 1D (note below), result
+        # attributes writable here vs read-only properties in 1D, copy()
+        # sharing the Location here vs re-creating it in 1D, flag() missing
+        # here, and setpoint existing only here (either add it to 1D or drop
+        # it). The "Differences" list in api.qmd#system2d documents today's
+        # behaviour and is the checklist to shrink.
+        # NOTE(review 2026-07): Qout should be REMOVED from the public API in the
+        # next minor release. It is redundant: in the converged periodic regime
+        # Qout ≈ energy_transfer (= Qin) by energy closure, and their difference
+        # is already exposed as `energy_imbalance`. The 1D System does not expose
+        # it either, so removing it restores 1D/2D API symmetry. Keep Qin/Qout
+        # INTERNAL (the kernels must still return both to build
+        # energy_imbalance). On removal also update: the energy-balance tests
+        # (test_eh2d_hollowblock/_slab/_package -> use energy_imbalance), the
+        # api.qmd System2D table, the model-2d.qmd outputs table, and the
+        # solve() docstring.
         self.Qout = None
         self.cooling_energy = None
         self.heating_energy = None
@@ -733,6 +754,18 @@ class System2D:
         self.converged = None
         self.inner_iterations = None
         self.energy_imbalance = None
+        # NOTE(review 2026-07): solve_dataframe is a stored RESULT, not an
+        # action (the "solve" in the name misleads), and it is a plain writable
+        # PUBLIC attribute: the full DataFrame (Tsa() forcing columns + Ti, Tso,
+        # Tsi, Thueco) that solve()/solveAC() fill. Pending decision: HIDE it
+        # later and make it part of the internal process, as the 1D already
+        # does (ehframe.System keeps its __solve_dataframe private and only
+        # returns Ti); the internal caches _solve_df/_ac_df below already cover
+        # that role. If hidden, expose the data through an explicit accessor or
+        # return value, and migrate the current consumers: docs/run_examples.py
+        # (to_csv), usage-2d.qmd (save/recover snippets and the surface-
+        # temperatures section), api.qmd System2D table, model-2d.qmd outputs
+        # table, and tests test_eh2d_hollowblock/test_eh2d_slab.
         self.solve_dataframe = None
 
     # --- weather/solar: the 1D chain is reused ---
@@ -865,6 +898,13 @@ class System2D:
         ho, hi, dt = config.ho, config.hi, float(config.dt)
         La = config.La
         rhoair, cair = config.AIR_DENSITY, config.AIR_HEAT_CAPACITY
+        # Roofs (tilt == 0): per-step hi from the heat-flow direction at the
+        # indoor surface (NOM-020: hi_up upward / hi_down downward). The -1.0
+        # sentinel keeps the fixed hi (walls, or config.hi_flow = False).
+        if config.hi_flow and float(self.tilt) == 0.0:
+            hi_up, hi_down = float(config.hi_up), float(config.hi_down)
+        else:
+            hi_up = hi_down = -1.0
 
         if isinstance(elem, Slab) and elem.fill_type is Fill.AIR:
             g = elem._geom()
@@ -877,7 +917,7 @@ class System2D:
                 sec.cav_of, sec.cav_i1, sec.cav_i2, sec.info["cj1"], sec.info["cj2"],
                 g["cavity_width"], g["cavity"], 1.0, float(self.tilt), *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
-                config2d.max_inner)
+                config2d.max_inner, hi_up, hi_down)
             Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout, day_err, inner_ok, inner_max = out
         elif elem.fill_type is Fill.AIR:   # HollowBlock (wall)
             a, e = elem._ae()
@@ -888,14 +928,14 @@ class System2D:
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
                 m.i1, m.j1, m.i2, m.j2, a21, e22, 1.0, *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
-                config2d.max_inner)
+                config2d.max_inner, hi_up, hi_down)
             Ti, Tso, Tsi, Th, Tfield, days, Qin, Qout, day_err, inner_ok, inner_max = out
         else:  # SOLID (HollowBlock or Slab): pure conduction
             out = solve_day_2d(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
-                config2d.max_inner)
+                config2d.max_inner, hi_up, hi_down)
             Ti, Tso, Tsi, Tfield, days, Qin, Qout, day_err, inner_ok, inner_max = out
             Th = _np.full_like(Ti, _np.nan)
 
@@ -955,6 +995,13 @@ class System2D:
         ho, hi, dt = config.ho, config.hi, float(config.dt)
         La = config.La
         rhoair, cair = config.AIR_DENSITY, config.AIR_HEAT_CAPACITY
+        # Roofs (tilt == 0): per-step hi from the heat-flow direction at the
+        # indoor surface (NOM-020: hi_up upward / hi_down downward). The -1.0
+        # sentinel keeps the fixed hi (walls, or config.hi_flow = False).
+        if config.hi_flow and float(self.tilt) == 0.0:
+            hi_up, hi_down = float(config.hi_up), float(config.hi_down)
+        else:
+            hi_up = hi_down = -1.0
 
         if isinstance(elem, Slab) and elem.fill_type is Fill.AIR:
             g = elem._geom()
@@ -965,7 +1012,7 @@ class System2D:
                 sec.cav_of, sec.cav_i1, sec.cav_i2, sec.info["cj1"], sec.info["cj2"],
                 g["cavity_width"], g["cavity"], 1.0, float(self.tilt), *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
-                config2d.max_inner)
+                config2d.max_inner, hi_up, hi_down)
             Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat, day_err, inner_ok, inner_max = out
         elif elem.fill_type is Fill.AIR:   # HollowBlock (wall)
             a, e = elem._ae()
@@ -976,14 +1023,14 @@ class System2D:
                 m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
                 m.i1, m.j1, m.i2, m.j2, a21, e22, 1.0, *vf,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
-                config2d.max_inner)
+                config2d.max_inner, hi_up, hi_down)
             Ti, Tso, Tsi, Th, Tfield, days, Qcool, Qheat, day_err, inner_ok, inner_max = out
         else:  # SOLID (HollowBlock or Slab): pure conduction
             out = solve_day_2d_ac(
                 sec.NT, sec.kfield, sec.rhocfield, Tsa_arr, ho, hi, dt,
                 m.dx, m.dy, La, m.X, rhoair, cair, T0, Tset,
                 config2d.tol_inner, config2d.tol_day, config2d.max_days,
-                config2d.max_inner)
+                config2d.max_inner, hi_up, hi_down)
             Ti, Tso, Tsi, Tfield, days, Qcool, Qheat, day_err, inner_ok, inner_max = out
             Th = _np.full_like(Ti, _np.nan)
 

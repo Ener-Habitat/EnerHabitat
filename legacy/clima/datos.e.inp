@@ -1,0 +1,10 @@
+# program: ./average.e
+# cwd: /Users/gbv/Dropbox/ciencia/enerhabitat/C/clima
+# hostname: iMac.local
+# localtime: Thu Aug 13 13:11:45 2020
+#
+# parameters: 
+      file : Huejutla.epw # archivo datos
+       Lon : -97.97 # Longitud
+       Lat : 21.143 # Latitud
+      msnm : 266 # Altura snm

@@ -31,10 +31,14 @@ def _rect(ax, x0, x1, y0, y1, color, hatch=None, lw=0.8):
 
 
 def _hdim(ax, x0, x1, y, label):
-    """Cota horizontal (flecha doble + etiqueta) debajo del dibujo."""
+    """Cota horizontal (flecha doble + etiqueta) debajo del dibujo.
+
+    Con el eje y invertido (exterior arriba), "debajo de la flecha" en pantalla
+    es y creciente: la etiqueta se ancla en y+4 para no pisar la línea.
+    """
     ax.add_patch(FancyArrowPatch((x0, y), (x1, y), arrowstyle="<->",
                                  mutation_scale=8, color="#444", lw=0.8))
-    ax.text((x0 + x1) / 2, y - 6, label, ha="center", va="top", fontsize=7.5, color="#333")
+    ax.text((x0 + x1) / 2, y + 4, label, ha="center", va="top", fontsize=7.5, color="#333")
 
 
 def _vlabel(ax, x, y0, y1, name, mm):
@@ -63,21 +67,21 @@ def hollow_block():
     _vlabel(ax, X + 8, ct, ct + cav, "cavity", cav)
     _vlabel(ax, X + 8, ct + cav, Y, "cover_bottom", cb)
     # cotas horizontales (abajo)
-    _hdim(ax, 0, web, Y + 12, f"web {web}")
-    _hdim(ax, web, X - web, Y + 12, f"block_width {bw}")
-    _hdim(ax, X - web, X, Y + 12, f"web {web}")
-    # EXT / INT
+    _hdim(ax, 0, web, Y + 14, f"web {web}")
+    _hdim(ax, web, X - web, Y + 14, f"block_width {bw}")
+    _hdim(ax, X - web, X, Y + 14, f"web {web}")
+    # EXT arriba; INT con guía horizontal desde la izquierda
     ax.annotate("EXT (Tsa, ho)", xy=(X / 2, 0), xytext=(X / 2, -16),
                 ha="center", fontsize=8, color="#b3471f",
                 arrowprops=dict(arrowstyle="->", color="#b3471f"))
-    ax.annotate("INT (Tint, hi)", xy=(X / 2, Y), xytext=(X / 2, Y + 30),
-                ha="center", fontsize=8, color="#1f5fb3",
+    ax.annotate("INT (Tint, hi)", xy=(-4, Y), xytext=(-98, Y),
+                ha="left", va="center", fontsize=8, color="#1f5fb3",
                 arrowprops=dict(arrowstyle="->", color="#1f5fb3"))
 
-    ax.set_xlim(-10, X + 90)
-    ax.set_ylim(Y + 40, -34)            # y invertido (exterior arriba)
+    ax.set_xlim(-104, X + 90)
+    ax.set_ylim(Y + 46, -34)            # y invertido (exterior arriba)
     ax.set_aspect("equal"); ax.axis("off")
-    ax.set_title("HollowBlock — wall cross-section  (x = width, y = thickness)\n"
+    ax.set_title("HollowBlock — wall cross-section  (x = thickness, y = width)\n"
                  f"thickness = cover_top + cavity + cover_bottom = {Y} mm", fontsize=10)
     ax.legend(handles=[Patch(fc=C_CONCRETE, ec=EDGE, label="block material (concrete)"),
                        Patch(fc=C_AIR, ec=EDGE, label="air cavity")],
@@ -137,18 +141,18 @@ def slab():
     segs += [("foot", foot), ("web", web)]
     xx = 0
     for nm, w in segs:
-        _hdim(ax, xx, xx + w, Y + 14, f"{nm[:9]}\n{w}")
+        _hdim(ax, xx, xx + w, Y + 18, f"{nm}\n{w}")
         xx += w
-    # EXT / INT
+    # EXT arriba; INT con guía horizontal desde la izquierda
     ax.annotate("EXT (Tsa, ho)", xy=(X / 2, 0), xytext=(X / 2, -20),
                 ha="center", fontsize=8, color="#b3471f",
                 arrowprops=dict(arrowstyle="->", color="#b3471f"))
-    ax.annotate("INT (Tint, hi)", xy=(X / 2, Y), xytext=(X * 0.30, Y + 44),
-                ha="center", fontsize=8, color="#1f5fb3",
+    ax.annotate("INT (Tint, hi)", xy=(-4, Y), xytext=(-108, Y),
+                ha="left", va="center", fontsize=8, color="#1f5fb3",
                 arrowprops=dict(arrowstyle="->", color="#1f5fb3"))
 
-    ax.set_xlim(-10, X + 95)
-    ax.set_ylim(Y + 62, -42)
+    ax.set_xlim(-116, X + 95)
+    ax.set_ylim(Y + 66, -42)
     ax.set_aspect("equal"); ax.axis("off")
     ax.set_title("Slab (joist-and-block roof) — cross-section  ·  3 cavities, L-shaped rib\n"
                  f"width = 2·(web+foot)+(n+1)·shoulder+n·cavity_width = {X} mm   ·   "
@@ -176,13 +180,22 @@ def domain_1d():
     X = sum(widths)
     AIRW = 85                              # aire interior (esquemático, no a escala)
 
-    fig, ax = plt.subplots(figsize=(8.8, 3.9))
+    fig, ax = plt.subplots(figsize=(8.8, 4.2))
     x0 = 0
-    for w, lab, col in zip(widths, labels, colors):
+    centers = []
+    for w, col in zip(widths, colors):
         _rect(ax, x0, x0 + w, 0, H, col)
-        ax.text(x0 + w / 2, H / 2, f"{lab}\n$k_j,\\ \\rho_j,\\ c_j$",
-                ha="center", va="center", fontsize=8.5)
+        centers.append(x0 + w / 2)
         x0 += w
+
+    # the wide middle layer holds its label inside; the thin side layers are
+    # labelled from above with a leader line (their boxes are too narrow)
+    ax.text(centers[1], H / 2, "layer 2\n$k_j,\\ \\rho_j,\\ c_j$",
+            ha="center", va="center", fontsize=8.5)
+    for c, lab in [(centers[0], "layer 1"), (centers[2], "layer N")]:
+        ax.annotate(lab, xy=(c, 8), xytext=(c, -13),
+                    ha="center", va="bottom", fontsize=8.5, color="#222",
+                    arrowprops=dict(arrowstyle="->", color="#444", lw=0.7))
 
     # aire interior (nodo agrupado, punteado)
     ax.add_patch(Rectangle((X, 0), AIRW, H, facecolor="#eef4fb",
@@ -194,12 +207,12 @@ def domain_1d():
     ax.annotate("$T_{sa}(t)$,  $h_o$", xy=(0, H * 0.5), xytext=(-46, H * 0.5),
                 ha="center", va="center", fontsize=9, color="#b3471f",
                 arrowprops=dict(arrowstyle="->", color="#b3471f"))
-    ax.annotate("$h_i$", xy=(X, H * 0.5), xytext=(X + 16, H * 0.72),
+    ax.annotate("$h_i$", xy=(X, H * 0.62), xytext=(X + 18, H * 0.94),
                 ha="center", va="center", fontsize=9, color="#1f5fb3",
                 arrowprops=dict(arrowstyle="->", color="#1f5fb3"))
-    # continuidad de flujo en las juntas
-    ax.annotate("flux continuity\nat layer joints", xy=(widths[0], H * 0.82),
-                xytext=(widths[0] + 34, H * 1.16), ha="left", va="center",
+    # continuidad de flujo en las juntas (arriba, lejos del eje x)
+    ax.annotate("flux continuity at layer joints", xy=(widths[0], 14),
+                xytext=(centers[1], -27), ha="center", va="bottom",
                 fontsize=7.5, color="#444",
                 arrowprops=dict(arrowstyle="->", color="#444", lw=0.8))
 
@@ -212,7 +225,7 @@ def domain_1d():
         ax.text(xpos, H + 26, lab, ha="center", va="top", fontsize=8)
 
     ax.set_xlim(-70, X + AIRW + 30)
-    ax.set_ylim(H + 46, -22)               # y invertido para dejar cotas abajo
+    ax.set_ylim(H + 46, -42)               # y invertido para dejar cotas abajo
     ax.set_aspect("equal"); ax.axis("off")
     ax.set_title("1D domain — multilayer wall/roof (outside → inside)", fontsize=10)
     fig.tight_layout()
@@ -221,7 +234,70 @@ def domain_1d():
     print("saved", out)
 
 
+# =================================================================
+#  Dominio 2D: una celda repetitiva con sus condiciones de frontera
+#  (model-2d.qmd, junto a eq-bc2d)
+# =================================================================
+def domain_2d():
+    web, bw = 20, 160                     # celda del bloque hueco de la doc
+    ct, cav, cb = 20, 80, 20
+    W = 2 * web + bw                      # 200 mm
+    L = ct + cav + cb                     # 120 mm
+    AIRH = 55                             # aire interior (esquemático)
+
+    fig, ax = plt.subplots(figsize=(7.8, 4.8))
+    _rect(ax, 0, W, 0, L, "#c9c9c9")
+    ax.add_patch(Rectangle((web, ct), bw, cav, facecolor="#dcefff",
+                           edgecolor="k", ls="--", lw=0.9))
+    ax.text(W / 2, ct + cav / 2,
+            "cavity:  $h_c(\\Delta T)$ + radiation,  $T_h(t)$",
+            ha="center", va="center", fontsize=8.5, color="#374151")
+
+    # frontera exterior (arriba): sol-aire
+    ax.annotate("$T_{sa}(t)$,  $h_o$", xy=(W * 0.5, 0), xytext=(W * 0.5, -32),
+                ha="center", va="center", fontsize=9.5, color="#b3471f",
+                arrowprops=dict(arrowstyle="->", color="#b3471f"))
+    # aire interior (abajo, nodo agrupado)
+    ax.add_patch(Rectangle((0, L), W, AIRH, facecolor="#eef4fb",
+                           edgecolor="#1f5fb3", ls="--", lw=1.1))
+    ax.text(W / 2, L + AIRH / 2, "indoor air   $T_i(t)$",
+            ha="center", va="center", fontsize=9, color="#1f5fb3")
+    ax.annotate("$h_i$", xy=(W * 0.22, L), xytext=(W * 0.22, L + AIRH * 0.62),
+                ha="center", va="top", fontsize=9.5, color="#1f5fb3",
+                arrowprops=dict(arrowstyle="->", color="#1f5fb3"))
+
+    # costados adiabáticos (planos de simetría especular)
+    for x, off in ((0, -7), (W, 7)):
+        ax.text(x + off, L * 0.5, "$\\partial T/\\partial y = 0$  (adiabatic)",
+                ha="center", va="center", fontsize=7.5, color="#374151",
+                rotation=90)
+
+    # caras y ejes (x a través del espesor, como en el 1D; y a lo ancho)
+    ax.text(W + 16, 0, "$x = 0$ (outside)", ha="left", va="center",
+            fontsize=8, color="#444")
+    ax.text(W + 16, L, "$x = L$ (inside)", ha="left", va="center",
+            fontsize=8, color="#444")
+    ax.annotate("", xy=(-26, L), xytext=(-26, 0),
+                arrowprops=dict(arrowstyle="<->", color="#444", lw=0.9))
+    ax.text(-32, L / 2, "$L$", ha="right", va="center", fontsize=9)
+    yW = L + AIRH + 16
+    ax.annotate("", xy=(W, yW), xytext=(0, yW),
+                arrowprops=dict(arrowstyle="<->", color="#444", lw=0.9))
+    ax.text(W / 2, yW + 6, "$W$", ha="center", va="top", fontsize=9)
+
+    ax.set_xlim(-50, W + 78)
+    ax.set_ylim(yW + 22, -44)             # y invertido: exterior arriba
+    ax.set_aspect("equal"); ax.axis("off")
+    ax.set_title("2D domain — one repeating cell with its boundary conditions",
+                 fontsize=10)
+    fig.tight_layout()
+    out = os.path.join(IMG, "domain_2d.png")
+    fig.savefig(out, dpi=140, bbox_inches="tight"); plt.close(fig)
+    print("saved", out)
+
+
 if __name__ == "__main__":
     hollow_block()
     slab()
     domain_1d()
+    domain_2d()

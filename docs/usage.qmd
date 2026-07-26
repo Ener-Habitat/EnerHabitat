@@ -1,49 +1,21 @@
 ---
-title: "Usage — workflow and setup"
+title: "Usage — setup"
 ---
 
-This page covers everything that comes **before** simulating: the workflow, the
-project layout, the materials file and the global configuration. The workflow is
-then applied, with executable examples, in [Usage — 1D](usage-1d.qmd) (homogeneous
-layer stacks) and [Usage — 2D](usage-2d.qmd) (hollow blocks and joist-and-block
-slabs).
-
-## Workflow
-
-To simulate a wall (or roof) you need to:
-
-1. **Geolocate it** — pass an EPW file to `Location`.
-2. **Orient it** — set `azimuth` (and `tilt` if needed: `90` = wall, `0` = roof;
-   1D accepts any tilt, with $RF$ varying linearly between both; 2D only 0/90).
-3. **Define its solar absorptance** — set `absortance` (intuitively the surface
-   color, but coatings of the same visible color can differ in absorptance).
-4. **Define its layers** — set `layers` from outside to inside.
-5. **Choose the period** — call `location.meanDay(month, year)`.
-6. **Compute `Tsa()`**, then choose one solver:
-   - **`solve()`** — free-running: the indoor temperature `Ti` evolves with the
-     dynamics of the constructive system.
-   - **`solveAC()`** — air-conditioned: `Ti` is held at the comfort setpoint and the
-     cooling/heating energies are reported.
-
-Both solvers return a `pandas.Series` named `"Ti"`, indexed by time of day on the same
-time grid as `Tsa()` — so results concatenate directly
-(`pd.concat([data, wall.Tsa()], axis=1)` promotes the named Series to a column. When a `DataFrame` is required, convert with
-`wall.solve().to_frame("Ti")`.
-
-> `Tsa` depends on `absortance`, `tilt`, `azimuth`, the month (`meanDay`) and the
-> `Location` — the layer stack does **not** affect it. The setters invalidate the
-> cache and the next call to `Tsa()` or to a solver recomputes automatically; a
-> prior manual `Tsa()` call is optional (useful to inspect the forcing before
-> solving).
-
+This page covers what you prepare before simulating: the project layout, the
+materials file and the global configuration. The steps of a simulation are the
+[Quickstart](index.qmd#quickstart); they run with real results in
+[Usage — 1D](usage-1d.qmd) (homogeneous layer stacks) and
+[Usage — 2D](usage-2d.qmd) (hollow blocks and joist-and-block slabs).
 
 ## Recommended folder structure
 
-A plain text file named `materials.ini` is **required** — EnerHabitat ships with no default materials.
+A plain text file named `materials.ini` is required, because EnerHabitat bundles
+no default materials.
 
 ```
 project/
-├── main.py
+├── 001_evaluate_CS_adobe.ipynb
 ├── materials.ini      # Material properties (REQUIRED — user-provided)
 └── epw/
     ├── ...
@@ -52,14 +24,17 @@ project/
 
 ## Materials file
 
-Material properties are declared in an `.ini` file: the material name is the section
-header and `k`, `rho`, `c` the keys (case-sensitive, no Greek letters). Inline comments
-(`#` or `;`) are allowed. By default the package looks for `materials.ini` in the
-working directory; otherwise set `eh.config.file`.
+Material properties are declared in an `.ini` file. The material name is the section
+header, and each material takes three keys: `k`, the thermal conductivity in
+W/(m·K); `rho`, the density in kg/m³; and `c`, the specific heat in J/(kg·K). The
+keys are case-sensitive, with no Greek letters. Inline comments (`#` or `;`) are
+allowed. By default the package looks for `materials.ini` in the working directory;
+otherwise set `eh.config.file`.
 
-The file below defines **every material used in these docs**
+The file below defines every material used in these docs
 ([Usage — 1D](usage-1d.qmd) and [Usage — 2D](usage-2d.qmd)), so you can run all the
-snippets as-is (values are typical/illustrative — replace with your own data):
+snippets as-is. The values are typical, for illustration; replace them with your
+own data:
 
 ```ini
 [Adobe]
@@ -111,13 +86,21 @@ c   = 1000
 Assigning a missing path to `config.file` raises `FileNotFoundError` immediately, and
 the previously loaded materials (and path) are kept untouched. If the default
 `materials.ini` is not present in the working directory when EnerHabitat is imported,
-`materials` starts empty (`{}`) — solving then fails because the layer materials
-cannot be resolved — so set `config.file` before building systems.
+`materials` starts empty (`{}`); solving then fails because the layer materials
+cannot be resolved. Set `config.file` before building systems.
 
 ## Configuration
 
-`config` is a global singleton shared by every `Location` and `System`. Changing it
-affects **all** subsequent computations.
+You can run everything with the defaults; come back to this section when you need
+to override them. Two objects hold the parameters: `config` applies to both 1D and
+2D (physics and materials), and `config2d` only to 2D (mesh and convergence).
+Changing an attribute takes effect for the computations that follow in your
+notebook or program; nothing is stored on disk, so a new session always starts
+from the defaults listed here.
+
+### `config`: physics and materials, 1D and 2D
+
+`config` is shared by every `Location`, `System` and `System2D` in the session.
 
 | Attribute | Default          | Description |
 | --------- | ---------------- | ----------- |
@@ -125,32 +108,56 @@ affects **all** subsequent computations.
 | `La`      | `2.5` m          | Depth of the indoor air volume |
 | `Nx`      | `200`            | Control volumes across the system thickness |
 | `ho`      | `13` W/(m²·K)    | Outdoor film coefficient |
-| `hi`      | `8.1` W/(m²·K)   | Indoor film coefficient |
-| `dt`      | `10` s *(fixed)* | Time step — **not configurable** (assignments are ignored) |
+| `hi`      | `8.1` W/(m²·K)   | Indoor film coefficient for walls (vertical surfaces) |
+| `hi_up`   | `9.4` W/(m²·K)   | Indoor coefficient for roofs, upward heat flow (`Tsi < Ti`) |
+| `hi_down` | `6.6` W/(m²·K)   | Indoor coefficient for roofs, downward heat flow (`Tsi > Ti`, stable stratification) |
+| `hi_flow` | `True`           | Roofs select `hi_up`/`hi_down` at every time step from the heat-flow direction; `False` forces the fixed `hi` on every orientation |
+| `dt`      | `10` s *(fixed)* | Time step; not configurable (assignments are ignored) |
 
-The `ho`/`hi` defaults are the values prescribed by the Mexican standards
-**NOM-008-ENER** and **NOM-020-ENER** (`hi = 8.1` is the vertical-surface value,
-applied to all orientations); they can be overridden at any time. `dt` is
-locked because of the explicit indoor-air coupling — see
+The film coefficients are the NOM-008-ENER and NOM-020-ENER values. Walls use
+`hi = 8.1` W/(m²·K). Roofs use `9.4` when the heat flows upward and `6.6` when
+it flows downward (a hot ceiling over cooler air stratifies, and convection is
+suppressed). By default (`hi_flow = True`) a roof picks the coefficient at every
+time step, comparing the indoor-surface temperature (its mean, in 2D) with the
+indoor-air temperature. A surface counts as a roof when `tilt < 60°`, the same
+limit used by EnergyPlus and ISO 6946 (in 2D only 0 and 90 are allowed anyway).
+To fix a value: `hi_flow = False` uses `hi` on every orientation, and
+`hi_up = hi_down = value` fixes roofs while walls keep `hi`. `dt` is locked
+because of the explicit indoor-air coupling; see
 [the numerical method](numerics.qmd#indoor-air-coupling-free-running-mode).
 
 ```python
 eh.config.file = "./materials.ini"
 eh.config.La = 2.0
 eh.config.ho = 12          # override the NOM defaults if needed
-eh.config.reset()          # restore the numeric defaults (La, Nx, ho, hi, dt, air);
-                           # config.file / materials are user-provided and are kept
+eh.config.hi_flow = False  # force the fixed hi on roofs too (e.g. to compare)
+eh.config.reset()          # restore the numeric defaults (La, Nx, ho, hi, hi_up,
+                           # hi_down, hi_flow, dt, air); config.file / materials
+                           # are user-provided and are kept
 ```
 
 `config.materials` is a read-only dict keyed by material name
 (`eh.config.materials["Adobe"].k`, `.rho`, `.c`).
 
-The 2D-only parameters (mesh and convergence) live in `config2d` — see
-[Usage — 2D](usage-2d.qmd#config2d-2d-mesh-and-convergence).
+### `config2d`: 2D mesh and convergence
 
-## Apply it
+The physics (`La`, `ho`, `hi`, `dt`, air properties) comes from `config`;
+`config2d` holds the parameters that only exist in 2D:
 
-- [Usage — 1D](usage-1d.qmd) — the workflow on a homogeneous wall, free-running and
-  air-conditioned, executed live.
-- [Usage — 2D](usage-2d.qmd) — hollow blocks and joist-and-block slabs: geometry
-  schemes, section inspection, temperature fields.
+| Attribute   | Default | Description |
+| ----------- | ------- | ----------- |
+| `nx`        | `80`    | mesh nodes across the cell width (adiabatic sides) |
+| `ny`        | `160`   | mesh nodes through the thickness (outside → inside) |
+| `tol_inner` | `1e-8` °C | inner-step tolerance (max node update and max equation residual) |
+| `tol_day`   | `5e-4` °C | day-to-day convergence tolerance |
+| `max_days`  | `60`    | cap on the day-to-day iterations |
+| `max_inner` | `10000` | cap on inner sweeps per step (hit → `converged = False`) |
+
+```python
+from enerhabitat import config2d
+config2d.nx, config2d.ny = 120, 160
+```
+
+> Each 2D solve is single-threaded. For volume (many configurations), parallelise
+> at the process level: run independent `solve()` calls in separate processes
+> (`multiprocessing`, `joblib`).

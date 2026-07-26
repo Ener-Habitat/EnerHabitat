@@ -5,23 +5,25 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Ener-Habitat/EnerHabitat/blob/main/LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-ener--habitat.github.io-blue)](https://ener-habitat.github.io/EnerHabitat/)
 
-**EnerHabitat** is a Python package for the thermal simulation of opaque
+EnerHabitat is a Python package for the thermal simulation of opaque
 constructive systems (walls and roofs) driven by EPW weather data. It solves
-the time-dependent heat conduction equation across multi-layer systems — in
-**1D** for homogeneous layers (`System`) and in **2D** for units that are
-heterogeneous across their width, such as concrete hollow-block walls and
-joist-and-block (*vigueta y bovedilla*) roofs (`System2D`) — and produces
+the time-dependent heat conduction equation across the system and produces
 indoor temperatures and air-conditioning energy demands for an *average day*
-of a chosen month.
+of a chosen month. Homogeneous layer stacks are solved in 1D (`System`);
+units that are heterogeneous across their width, such as concrete
+hollow-block walls and joist-and-block (*vigueta y bovedilla*) roofs, are
+solved in 2D over their cross-section (`System2D`).
 
 ## 📖 Documentation
 
-Full documentation lives at **<https://ener-habitat.github.io/EnerHabitat/>**:
+Full documentation lives at <https://ener-habitat.github.io/EnerHabitat/>:
 
-- [Usage](https://ener-habitat.github.io/EnerHabitat/usage.html) — workflow,
-  complete examples (1D/2D, free-running and air-conditioned), configuration
-  and materials.
-- Theory —
+- Usage: [setup](https://ener-habitat.github.io/EnerHabitat/usage.html)
+  (materials file and configuration), with the executable examples in
+  [1D](https://ener-habitat.github.io/EnerHabitat/usage-1d.html) and
+  [2D](https://ener-habitat.github.io/EnerHabitat/usage-2d.html), free-running
+  and air-conditioned.
+- Theory:
   [1D model](https://ener-habitat.github.io/EnerHabitat/model-1d.html) ·
   [2D model](https://ener-habitat.github.io/EnerHabitat/model-2d.html) ·
   [Numerical method](https://ener-habitat.github.io/EnerHabitat/numerics.html)
@@ -30,11 +32,12 @@ Full documentation lives at **<https://ener-habitat.github.io/EnerHabitat/>**:
 
 ## Overview
 
-EnerHabitat models the heat transfer through opaque constructive systems
-**without windows, ventilation, infiltration or internal heat gains**. Each
-layer is described by a material name and three properties: thermal
-conductivity `k` (W/(m·K)), density `rho` (kg/m³) and specific heat `c`
-(J/(kg·K)) — supplied by a user `materials.ini` file (no defaults are bundled).
+EnerHabitat models the heat transfer through opaque constructive systems;
+windows, ventilation, infiltration and internal heat gains are outside its
+scope. Each layer is described by a material name and three properties:
+thermal conductivity `k` (W/(m·K)), density `rho` (kg/m³) and specific heat
+`c` (J/(kg·K)). The properties come from a user-supplied `materials.ini`
+file; no defaults are bundled.
 
 Given an EPW file and a constructive system, EnerHabitat computes the outdoor
 (`Ta`), sun–air (`Tsa`), indoor (`Ti`) and neutrality (`Tn`) temperatures,
@@ -43,16 +46,16 @@ the solar irradiances (`Ig` GHI, `Ib` DNI, `Id` DHI and the plane-of-array
 
 ## Theoretical background (summary)
 
-EnerHabitat solves the **time-dependent heat conduction** through the
-constructive system — in **1D** across multilayer systems and in **2D** over
-the cross-section of non-homogeneous units — with flux continuity at the
-layer joints. The full derivations (equations, boundary conditions, cavity
-physics, assumptions and numerical method) are in the
+EnerHabitat solves the time-dependent heat conduction through the
+constructive system, in 1D across multilayer stacks and in 2D over the
+cross-section of non-homogeneous units, with flux continuity at the layer
+joints. The full derivations (equations, boundary conditions, cavity physics,
+assumptions and numerical method) are in the
 [theory pages](https://ener-habitat.github.io/EnerHabitat/model-1d.html).
 
-At the outdoor surface the boundary condition uses the **sun–air
-temperature**, which lumps convection, absorbed solar radiation and the
-long-wave sky exchange:
+At the outdoor surface the boundary condition uses the sun–air temperature,
+which lumps convection, absorbed solar radiation and the long-wave sky
+exchange:
 
 $$
 T_{sa} = T_a + \frac{a\, I_s}{h_o} - RF,
@@ -61,26 +64,25 @@ $$
 with `a` the solar absorptance, $I_s$ the irradiance on the tilted surface
 (computed with pvlib) and $RF$ decreasing linearly from 3.9 °C at `tilt = 0`
 (roof) to 0 at `tilt = 90` (wall).
-At the indoor surface the system exchanges heat with the indoor air,
-and two solution modes exist:
 
-- **Free-running** — `solve()`: the indoor air is a lumped thermal mass whose
-  temperature `Ti` evolves freely; the daily energy delivered to it is
-  reported as `energy_transfer`.
-- **Air-conditioned** — `solveAC()`: `Ti` is held at the neutrality
-  temperature of the adaptive comfort model of Humphreys & Nicol,
-  $T_n = 0.54\,\overline{T_a} + 13.5$ °C, and the required `cooling_energy`
-  and `heating_energy` are reported. (The average-day data also includes the
-  comfort-zone half-width `DeltaTn`, after Morillón, for comfort analyses.)
+At the indoor surface the system exchanges heat with the indoor air, and two
+solution modes exist. In the free-running mode (`solve()`) the indoor air is
+a lumped thermal mass whose temperature `Ti` evolves freely, and the daily
+energy delivered to it is reported as `energy_transfer`. In the
+air-conditioned mode (`solveAC()`) `Ti` is held at the neutrality temperature
+of the adaptive comfort model of Humphreys & Nicol,
+$T_n = 0.54\,\overline{T_a} + 13.5$ °C, and the required `cooling_energy` and
+`heating_energy` are reported. The average-day data also includes the
+comfort-zone half-width `DeltaTn`, after Morillón, for comfort analyses.
 
 For 2D systems, `System2D` solves the same problem on the unit's
 cross-section, adding the cavity physics: radiation between the cavity walls
 (solved as a radiosity enclosure) and temperature-dependent Nusselt convection
 with a lumped cavity-air node.
 
-The equations are discretised with implicit **finite control volumes** and
-solved with the **TDMA**; the average day is iterated until the solution is
-periodic. Full derivations, boundary conditions, convergence criteria and the
+The equations are discretised with implicit finite control volumes and solved
+with the TDMA; the average day is iterated until the solution is periodic.
+Full derivations, boundary conditions, convergence criteria and the
 validation record are in the
 [theory pages](https://ener-habitat.github.io/EnerHabitat/model-1d.html).
 
@@ -96,12 +98,12 @@ With [uv](https://docs.astral.sh/uv/):
 uv add enerhabitat
 ```
 
-EnerHabitat requires **Python ≥ 3.10**. The section inspector plots are an
+EnerHabitat requires Python ≥ 3.10. The section inspector plots are an
 optional extra: `pip install enerhabitat[viz]`.
 
 ## Quickstart
 
-EnerHabitat ships **no** materials: create a `materials.ini` in your working
+EnerHabitat bundles no materials. Create a `materials.ini` in your working
 directory (or point `eh.config.file` to one) before running anything. A
 minimal file for this example:
 
@@ -143,11 +145,11 @@ For a wall with air conditioning, call `wall.solveAC()` and read
 ### 2D systems
 
 `System2D` is used like `System` (see the
-[API page](https://ener-habitat.github.io/EnerHabitat/api.html#system2d) for the
-differences); its `layers` list contains
-**exactly one** 2D element — a `HollowBlock` (walls, `tilt = 90`) or a `Slab`
-(joist-and-block roofs, `tilt = 0`). The materials named below (`Concreto`,
-`Mortero`, `Yeso`) must also be defined in your `materials.ini` (see the
+[API page](https://ener-habitat.github.io/EnerHabitat/api.html#system2d) for
+the differences). Its `layers` list contains exactly one 2D element: a
+`HollowBlock` (walls, `tilt = 90`) or a `Slab` (joist-and-block roofs,
+`tilt = 0`). The materials named below (`Concreto`, `Mortero`, `Yeso`) must
+also be defined in your `materials.ini` (see the
 [full example set](https://ener-habitat.github.io/EnerHabitat/usage.html#materials-file)):
 
 ```python
@@ -168,13 +170,14 @@ wall.Tsa()
 ti = wall.solve()
 ```
 
-> ⏱ A 2D solve at the default mesh (80×160) takes **~10–20 minutes** (the 1D
-> ones take seconds). For a quick smoke test, reduce the mesh first — e.g.
-> `eh.config2d.nx, eh.config2d.ny = 24, 60` — and check `wall.converged`.
+> ⏱ A 2D solve at the default mesh (80×160) takes ~10–20 minutes; the 1D
+> ones take seconds. For a quick smoke test, reduce the mesh first (e.g.
+> `eh.config2d.nx, eh.config2d.ny = 24, 60`) and check `wall.converged`.
 
-All the examples — the full 1D/2D × free-running/AC matrix, the
-joist-and-block roof, and the to-scale section inspector — are in the
-[Usage page](https://ener-habitat.github.io/EnerHabitat/usage.html).
+All the examples (the full 1D/2D × free-running/AC matrix, the
+joist-and-block roof, and the to-scale section inspector) are in the
+[Usage — 1D](https://ener-habitat.github.io/EnerHabitat/usage-1d.html) and
+[Usage — 2D](https://ener-habitat.github.io/EnerHabitat/usage-2d.html) pages.
 
 ## API at a glance
 
@@ -184,12 +187,14 @@ joist-and-block roof, and the to-scale section inspector — are in the
 | `System` | 1D multilayer wall/roof | `layers`, `Tsa()`, `solve()`, `solveAC()`, `energy_transfer`, `cooling_energy`, `heating_energy`, `days`, `converged` |
 | `System2D` | 2D heterogeneous wall/roof | mirror of `System` (see the [API page](https://ener-habitat.github.io/EnerHabitat/api.html#system2d) for the differences), plus `preview()`, `section_report()`, `solve_dataframe`, `Tfield` |
 | `HollowBlock` / `Slab` | The 2D element inside `System2D.layers` | `material(s)`, `fill_type` (`Fill.AIR`/`Fill.SOLID`), `geometry` |
-| `config` | Global parameters | `file`, `La`, `Nx`, `ho`, `hi`, `dt` *(fixed)* |
+| `config` | Global parameters | `file`, `La`, `Nx`, `ho`, `hi`, `hi_up`, `hi_down`, `hi_flow`, `dt` *(fixed)* |
 | `config2d` | 2D mesh & convergence | `nx`, `ny`, `tol_inner`, `tol_day`, `max_days`, `max_inner` |
 
-Defaults for `ho` (13) and `hi` (8.1 W/(m²·K)) are the NOM-008/020-ENER values
-(`hi` is the vertical-surface value, applied to all orientations);
-`dt` is fixed at 10 s (see
+The film coefficients are the NOM-008/020-ENER values: `ho = 13` and, for
+walls, `hi = 8.1` W/(m²·K); roofs switch every time step between
+`hi_up = 9.4` (upward heat flow) and `hi_down = 6.6` (downward). Set
+`hi_flow = False` to force the fixed `hi` everywhere. `dt` is fixed at 10 s
+(see
 [why](https://ener-habitat.github.io/EnerHabitat/numerics.html#indoor-air-coupling-free-running-mode)).
 Full reference:
 [API page](https://ener-habitat.github.io/EnerHabitat/api.html).
@@ -227,10 +232,10 @@ The repository also ships a [`CITATION.cff`](https://github.com/Ener-Habitat/Ene
 
 ## Authors of the package
 
-Developed at the **Instituto de Energías Renovables, UNAM**.
+Developed at the Instituto de Energías Renovables, UNAM.
 
-- Guillermo Barrios del Valle — <gbv@ier.unam.mx>
-- Fernando Rodríguez Calderón — <ferrodriguez2509@gmail.com>
+- Guillermo Barrios del Valle, <gbv@ier.unam.mx>
+- Fernando Rodríguez Calderón, <ferrodriguez2509@gmail.com>
 
 Source code: <https://github.com/Ener-Habitat/EnerHabitat> ·
 Issues: <https://github.com/Ener-Habitat/EnerHabitat/issues>

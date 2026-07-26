@@ -1,20 +1,19 @@
 ---
 title: "EnerHabitat"
-subtitle: "Thermal simulation of opaque constructive systems (walls and roofs) from EPW data — 1D and 2D"
+subtitle: "Thermal simulation of opaque constructive systems (walls and roofs) from EPW data, in 1D and 2D"
 ---
 
-**EnerHabitat** is a Python package for the thermal simulation of opaque constructive
-systems (walls and roofs) driven by EPW weather data. It solves the time-dependent heat
-conduction equation across multi-layer systems — in **1D** for homogeneous layers
-(`System`) and in **2D** for units that are heterogeneous across their width, such as
-concrete hollow-block walls and joist-and-block  roofs
-(`System2D`) — and produces indoor temperatures and air-conditioning energy demands for
-an *average day* of a chosen month [@barrios2016].
+EnerHabitat is a Python package for the thermal simulation of opaque constructive
+systems (walls and roofs) driven by EPW weather data. It solves the time-dependent
+heat conduction equation across the system and produces indoor temperatures and
+air-conditioning energy demands for an *average day* of a chosen month
+[@barrios2016]. Homogeneous layer stacks are solved in 1D (`System`); units that are
+heterogeneous across their width, such as concrete hollow-block walls and
+joist-and-block roofs, are solved in 2D over their cross-section (`System2D`).
 
 The model considers a single opaque envelope component: no windows, no ventilation, no
-infiltration, no internal gains, so any difference in the results is caused by the
-constructive system alone. Two solution modes are available: **free-running** (the
-indoor temperature evolves with the system's dynamics) and **air-conditioned** (the
+infiltration, no internal gains. Two solution modes are available: free-running (the
+indoor temperature evolves with the system's dynamics) and air-conditioned (the
 indoor temperature is held at a comfort setpoint and the energy demands are reported).
 The full list of modelling assumptions and their consequences is in
 [Assumptions and limits](assumptions.qmd).
@@ -25,50 +24,65 @@ The full list of modelling assumptions and their consequences is in
 pip install enerhabitat        # or: uv add enerhabitat
 ```
 
-Requires **Python ≥ 3.10**. The section inspector plots are an optional extra:
+Requires Python ≥ 3.10. The section inspector plots are an optional extra:
 `pip install enerhabitat[viz]`.
 
 ## Quickstart
 
-EnerHabitat ships **no** materials: create a plain text file `materials.ini` in your working directory
-(or point `eh.config.file` to one) before running anything:
+EnerHabitat bundles no materials. Create a plain text file `materials.ini` in your
+working directory (or point `eh.config.file` to one) before running anything:
 
 ```ini
 [Adobe]
-k   = 0.58    # W/(m·K)
-rho = 1500    # kg/m³
-c   = 1480    # J/(kg·K)
+k   = 0.58    # W/(m·K),  thermal conductivity
+rho = 1500    # kg/m³,    density
+c   = 1480    # J/(kg·K), specific heat
 ```
 
 ```python
 import enerhabitat as eh
 
-eh.config.file = "./materials.ini"           # 1) materials (required)
-loc = eh.Location("./epw/example.epw")       # 2) location from an EPW
+# 1. Create or locate the materials file (required; no defaults are bundled)
+eh.config.file = "./materials.ini"
 
-wall = eh.System(location=loc)               # 3) constructive system
-wall.azimuth = 90                            #    east-facing wall, 0 North, 90 East, 180 South, 270 West
-wall.absortance = 0.3                        #    fraction of incident long-wavelength radiant energy absorbed
-wall.layers = [("Adobe", 0.20)]              #    (material, width in meters) outside → inside
+# 2. Geolocate: read an EPW weather file
+loc = eh.Location("./epw/example.epw")
 
-loc.meanDay(month=5, year=2025)              # 4) average day of May, year to assign to datetime results
-wall.Tsa()                                   #    sun–air temperature
+# 3. Define the constructive system: orientation, solar absorptance, layers
+wall = eh.System(location=loc)
+wall.azimuth = 90                  # surface azimuth: 0 N, 90 E, 180 S, 270 W
+wall.absortance = 0.3              # solar (short-wave) absorptance of the outdoor surface
+wall.layers = [("Adobe", 0.20)]    # (material, thickness in m), outside → inside
+                                   # tilt: 90 = vertical wall (default), 0 = roof
 
-ti = wall.solve()                            # 5) solves for the free-running indoor temperature and returns pandas series Ti
-print(wall.energy_transfer)                  #    J/(m²·day)
+# 4. Choose the period: the average day of May
+#    (the year only stamps the datetime index; in a TMY it selects nothing)
+loc.meanDay(month=5, year=2025)
+wall.Tsa()                         # sun–air temperature, the outdoor forcing
+
+# 5. Solve: free-running indoor temperature (pandas Series named "Ti")
+ti = wall.solve()
+print(wall.energy_transfer)        # J/(m²·day)
+
+# ...or air-conditioned: Ti held at the neutrality temperature Tn
+# wall.solveAC()
+# print(wall.cooling_energy, wall.heating_energy)
 ```
+
+The same steps, with real results and plots, run in [Usage — 1D](usage-1d.qmd);
+2D units add their geometry in [Usage — 2D](usage-2d.qmd).
 
 ## Where to go next
 
-- [Usage — workflow and setup](usage.qmd) — the workflow, the materials file and the
-  global configuration.
-- [Usage — 1D](usage-1d.qmd) — the workflow applied to a homogeneous wall,
+- [Usage — setup](usage.qmd): the materials file and the configuration
+  (`config`, `config2d`).
+- [Usage — 1D](usage-1d.qmd): the Quickstart steps on a homogeneous wall,
   free-running and air-conditioned, executed live.
-- [Usage — 2D](usage-2d.qmd) — hollow blocks and joist-and-block slabs: geometry
-  schemes, section inspection, temperature fields and `config2d`.
-- Theory — [1D model](model-1d.qmd) (physical problem, equations, boundary
+- [Usage — 2D](usage-2d.qmd): hollow blocks and joist-and-block slabs, with geometry
+  schemes, section inspection and temperature fields.
+- Theory: [1D model](model-1d.qmd) (physical problem, equations, boundary
   conditions), [2D model](model-2d.qmd) (cavities, hollow blocks, slabs),
   [numerical method](numerics.qmd) (discretisation, convergence, validation) and
   [assumptions and limits](assumptions.qmd).
-- [API reference](api.qmd) — every class and parameter.
-- [About](about.qmd) — how to cite, changelog, authors.
+- [API reference](api.qmd): every class and parameter.
+- [About](about.qmd): how to cite, changelog, authors.

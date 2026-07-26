@@ -4,6 +4,9 @@
 #| code-fold: false
 import enerhabitat as eh
 import pandas as pd
+import matplotlib.pyplot as plt   # Comment or delete if not creating visualization
+import matplotlib.dates as mdates # Comment or delete if not creating visualization
+
 
 eh.config.file = "data/materials.ini"
 epw_file = "data/MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-2018.epw"
@@ -12,15 +15,16 @@ epw_file = "data/MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-2018.epw"
 ```{python}
 #| code-fold: true
 #| code-summary: "Plot helper used by the examples (click to show)"
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 
 EH_COLORS = {"Ti": "#2a78d6", "Tsa": "#eb6834", "Ta": "#008300", "Tn": "#6b7280"}
 
 def plot_day(df, title=""):
-    """Temperatures of the average day, with the comfort zone Tn ± DeltaTn."""
-    fig, ax = plt.subplots(figsize=(7.2, 3.6))
+    """Temperatures of the average day (with the comfort zone Tn ± DeltaTn)
+    and the solar irradiance components carried by the same dataframe."""
+    fig, (ax, axr) = plt.subplots(2, 1, figsize=(7.2, 5.8), sharex=True,
+                                  height_ratios=[3, 2])
 
+    # --- temperatures ---
     # comfort zone: Tn and DeltaTn are columns (constant along the day)
     ax.fill_between(df.index, df["Tn"] - df["DeltaTn"], df["Tn"] + df["DeltaTn"],
                     color=EH_COLORS["Tn"], alpha=0.12, lw=0)
@@ -30,16 +34,29 @@ def plot_day(df, title=""):
     ax.plot(df["Tsa"], color=EH_COLORS["Tsa"], lw=2, label="Tsa")
     ax.plot(df["Ti"],  color=EH_COLORS["Ti"],  lw=2, label="Ti")
 
-    # tz=... keeps the labels in local time (matplotlib defaults to UTC)
-    ax.xaxis.set_major_locator(mdates.HourLocator(byhour=[0, 6, 12, 18], tz=df.index.tz))
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%H", tz=df.index.tz))
-    ax.set_xlabel("hour of the average day")
     ax.set_ylabel("temperature (°C)")
     ax.set_title(title, fontsize=10)
     ax.legend(frameon=False, fontsize=9, loc="upper left")
-    ax.grid(alpha=0.25, lw=0.5)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+
+    # --- solar irradiance (same dataframe: Ig, Ib, Id from the EPW; Is on the
+    # tilted/oriented surface, computed by Tsa()) ---
+    axr.plot(df["Ig"], color="#f59e0b", lw=1.5, label="Ig (global horizontal)")
+    axr.plot(df["Ib"], color="#a16207", lw=1.5, label="Ib (direct normal)")
+    axr.plot(df["Id"], color="#60a5fa", lw=1.5, label="Id (diffuse horizontal)")
+    axr.plot(df["Is"], color="#dc2626", lw=2,   label="Is (on the surface)")
+
+    axr.set_ylabel("irradiance (W/m²)")
+    axr.set_xlabel("hour of the average day (civil time)")
+    axr.legend(frameon=False, fontsize=8, loc="upper left")
+
+    # tz=... keeps the labels in local time (matplotlib defaults to UTC)
+    axr.xaxis.set_major_locator(mdates.HourLocator(byhour=[0, 6, 12, 18], tz=df.index.tz))
+    axr.xaxis.set_major_formatter(mdates.DateFormatter("%H", tz=df.index.tz))
+
+    for a in (ax, axr):
+        a.grid(alpha=0.25, lw=0.5)
+        a.spines["top"].set_visible(False)
+        a.spines["right"].set_visible(False)
     fig.tight_layout()
     plt.show()
 ```

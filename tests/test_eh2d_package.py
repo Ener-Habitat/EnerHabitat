@@ -4,8 +4,9 @@ Fase 5 — Integración al paquete (API 2D de producción).
 Valida la API ``System2D`` (reúsa EPW+pvlib vía el ``System`` 1D, motor JIT
 ``solve_day_2d``, ``config2d``):
 
-  1. **Reducción al 1D**: una sección homogénea (sin bovedilla, uniforme en x)
-     reproduce la ``Ti`` del ``System`` 1D del paquete (``atol 0.1 °C``).
+  1. **Reducción al 1D**: una sección homogénea — un ``HollowBlock`` RELLENO de
+     su mismo material, uniforme en x — reproduce la ``Ti`` del ``System`` 1D
+     del paquete (``atol 0.1 °C``).
   2. **Periodicidad**: la convergencia día-a-día cierra antes de ``max_days``.
   3. **Balance de energía**: en régimen ``Qin ≈ Qout``.
 
@@ -17,7 +18,7 @@ import os
 
 import numpy as np
 
-from enerhabitat import Location, System, config
+from enerhabitat import Fill, HollowBlock, Location, System, config
 from enerhabitat.config import config2d
 from enerhabitat.eh2d import System2D
 
@@ -26,6 +27,10 @@ EPW = os.path.join(HERE, "MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-
 MATERIALS = os.path.join(HERE, "materials.ini")
 
 LAYERS = [("EPS", 0.1)]
+# Same 0.1 m of EPS, built as the one supported homogeneous 2D section: a
+# HollowBlock whose cavity is FILLED with the shell material (0.03+0.04+0.03).
+GEOM = {"web": 0.02, "block_width": 0.16,
+        "cover_top": 0.03, "cavity": 0.04, "cover_bottom": 0.03}
 
 
 def _setup():
@@ -46,7 +51,9 @@ def _run():
     sys1 = System(loc, tilt=90, azimuth=0, absortance=0.8, layers=LAYERS)
     Ti1 = sys1.solve().to_numpy()
 
-    sys2 = System2D(loc, layers=LAYERS, tilt=90, azimuth=0, absortance=0.8)
+    block = HollowBlock("EPS", fill_type=Fill.SOLID, fill_material="EPS",
+                        geometry=GEOM)
+    sys2 = System2D(loc, layers=[block], tilt=90, azimuth=0, absortance=0.8)
     Ti2 = sys2.solve()
     _CACHE["r"] = (Ti1, Ti2, sys1, sys2)
     return _CACHE["r"]

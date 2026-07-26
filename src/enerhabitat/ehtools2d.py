@@ -341,7 +341,7 @@ def _step_inner(k, rhoc, To, T, Tsa, Tint, ho, hi, dt, dx, dy,
 @njit(cache=True)
 def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                  rhoair, cair, T0, tol_inner=1e-8, tol_day=5e-4, max_days=60,
-                 max_inner=10000):
+                 max_inner=10000, hi_up=-1.0, hi_down=-1.0):
     """
     Production engine: runs the full day, repeating it until periodic steady
     state (``mean|T_day−T_prev_day| < tol_day``). Inner steps use the
@@ -358,6 +358,12 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     """
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
+
+    # Flow-dependent indoor hi (roofs): sentinel <= 0 → fixed hi (walls/legacy).
+    if hi_up <= 0.0:
+        hi_up = hi
+    if hi_down <= 0.0:
+        hi_down = hi
 
     T = np.empty((nx, ny))
     To = np.empty((nx, ny))
@@ -399,8 +405,15 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 for i in range(nx):
                     To[i, j] = T[i, j]
             Ti_old = Tint
+            # hi of the step from the heat-flow direction at the indoor surface
+            # (unbiased mean of the inner row, Σ/nx — NOT the /(nx-1) reporting
+            # convention, which is biased by +T/(nx-1)): Tsi > Ti → downward
+            tsi_o = 0.0
+            for i in range(nx):
+                tsi_o += T[i, ny - 1]
+            hi_s = hi_down if tsi_o / nx > Ti_old else hi_up
             it_s, conv_s, _e = _step_inner(k, rhoc, To, T, Tsa_arr[s], Tint,
-                                           ho, hi, dt, dx, dy,
+                                           ho, hi_s, dt, dx, dy,
                                            a, b, c, d, P, Q, Tn, Tnew,
                                            tol_inner, max_inner, False)
             if not conv_s:
@@ -410,7 +423,7 @@ def solve_day_2d(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             # indoor-air update (ONE dt, physically correct)
             flux = 0.0
             for i in range(nx):
-                flux += hi * dx * (T[i, ny - 1] - Ti_old)
+                flux += hi_s * dx * (T[i, ny - 1] - Ti_old)
             Tint = Ti_old + dt * flux / Cair
             Ti_series[s] = Tint
             # Tsi: inner surface after solving, /(nx-1)
@@ -804,7 +817,8 @@ def solve_day_hueca(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
 def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                          rhoair, cair, T0, i1, j1, i2, j2, a21, e22, E,
                          Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                         tol_inner, tol_day, max_days, max_inner):
+                         tol_inner, tol_day, max_days, max_inner,
+                         hi_up=-1.0, hi_down=-1.0):
     """
     **Production** version of the day with air cavity (hollow block / filler
     block with air). Same as :func:`solve_day_hueca` but with the Phase 5
@@ -819,6 +833,11 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     """
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
+    # Flow-dependent indoor hi (roofs): sentinel <= 0 → fixed hi (walls/legacy).
+    if hi_up <= 0.0:
+        hi_up = hi
+    if hi_down <= 0.0:
+        hi_down = hi
     T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
     for j in range(ny):
         for i in range(nx):
@@ -857,9 +876,14 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                     To[i, j] = T[i, j]
             Ti_old = Tint
             Th_old = Th
+            # hi of the step from the heat-flow direction at the indoor surface
+            tsi_o = 0.0
+            for i in range(nx):
+                tsi_o += T[i, ny - 1]
+            hi_s = hi_down if tsi_o / nx > Ti_old else hi_up
             it_s, hh, conv_s, _e = _step_hueca(
                                 k, rhoc, To, T, Tsa_arr[s], Ti_old, Th_old,
-                                ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E, c_wall,
+                                ho, hi_s, dt, dx, dy, i1, j1, i2, j2, e22, E, c_wall,
                                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                                 a, b, c, d, P, Q, Tnew, tol_inner, max_inner, False)
             if not conv_s:
@@ -878,7 +902,7 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             # indoor air (single dt, physically correct)
             flux = 0.0
             for i in range(nx):
-                flux += hi * dx * (T[i, ny - 1] - Ti_old)
+                flux += hi_s * dx * (T[i, ny - 1] - Ti_old)
             Tint = Ti_old + dt * flux / Cair
             Ti_s[s] = Tint
             Th_s[s] = Th
@@ -1141,7 +1165,8 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                         rhoair, cair, T0, cav_of, cav_i1, cav_i2, cj1, cj2,
                         cavity_width, e22, E, beta,
                         Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                        tol_inner, tol_day, max_days, max_inner):
+                        tol_inner, tol_day, max_days, max_inner,
+                        hi_up=-1.0, hi_down=-1.0):
     """Full day (day-to-day convergence) of the N-air-cavity roof slab. Each cavity
     has its lumped node ``Th[c]``; production conventions (single dt, surfaces
     /(nx-1)). Wall/roof Nusselt according to ``beta``.
@@ -1153,6 +1178,11 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
     n_cav = cav_i1.shape[0]
+    # Flow-dependent indoor hi (roofs): sentinel <= 0 → fixed hi (walls/legacy).
+    if hi_up <= 0.0:
+        hi_up = hi
+    if hi_down <= 0.0:
+        hi_down = hi
     T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
     for j in range(ny):
         for i in range(nx):
@@ -1196,8 +1226,13 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 for i in range(nx):
                     To[i, j] = T[i, j]
             Ti_old = Tint
+            # hi of the step from the heat-flow direction at the indoor surface
+            tsi_o = 0.0
+            for i in range(nx):
+                tsi_o += T[i, ny - 1]
+            hi_s = hi_down if tsi_o / nx > Ti_old else hi_up
             it_s, conv_s, _e = _step_slab(
-                       k, rhoc, To, T, Tsa_arr[s], Ti_old, Th, ho, hi, dt, dx, dy,
+                       k, rhoc, To, T, Tsa_arr[s], Ti_old, Th, ho, hi_s, dt, dx, dy,
                        NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
                        _K_AIR, _GR, _BETA_EXP, nuair, alphaair,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
@@ -1224,7 +1259,7 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             # indoor air (single dt)
             flux = 0.0
             for i in range(nx):
-                flux += hi * dx * (T[i, ny - 1] - Ti_old)
+                flux += hi_s * dx * (T[i, ny - 1] - Ti_old)
             Tint = Ti_old + dt * flux / Cair
             Ti_s[s] = Tint
             tsi = 0.0
@@ -1321,12 +1356,17 @@ def solve_step_slab(NT, k, rhoc, To, Tsa, Tint, Th0, ho, hi, dt, dx, dy,
 @njit(cache=True)
 def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                     rhoair, cair, T0, Tset, tol_inner=1e-8, tol_day=5e-4,
-                    max_days=60, max_inner=10000):
+                    max_days=60, max_inner=10000, hi_up=-1.0, hi_down=-1.0):
     """AC for pure conduction (SOLID). Returns
     (Ti_series(=Tset), Tso, Tsi, T_field, days, Qcool, Qheat,
     day_error, inner_ok, inner_iters_max)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
+    # Flow-dependent indoor hi (roofs): sentinel <= 0 → fixed hi (walls/legacy).
+    if hi_up <= 0.0:
+        hi_up = hi
+    if hi_down <= 0.0:
+        hi_down = hi
     T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
     for j in range(ny):
         for i in range(nx):
@@ -1351,8 +1391,13 @@ def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             for j in range(ny):
                 for i in range(nx):
                     To[i, j] = T[i, j]
+            # hi of the step from the heat-flow direction at the indoor surface
+            tsi_o = 0.0
+            for i in range(nx):
+                tsi_o += T[i, ny - 1]
+            hi_s = hi_down if tsi_o / nx > Tset else hi_up
             it_s, conv_s, _e = _step_inner(k, rhoc, To, T, Tsa_arr[s], Tset,
-                                           ho, hi, dt, dx, dy,
+                                           ho, hi_s, dt, dx, dy,
                                            a, b, c, d, P, Q, Tn, Tnew,
                                            tol_inner, max_inner, False)
             if not conv_s:
@@ -1361,7 +1406,7 @@ def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 inner_max = it_s
             flux = 0.0
             for i in range(nx):
-                flux += hi * dx * (T[i, ny - 1] - Tset)
+                flux += hi_s * dx * (T[i, ny - 1] - Tset)
             e = flux * dt / X
             if e > 0.0:
                 Qcool += e
@@ -1386,12 +1431,18 @@ def solve_day_2d_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
 def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                        rhoair, cair, T0, Tset, i1, j1, i2, j2, a21, e22, E,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                       tol_inner, tol_day, max_days, max_inner):
+                       tol_inner, tol_day, max_days, max_inner,
+                       hi_up=-1.0, hi_down=-1.0):
     """AC for a wall with air cavity (Thueco floats, Tint=Tset fixed). Returns
     (Ti(=Tset), Tso, Tsi, Th, T_field, days, Qcool, Qheat,
     day_error, inner_ok, inner_iters_max)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
+    # Flow-dependent indoor hi (roofs): sentinel <= 0 → fixed hi (walls/legacy).
+    if hi_up <= 0.0:
+        hi_up = hi
+    if hi_down <= 0.0:
+        hi_down = hi
     T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
     for j in range(ny):
         for i in range(nx):
@@ -1424,9 +1475,14 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 for i in range(nx):
                     To[i, j] = T[i, j]
             Th_old = Th
+            # hi of the step from the heat-flow direction at the indoor surface
+            tsi_o = 0.0
+            for i in range(nx):
+                tsi_o += T[i, ny - 1]
+            hi_s = hi_down if tsi_o / nx > Tset else hi_up
             it_s, hh, conv_s, _e = _step_hueca(
                                 k, rhoc, To, T, Tsa_arr[s], Tset, Th_old,
-                                ho, hi, dt, dx, dy, i1, j1, i2, j2, e22, E, c_wall,
+                                ho, hi_s, dt, dx, dy, i1, j1, i2, j2, e22, E, c_wall,
                                 Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
                                 a, b, c, d, P, Q, Tnew, tol_inner, max_inner, False)
             if not conv_s:
@@ -1443,7 +1499,7 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             Th = Th_old + dt * qh / Ch
             flux = 0.0
             for i in range(nx):
-                flux += hi * dx * (T[i, ny - 1] - Tset)
+                flux += hi_s * dx * (T[i, ny - 1] - Tset)
             e = flux * dt / X
             if e > 0.0:
                 Qcool += e
@@ -1474,13 +1530,19 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                       rhoair, cair, T0, Tset, cav_of, cav_i1, cav_i2, cj1, cj2,
                       cavity_width, e22, E, beta,
                       Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
-                      tol_inner, tol_day, max_days, max_inner):
+                      tol_inner, tol_day, max_days, max_inner,
+                      hi_up=-1.0, hi_down=-1.0):
     """AC for an N-cavity roof (Thueco[c] float, Tint=Tset fixed). Returns
     (Ti(=Tset), Tso, Tsi, Th_mean, T_field, days, Qcool, Qheat,
     day_error, inner_ok, inner_iters_max)."""
     nx, ny = k.shape
     nsteps = Tsa_arr.shape[0]
     n_cav = cav_i1.shape[0]
+    # Flow-dependent indoor hi (roofs): sentinel <= 0 → fixed hi (walls/legacy).
+    if hi_up <= 0.0:
+        hi_up = hi
+    if hi_down <= 0.0:
+        hi_down = hi
     T = np.empty((nx, ny)); To = np.empty((nx, ny)); Told = np.empty((nx, ny))
     for j in range(ny):
         for i in range(nx):
@@ -1517,8 +1579,13 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             for j in range(ny):
                 for i in range(nx):
                     To[i, j] = T[i, j]
+            # hi of the step from the heat-flow direction at the indoor surface
+            tsi_o = 0.0
+            for i in range(nx):
+                tsi_o += T[i, ny - 1]
+            hi_s = hi_down if tsi_o / nx > Tset else hi_up
             it_s, conv_s, _e = _step_slab(
-                       k, rhoc, To, T, Tsa_arr[s], Tset, Th, ho, hi, dt, dx, dy,
+                       k, rhoc, To, T, Tsa_arr[s], Tset, Th, ho, hi_s, dt, dx, dy,
                        NT, cav_of, cav_i1, cav_i2, cj1, cj2, n_cav, e22, E, beta,
                        _K_AIR, _GR, _BETA_EXP, nuair, alphaair,
                        Fud, Ful, Fur, Fru, Frd, Frl, Fdl, Fdr, Fdu, Flu, Flr, Fld,
@@ -1543,7 +1610,7 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             Th_s[s] = thsum / n_cav
             flux = 0.0
             for i in range(nx):
-                flux += hi * dx * (T[i, ny - 1] - Tset)
+                flux += hi_s * dx * (T[i, ny - 1] - Tset)
             e = flux * dt / X
             if e > 0.0:
                 Qcool += e
