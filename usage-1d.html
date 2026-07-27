@@ -237,7 +237,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The <a href="./index.html#quickstart">Quickstart steps</a> applied to a homogeneous layer stack, in both modes, free-running and air-conditioned. The examples show real results for the average day of May in Cuernavaca, Mexico (the EPW and <code>materials.ini</code> used here live in <code>docs/data/</code> in the repository), and are executed when this documentation is rendered.</p>
 <p>Setup shared by all the examples:</p>
 <!-- Shared setup for the Usage pages (included by usage.qmd and usage-2d.qmd). -->
-<div id="f2cea88c" class="cell" data-execution_count="1">
+<div id="2d4ea6c3" class="cell" data-execution_count="1">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> enerhabitat <span class="im">as</span> eh</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt   <span class="co"># Comment or delete if not creating visualization</span></span>
@@ -247,7 +247,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"data/materials.ini"</span></span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>epw_file <span class="op">=</span> <span class="st">"data/MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-2018.epw"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="780be691" class="cell" data-execution_count="2">
+<div id="f65b4019" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Plot helper used by the examples (click to show)</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>EH_COLORS <span class="op">=</span> {<span class="st">"Ti"</span>: <span class="st">"#2a78d6"</span>, <span class="st">"Tsa"</span>: <span class="st">"#eb6834"</span>, <span class="st">"Ta"</span>: <span class="st">"#008300"</span>, <span class="st">"Tn"</span>: <span class="st">"#6b7280"</span>}</span>
@@ -297,7 +297,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <section id="d-wall-free-running" class="level2">
 <h2 class="anchored" data-anchor-id="d-wall-free-running">1D wall, free-running</h2>
-<div id="79113f63" class="cell" data-execution_count="3">
+<div id="b123d8b7" class="cell" data-execution_count="3">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>wall <span class="op">=</span> eh.System(eh.Location(epw_file))</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>wall.azimuth <span class="op">=</span> <span class="dv">90</span>                    <span class="co"># east-facing</span></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>wall.absortance <span class="op">=</span> <span class="fl">0.3</span></span>
@@ -311,11 +311,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"energy_transfer = </span><span class="sc">{</span>wall<span class="sc">.</span>energy_transfer<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
 <span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>energy_transfer<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.1f}</span><span class="ss"> Wh/(m²·day)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>energy_transfer = 31,973 J/(m²·day)  = 8.9 Wh/(m²·day)</code></pre>
+<pre><code>energy_transfer = 31,893 J/(m²·day)  = 8.9 Wh/(m²·day)</code></pre>
 </div>
 </div>
 <p>Both solvers return a <code>pandas.Series</code> named <code>"Ti"</code>, indexed by time of day on the same time grid as <code>Tsa()</code>; that is why the <code>pd.concat</code> above aligns without NaN and promotes the Series to a column. The surface temperatures of the last solve are available the same way, as the read-only Series <code>wall.Tso</code> (outdoor surface) and <code>wall.Tsi</code> (indoor surface). When a <code>DataFrame</code> is required, convert with <code>wall.solve().to_frame("Ti")</code>.</p>
-<div id="ea55b900" class="cell" data-execution_count="4">
+<div id="379b9d53" class="cell" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>plot_day(data, title<span class="op">=</span><span class="st">"Mortero + Ladrillo wall, east, free-running — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
@@ -333,7 +333,7 @@ mass at work. -->
 <section id="d-wall-air-conditioned" class="level2">
 <h2 class="anchored" data-anchor-id="d-wall-air-conditioned">1D wall, air-conditioned</h2>
 <p>Same wall; <code>solveAC()</code> holds <code>Ti</code> at the neutrality temperature <code>Tn</code> and reports the energy needed to do so:</p>
-<div id="f48f5b74" class="cell" data-execution_count="5">
+<div id="a5fa2cc9" class="cell" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>dataAC <span class="op">=</span> wall.solveAC()</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>dataAC <span class="op">=</span> pd.concat([dataAC, wall.Tsa()], axis<span class="op">=</span><span class="dv">1</span>)</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -342,11 +342,11 @@ mass at work. -->
 <span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"heating_energy = </span><span class="sc">{</span>wall<span class="sc">.</span>heating_energy<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>      <span class="ss">f"  = </span><span class="sc">{</span>wall<span class="sc">.</span>heating_energy<span class="op">/</span><span class="dv">3600</span><span class="sc">:,.1f}</span><span class="ss"> Wh/(m²·day)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>cooling_energy = 943,968 J/(m²·day)  = 262.2 Wh/(m²·day)
-heating_energy = 386,936 J/(m²·day)  = 107.5 Wh/(m²·day)</code></pre>
+<pre><code>cooling_energy = 940,987 J/(m²·day)  = 261.4 Wh/(m²·day)
+heating_energy = 385,237 J/(m²·day)  = 107.0 Wh/(m²·day)</code></pre>
 </div>
 </div>
-<div id="1af5fbcb" class="cell" data-execution_count="6">
+<div id="67bbfd58" class="cell" data-execution_count="6">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>plot_day(dataAC, title<span class="op">=</span><span class="st">"Same wall, air-conditioned (Ti = Tn) — May, Cuernavaca"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>

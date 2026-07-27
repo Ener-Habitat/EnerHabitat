@@ -252,15 +252,57 @@ window.Quarto = {
 <p>Both the <a href="./model-1d.html">1D</a> and the <a href="./model-2d.html">2D</a> models are solved with the same strategy: an implicit control-volume discretisation of the heat equation <span class="citation" data-cites="patankar1980">(<a href="#ref-patankar1980" role="doc-biblioref">Patankar 1980</a>)</span>, advanced in time until the daily solution becomes periodic. This page documents the discretisation, the solution algorithm, the convergence criteria, the differences with the reference paper <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>, and the validation record.</p>
 <section id="discretisation" class="level2">
 <h2 class="anchored" data-anchor-id="discretisation">Discretisation</h2>
-<p>The domain is divided into control volumes: <span class="math inline">\(N_x = 200\)</span> through the thickness in 1D (<code>config.Nx</code>), and an <span class="math inline">\(n_x \times n_y = 80 \times 160\)</span> grid (width × thickness) in 2D (<code>config2d</code>). Integrating the heat equation over each volume with a fully implicit (backward-Euler) time scheme gives, per node, an algebraic equation of the form</p>
+<p>The nodes are placed on a uniform grid whose first and last lines lie exactly on the domain surfaces: <span class="math inline">\(\Delta x = L/(N_x - 1)\)</span> with <span class="math inline">\(N_x = 200\)</span> through the thickness in 1D (<code>config.Nx</code>), and <span class="math inline">\(\Delta x = W/(n_x - 1)\)</span>, <span class="math inline">\(\Delta y = L/(n_y - 1)\)</span> with <span class="math inline">\(n_x \times n_y = 80 \times 160\)</span> (width × thickness) in 2D (<code>config2d</code>). Each node owns the control volume that surrounds it, so the volumes at the boundaries are fractional: writing <span class="math inline">\(w\)</span> for the volume fraction relative to <span class="math inline">\(\Delta x \Delta y\)</span>,</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Node</th>
+<th><span class="math inline">\(w\)</span></th>
+<th>Special faces</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>interior</td>
+<td><span class="math inline">\(1\)</span></td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>domain edge (surface, adiabatic side)</td>
+<td><span class="math inline">\(1/2\)</span></td>
+<td>film over <span class="math inline">\(w\,\Delta\)</span></td>
+</tr>
+<tr class="odd">
+<td>domain corner</td>
+<td><span class="math inline">\(1/4\)</span></td>
+<td>two faces of <span class="math inline">\(\Delta/2\)</span></td>
+</tr>
+<tr class="even">
+<td>cavity wall (2D)</td>
+<td><span class="math inline">\(1/2\)</span></td>
+<td>convective + radiative face on the cavity side</td>
+</tr>
+<tr class="odd">
+<td>re-entrant cavity corner (2D)</td>
+<td><span class="math inline">\(3/4\)</span></td>
+<td>cavity faces of <span class="math inline">\(\Delta x/2\)</span> and <span class="math inline">\(\Delta y/2\)</span>, half membership in each adjacent wall</td>
+</tr>
+</tbody>
+</table>
+<p>Integrating the heat equation over each volume with a fully implicit (backward-Euler) time scheme gives, per node, an algebraic equation of the form</p>
 <p><span id="eq-discrete"><span class="math display">\[
 a_P\, T_P \;=\; a_E\, T_E + a_W\, T_W + a_N\, T_N + a_S\, T_S + b,
 \qquad
-a_P = \frac{\rho c\, \Delta x \Delta y}{\Delta t} + \sum a_{nb} \;(+\,h\,\Delta s),
+a_P = \frac{\rho c\, w_x\Delta x\, w_y\Delta y}{\Delta t} + \sum a_{nb} \;(+\,h\,w\,\Delta s),
 \tag{1}\]</span></span></p>
-<p>where the neighbour coefficients <span class="math inline">\(a_{nb}\)</span> are the face conductances (only <span class="math inline">\(E\)</span>/<span class="math inline">\(W\)</span> exist in 1D), <span class="math inline">\(b\)</span> carries the previous-time-step term and the boundary sources, and the film coefficients <span class="math inline">\(h_o\)</span>, <span class="math inline">\(h_i\)</span> enter <span class="math inline">\(a_P\)</span> and <span class="math inline">\(b\)</span> at the boundary nodes exactly as the boundary conditions prescribe.</p>
-<p>Layer-to-mesh mapping (1D): the physical layers are mapped onto the uniform mesh by cumulative coordinates. Each cell takes for reference the material containing its centre, and its volumetric heat capacity is the thickness-weighted average of <span class="math inline">\(\rho c\)</span> over the cell, so the total thermal mass <span class="math inline">\(\sum_j \rho c_j L_j\)</span> is conserved exactly at any <span class="math inline">\(N_x\)</span>.</p>
-<p>At interior faces, the conductance (per unit area) is built from the series resistance between the adjacent cell centres <span class="citation" data-cites="patankar1980">(<a href="#ref-patankar1980" role="doc-biblioref">Patankar 1980</a>)</span>:</p>
+<p>where the neighbour coefficients <span class="math inline">\(a_{nb}\)</span> are the face conductances over the corresponding face widths (<span class="math inline">\(w_x\Delta x\)</span> for <span class="math inline">\(N\)</span>/<span class="math inline">\(S\)</span>, <span class="math inline">\(w_y\Delta y\)</span> for <span class="math inline">\(E\)</span>/<span class="math inline">\(W\)</span>; only <span class="math inline">\(E\)</span>/<span class="math inline">\(W\)</span> exist in 1D), <span class="math inline">\(b\)</span> carries the previous-time-step term and the boundary sources, and the film coefficients <span class="math inline">\(h_o\)</span>, <span class="math inline">\(h_i\)</span> enter <span class="math inline">\(a_P\)</span> and <span class="math inline">\(b\)</span> at the boundary nodes exactly as the boundary conditions prescribe. Because the boundary nodes sit on the surfaces, <span class="math inline">\(T_0\)</span> and <span class="math inline">\(T_{N_x-1}\)</span> <em>are</em> the surface temperatures: <code>Tso</code> and <code>Tsi</code> are reported directly from them (in 2D as the width average with the end nodes at half weight, consistent with their half-size faces).</p>
+<p>Layer-to-mesh mapping (1D): the physical layers are mapped onto the mesh by cumulative coordinates. Each node takes for reference the material at its position, and its volumetric heat capacity is the thickness-weighted average of <span class="math inline">\(\rho c\)</span> over its (possibly fractional) control volume, so the total thermal mass <span class="math inline">\(\sum_j \rho c_j L_j\)</span> is conserved exactly at any <span class="math inline">\(N_x\)</span>. In 2D the <span class="math inline">\(k\)</span>/<span class="math inline">\(\rho c\)</span> fields keep a one-material-per-node assignment: a node lying on an internal interface (layer ↔︎ element) takes the material of one side, and the internal dimensions (cavity edges, rib widths, layer interfaces) snap to the nearest node line, so each may shift by up to <span class="math inline">\(\pm\Delta/2\)</span> — a local first-order approximation. For geometries with very thin layers or ribs (a few <span class="math inline">\(\Delta\)</span> wide), run a mesh-convergence check: increase <code>config2d.nx</code>/<code>ny</code> and confirm the outputs stop changing.</p>
+<p>At interior faces, the conductance (per unit area) is built from the series resistance between the adjacent nodes <span class="citation" data-cites="patankar1980">(<a href="#ref-patankar1980" role="doc-biblioref">Patankar 1980</a>)</span>:</p>
 <p><span id="eq-face"><span class="math display">\[
 G_f \;=\; \left[\, \int_{x_P}^{x_E} \frac{dx'}{k(x')} \,\right]^{-1}
 \;=\; \left(\, \sum_m \frac{\delta_m}{k_m} \,\right)^{-1},
@@ -387,6 +429,7 @@ T_i^{new} \;=\; T_i \;+\; \mathrm{Fo}_a \left( \overline{T}_{surf} - T_i \right)
 <h2 class="anchored" data-anchor-id="validation">Validation</h2>
 <p>The validation record combines the published validation of the method with the package’s own regression tests:</p>
 <ul>
+<li>1D vs analytic solution: in the prescribed-surface-temperature limit (<span class="math inline">\(h \to \infty\)</span>, zero absorptance) the periodic conduction problem has an exact transfer-matrix solution per harmonic; the solver’s air-conditioning energy matches it within 0.02% at <span class="math inline">\(N_x = 200\)</span>, and the difference stays flat under mesh refinement (record in <code>HALF-NODES.md</code>).</li>
 <li>1D vs EnergyPlus <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>: six constructive systems (massive, insulated and mixed), non air-conditioned and air-conditioned, hot month. Maximum differences: indoor temperature 0.5 °C, decrement factor 0.03, lag time 0.4 h, cooling energy 3%, heating energy 4%; both programs rank the systems identically.</li>
 <li>2D, filled block: setting the same material everywhere, the 2D solution equals the 1D one <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>. The package reproduces this 2D → 1D reduction as a test.</li>
 <li>2D, hollow block vs experiment: steady-state heat flux through a concrete hollow-block wall compared with hot-box measurements <span class="citation" data-cites="borbon2010">(<a href="#ref-borbon2010" role="doc-biblioref">Borbón et al. 2010</a>)</span>; maximum difference 6.5% (experimental uncertainty ±3.8%) <span class="citation" data-cites="barrios2016">(<a href="#ref-barrios2016" role="doc-biblioref">Barrios et al. 2016</a>)</span>.</li>
