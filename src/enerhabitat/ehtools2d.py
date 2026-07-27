@@ -512,14 +512,30 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
         res = 0.0
         # --- mean temperatures of the 4 walls (current T) ---
         tup = tdn = tlf = trt = 0.0
-        for i in range(i1, i2):
-            tup += T[i, j1 - 1]
-            tdn += T[i, j2]
-        nud = i2 - i1
-        for j in range(j1, j2):
-            tlf += T[i1 - 1, j]
-            trt += T[i2, j]
-        nlr = j2 - j1
+        if vertex:
+            # HALF-NODES: walls ON the node lines j1/j2/i1/i2; the corner
+            # nodes belong to both adjacent walls with half weight.
+            for i in range(i1 + 1, i2):
+                tup += T[i, j1]
+                tdn += T[i, j2]
+            tup += 0.5 * (T[i1, j1] + T[i2, j1])
+            tdn += 0.5 * (T[i1, j2] + T[i2, j2])
+            nud = i2 - i1
+            for j in range(j1 + 1, j2):
+                tlf += T[i1, j]
+                trt += T[i2, j]
+            tlf += 0.5 * (T[i1, j1] + T[i1, j2])
+            trt += 0.5 * (T[i2, j1] + T[i2, j2])
+            nlr = j2 - j1
+        else:
+            for i in range(i1, i2):
+                tup += T[i, j1 - 1]
+                tdn += T[i, j2]
+            nud = i2 - i1
+            for j in range(j1, j2):
+                tlf += T[i1 - 1, j]
+                trt += T[i2, j]
+            nlr = j2 - j1
         tup /= nud; tdn /= nud; tlf /= nlr; trt /= nlr
         # --- Nusselt (wall) ---
         hh = c_wall * (abs(tup - tdn) ** 0.3033) / (e22 ** 0.0901)
@@ -562,44 +578,119 @@ def _step_hueca(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                     kk = k[i + 1, j]; aE = 2.0 * kk * kij / (kk + kij) * (wyj * dy) / dx
                 if i > 0:
                     kk = k[i - 1, j]; aW = 2.0 * kk * kij / (kk + kij) * (wyj * dy) / dx
-                in_hole_cols = (i1 <= i) and (i < i2)
-                in_hole_rows = (j1 <= j) and (j < j2)
-                if in_hole_cols and in_hole_rows:
-                    # cavity air: T = Th
-                    a[i, j] = 1.0; b[i, j] = 0.0; c[i, j] = 0.0; d[i, j] = Th
-                elif in_hole_cols and j == j1 - 1:
-                    # top wall (NT 9): cavity to the south
-                    aP = apo + aN + hh * dx + aE + aW
-                    dd = aN * T[i, j - 1] + hh * dx * Th + apo * To[i, j] - Qur - Qud - Qul
-                    a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
-                elif in_hole_cols and j == j2:
-                    # bottom wall (NT 10): cavity to the north
-                    aP = apo + hh * dx + aS + aE + aW
-                    dd = aS * T[i, j + 1] + hh * dx * Th + apo * To[i, j] - Qdl - Qdu - Qdr
-                    a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
-                elif in_hole_rows and i == i1 - 1:
-                    # left wall (NT 11): cavity to the east
-                    aP = apo + aN + aS + hh * dy + aW
-                    dd = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hh * dy * Th - Qlu - Qlr - Qld
-                    a[i, j] = aP; b[i, j] = 0.0; c[i, j] = aW; d[i, j] = dd
-                elif in_hole_rows and i == i2:
-                    # right wall (NT 12): cavity to the west
-                    aP = apo + aN + aS + aE + hh * dy
-                    dd = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hh * dy * Th - Qrd - Qrl - Qru
-                    a[i, j] = aP; b[i, j] = aE; c[i, j] = 0.0; d[i, j] = dd
+                if vertex:
+                    # HALF-NODES phase 3: the walls sit ON the node lines
+                    # i1/i2/j1/j2 and the air is strictly inside. Wall nodes
+                    # carry half a volume (lateral faces of Δ/2); the four
+                    # re-entrant corners carry 3/4 of a volume with cavity
+                    # faces of dx/2 and dy/2 and half membership in each of
+                    # the two adjacent walls (convection and radiation).
+                    strict_cols = (i1 < i) and (i < i2)
+                    strict_rows = (j1 < j) and (j < j2)
+                    on_cols = (i == i1) or (i == i2)
+                    on_rows = (j == j1) or (j == j2)
+                    if strict_cols and strict_rows:
+                        # cavity air: T = Th
+                        a[i, j] = 1.0; b[i, j] = 0.0; c[i, j] = 0.0; d[i, j] = Th
+                    elif strict_cols and j == j1:
+                        # top wall: half volume above the cavity face
+                        aP = 0.5 * apo + aN + 0.5 * (aE + aW) + hh * dx
+                        dd = (0.5 * apo * To[i, j] + aN * T[i, j - 1]
+                              + hh * dx * Th - Qur - Qud - Qul)
+                        a[i, j] = aP; b[i, j] = 0.5 * aE; c[i, j] = 0.5 * aW; d[i, j] = dd
+                    elif strict_cols and j == j2:
+                        # bottom wall: half volume below the cavity face
+                        aP = 0.5 * apo + aS + 0.5 * (aE + aW) + hh * dx
+                        dd = (0.5 * apo * To[i, j] + aS * T[i, j + 1]
+                              + hh * dx * Th - Qdl - Qdu - Qdr)
+                        a[i, j] = aP; b[i, j] = 0.5 * aE; c[i, j] = 0.5 * aW; d[i, j] = dd
+                    elif strict_rows and i == i1:
+                        # left wall: half volume west of the cavity face
+                        aP = 0.5 * apo + aW + 0.5 * (aN + aS) + hh * dy
+                        dd = (0.5 * apo * To[i, j] + 0.5 * aN * T[i, j - 1]
+                              + 0.5 * aS * T[i, j + 1] + hh * dy * Th
+                              - Qlu - Qlr - Qld)
+                        a[i, j] = aP; b[i, j] = 0.0; c[i, j] = aW; d[i, j] = dd
+                    elif strict_rows and i == i2:
+                        # right wall: half volume east of the cavity face
+                        aP = 0.5 * apo + aE + 0.5 * (aN + aS) + hh * dy
+                        dd = (0.5 * apo * To[i, j] + 0.5 * aN * T[i, j - 1]
+                              + 0.5 * aS * T[i, j + 1] + hh * dy * Th
+                              - Qrd - Qrl - Qru)
+                        a[i, j] = aP; b[i, j] = aE; c[i, j] = 0.0; d[i, j] = dd
+                    elif on_cols and on_rows:
+                        # re-entrant corner: 3/4 volume, cavity faces dx/2
+                        # and dy/2; faces toward the walls are solid halves
+                        conv = hh * 0.5 * (dx + dy)
+                        if j == j1:
+                            rad = 0.5 * (Qur + Qud + Qul)
+                        else:
+                            rad = 0.5 * (Qdl + Qdu + Qdr)
+                        if i == i1:
+                            rad += 0.5 * (Qlu + Qlr + Qld)
+                        else:
+                            rad += 0.5 * (Qrd + Qrl + Qru)
+                        wN = 1.0 if j == j1 else 0.5
+                        wS = 1.0 if j == j2 else 0.5
+                        wE = 1.0 if i == i2 else 0.5
+                        wW = 1.0 if i == i1 else 0.5
+                        aP = (0.75 * apo + wN * aN + wS * aS + wE * aE
+                              + wW * aW + conv)
+                        dd = (0.75 * apo * To[i, j] + wN * aN * T[i, j - 1]
+                              + wS * aS * T[i, j + 1] + conv * Th - rad)
+                        a[i, j] = aP; b[i, j] = wE * aE; c[i, j] = wW * aW; d[i, j] = dd
+                    else:
+                        # standard node with domain-boundary weights/films
+                        aP = apo + aN + aS + aE + aW
+                        dd = apo * To[i, j]
+                        if j > 0:
+                            dd += aN * T[i, j - 1]
+                        if j < ny - 1:
+                            dd += aS * T[i, j + 1]
+                        if j == 0:
+                            aP += ho * wxi * dx; dd += ho * wxi * dx * Tsa
+                        if j == ny - 1:
+                            aP += hi * wxi * dx; dd += hi * wxi * dx * Tint
+                        a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
                 else:
-                    # standard node (1-8,13)
-                    aP = apo + aN + aS + aE + aW
-                    dd = apo * To[i, j]
-                    if j > 0:
-                        dd += aN * T[i, j - 1]
-                    if j < ny - 1:
-                        dd += aS * T[i, j + 1]
-                    if j == 0:
-                        aP += ho * wxi * dx; dd += ho * wxi * dx * Tsa
-                    if j == ny - 1:
-                        aP += hi * wxi * dx; dd += hi * wxi * dx * Tint
-                    a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
+                    in_hole_cols = (i1 <= i) and (i < i2)
+                    in_hole_rows = (j1 <= j) and (j < j2)
+                    if in_hole_cols and in_hole_rows:
+                        # cavity air: T = Th
+                        a[i, j] = 1.0; b[i, j] = 0.0; c[i, j] = 0.0; d[i, j] = Th
+                    elif in_hole_cols and j == j1 - 1:
+                        # top wall (NT 9): cavity to the south
+                        aP = apo + aN + hh * dx + aE + aW
+                        dd = aN * T[i, j - 1] + hh * dx * Th + apo * To[i, j] - Qur - Qud - Qul
+                        a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
+                    elif in_hole_cols and j == j2:
+                        # bottom wall (NT 10): cavity to the north
+                        aP = apo + hh * dx + aS + aE + aW
+                        dd = aS * T[i, j + 1] + hh * dx * Th + apo * To[i, j] - Qdl - Qdu - Qdr
+                        a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
+                    elif in_hole_rows and i == i1 - 1:
+                        # left wall (NT 11): cavity to the east
+                        aP = apo + aN + aS + hh * dy + aW
+                        dd = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hh * dy * Th - Qlu - Qlr - Qld
+                        a[i, j] = aP; b[i, j] = 0.0; c[i, j] = aW; d[i, j] = dd
+                    elif in_hole_rows and i == i2:
+                        # right wall (NT 12): cavity to the west
+                        aP = apo + aN + aS + aE + hh * dy
+                        dd = aN * T[i, j - 1] + aS * T[i, j + 1] + apo * To[i, j] + hh * dy * Th - Qrd - Qrl - Qru
+                        a[i, j] = aP; b[i, j] = aE; c[i, j] = 0.0; d[i, j] = dd
+                    else:
+                        # standard node (1-8,13)
+                        aP = apo + aN + aS + aE + aW
+                        dd = apo * To[i, j]
+                        if j > 0:
+                            dd += aN * T[i, j - 1]
+                        if j < ny - 1:
+                            dd += aS * T[i, j + 1]
+                        if j == 0:
+                            aP += ho * wxi * dx; dd += ho * wxi * dx * Tsa
+                        if j == ny - 1:
+                            aP += hi * wxi * dx; dd += hi * wxi * dx * Tint
+                        a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
                 # scaled residual of the current T for this node
                 rr = d[i, j] - a[i, j] * T[i, j]
                 if i < nx - 1:
@@ -928,12 +1019,27 @@ def solve_day_hueca_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
                 inner_max = it_s
             # cavity air (single dt, same as the faithful one — already correct)
             qh = 0.0
-            for i in range(i1, i2):
-                qh += hh * dx * (T[i, j1 - 1] - Th_old)
-                qh += hh * dx * (T[i, j2] - Th_old)
-            for j in range(j1, j2):
-                qh += hh * dy * (T[i1 - 1, j] - Th_old)
-                qh += hh * dy * (T[i2, j] - Th_old)
+            if vertex:
+                # HALF-NODES: walls ON the lines; corner segments dx/2 + dy/2
+                # so the segments add up to the exact perimeter
+                for i in range(i1 + 1, i2):
+                    qh += hh * dx * (T[i, j1] - Th_old)
+                    qh += hh * dx * (T[i, j2] - Th_old)
+                for j in range(j1 + 1, j2):
+                    qh += hh * dy * (T[i1, j] - Th_old)
+                    qh += hh * dy * (T[i2, j] - Th_old)
+                seg = hh * 0.5 * (dx + dy)
+                qh += seg * (T[i1, j1] - Th_old)
+                qh += seg * (T[i2, j1] - Th_old)
+                qh += seg * (T[i1, j2] - Th_old)
+                qh += seg * (T[i2, j2] - Th_old)
+            else:
+                for i in range(i1, i2):
+                    qh += hh * dx * (T[i, j1 - 1] - Th_old)
+                    qh += hh * dx * (T[i, j2] - Th_old)
+                for j in range(j1, j2):
+                    qh += hh * dy * (T[i1 - 1, j] - Th_old)
+                    qh += hh * dy * (T[i2, j] - Th_old)
             Th = (qh + (Ch / dt) * Th_old) * dt / Ch
             # indoor air (single dt, physically correct)
             flux = 0.0
@@ -1061,6 +1167,17 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
     nx, ny = k.shape
     sx = dx * E * _SIGMA
     sy = dy * E * _SIGMA
+    # HALF-NODES: the geometric cavity dispatch only applies when the cavities
+    # hold air (hollow slab). A solid-filled slab has no NT==0 nodes and every
+    # node inside the cavity rectangles is ordinary solid.
+    has_air = False
+    for jj in range(ny):
+        for ii in range(nx):
+            if NT[ii, jj] == 0:
+                has_air = True
+                break
+        if has_air:
+            break
     iters = 0
     converged = False
     err = 1.0e30
@@ -1072,14 +1189,30 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
         for cidx in range(n_cav):
             ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]
             tup = 0.0; tdn = 0.0; tlf = 0.0; trt = 0.0
-            for i in range(ci1, ci2):
-                tup += T[i, cj1 - 1]
-                tdn += T[i, cj2]
-            nud = ci2 - ci1
-            for j in range(cj1, cj2):
-                tlf += T[ci1 - 1, j]
-                trt += T[ci2, j]
-            nlr = cj2 - cj1
+            if vertex:
+                # HALF-NODES: walls ON the node lines; corners belong to both
+                # adjacent walls with half weight.
+                for i in range(ci1 + 1, ci2):
+                    tup += T[i, cj1]
+                    tdn += T[i, cj2]
+                tup += 0.5 * (T[ci1, cj1] + T[ci2, cj1])
+                tdn += 0.5 * (T[ci1, cj2] + T[ci2, cj2])
+                nud = ci2 - ci1
+                for j in range(cj1 + 1, cj2):
+                    tlf += T[ci1, j]
+                    trt += T[ci2, j]
+                tlf += 0.5 * (T[ci1, cj1] + T[ci1, cj2])
+                trt += 0.5 * (T[ci2, cj1] + T[ci2, cj2])
+                nlr = cj2 - cj1
+            else:
+                for i in range(ci1, ci2):
+                    tup += T[i, cj1 - 1]
+                    tdn += T[i, cj2]
+                nud = ci2 - ci1
+                for j in range(cj1, cj2):
+                    tlf += T[ci1 - 1, j]
+                    trt += T[ci2, j]
+                nlr = cj2 - cj1
             tup /= nud; tdn /= nud; tlf /= nlr; trt /= nlr
             hh[cidx] = _slab_hh(tup, tdn, e22, beta, kair, gr, beta_exp, nu, alphaair)
             Tu = tup + 273.15; Td = tdn + 273.15
@@ -1117,7 +1250,86 @@ def _step_slab(k, rhoc, To, T, Tsa, Tint, Th, ho, hi, dt, dx, dy,
                     kk = k[i + 1, j]; aE = 2.0 * kk * kij / (kk + kij) * (wyj * dy) / dx
                 if i > 0:
                     kk = k[i - 1, j]; aW = 2.0 * kk * kij / (kk + kij) * (wyj * dy) / dx
-                if nt == 0:
+                if vertex:
+                    # HALF-NODES phase 3: geometric dispatch per cavity (NT is
+                    # shared with the golden paths and keeps the old layout).
+                    # Walls ON the node lines ci1/ci2/cj1/cj2, air strictly
+                    # inside, re-entrant corners with 3/4 volume and cavity
+                    # faces dx/2 and dy/2.
+                    cc = -1
+                    if has_air and cj1 <= j <= cj2:
+                        for cx in range(n_cav):
+                            if cav_i1[cx] <= i <= cav_i2[cx]:
+                                cc = cx
+                                break
+                    if cc >= 0:
+                        ci1 = cav_i1[cc]; ci2 = cav_i2[cc]
+                        hc = hh[cc]
+                        strict_cols = (ci1 < i) and (i < ci2)
+                        strict_rows = (cj1 < j) and (j < cj2)
+                        if strict_cols and strict_rows:
+                            a[i, j] = 1.0; b[i, j] = 0.0; c[i, j] = 0.0
+                            d[i, j] = Th[cc]
+                        elif strict_cols and j == cj1:
+                            aP = 0.5 * apo + aN + 0.5 * (aE + aW) + hc * dx
+                            dd = (0.5 * apo * To[i, j] + aN * T[i, j - 1]
+                                  + hc * dx * Th[cc] - Qtop[cc])
+                            a[i, j] = aP; b[i, j] = 0.5 * aE
+                            c[i, j] = 0.5 * aW; d[i, j] = dd
+                        elif strict_cols and j == cj2:
+                            aP = 0.5 * apo + aS + 0.5 * (aE + aW) + hc * dx
+                            dd = (0.5 * apo * To[i, j] + aS * T[i, j + 1]
+                                  + hc * dx * Th[cc] - Qbot[cc])
+                            a[i, j] = aP; b[i, j] = 0.5 * aE
+                            c[i, j] = 0.5 * aW; d[i, j] = dd
+                        elif strict_rows and i == ci1:
+                            aP = 0.5 * apo + aW + 0.5 * (aN + aS) + hc * dy
+                            dd = (0.5 * apo * To[i, j] + 0.5 * aN * T[i, j - 1]
+                                  + 0.5 * aS * T[i, j + 1] + hc * dy * Th[cc]
+                                  - Qleft[cc])
+                            a[i, j] = aP; b[i, j] = 0.0
+                            c[i, j] = aW; d[i, j] = dd
+                        elif strict_rows and i == ci2:
+                            aP = 0.5 * apo + aE + 0.5 * (aN + aS) + hc * dy
+                            dd = (0.5 * apo * To[i, j] + 0.5 * aN * T[i, j - 1]
+                                  + 0.5 * aS * T[i, j + 1] + hc * dy * Th[cc]
+                                  - Qright[cc])
+                            a[i, j] = aP; b[i, j] = aE
+                            c[i, j] = 0.0; d[i, j] = dd
+                        else:
+                            # re-entrant corner: 3/4 volume, faces dx/2, dy/2
+                            conv = hc * 0.5 * (dx + dy)
+                            if j == cj1:
+                                rad = 0.5 * Qtop[cc]
+                            else:
+                                rad = 0.5 * Qbot[cc]
+                            if i == ci1:
+                                rad += 0.5 * Qleft[cc]
+                            else:
+                                rad += 0.5 * Qright[cc]
+                            wN = 1.0 if j == cj1 else 0.5
+                            wS = 1.0 if j == cj2 else 0.5
+                            wE = 1.0 if i == ci2 else 0.5
+                            wW = 1.0 if i == ci1 else 0.5
+                            aP = (0.75 * apo + wN * aN + wS * aS + wE * aE
+                                  + wW * aW + conv)
+                            dd = (0.75 * apo * To[i, j] + wN * aN * T[i, j - 1]
+                                  + wS * aS * T[i, j + 1] + conv * Th[cc] - rad)
+                            a[i, j] = aP; b[i, j] = wE * aE
+                            c[i, j] = wW * aW; d[i, j] = dd
+                    else:
+                        aP = apo + aN + aS + aE + aW
+                        dd = apo * To[i, j]
+                        if j > 0:
+                            dd += aN * T[i, j - 1]
+                        if j < ny - 1:
+                            dd += aS * T[i, j + 1]
+                        if j == 0:
+                            aP += ho * wxi * dx; dd += ho * wxi * dx * Tsa
+                        if j == ny - 1:
+                            aP += hi * wxi * dx; dd += hi * wxi * dx * Tint
+                        a[i, j] = aP; b[i, j] = aE; c[i, j] = aW; d[i, j] = dd
+                elif nt == 0:
                     cc = cav_of[i, j]
                     a[i, j] = 1.0; b[i, j] = 0.0; c[i, j] = 0.0; d[i, j] = Th[cc]
                 elif nt == 9:                       # top wall (cavity to the south)
@@ -1298,12 +1510,27 @@ def solve_day_slab_prod(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             for cidx in range(n_cav):
                 ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]; hc = hh[cidx]
                 qh = 0.0
-                for i in range(ci1, ci2):
-                    qh += hc * dx * (T[i, cj1 - 1] - Th[cidx])
-                    qh += hc * dx * (T[i, cj2] - Th[cidx])
-                for j in range(cj1, cj2):
-                    qh += hc * dy * (T[ci1 - 1, j] - Th[cidx])
-                    qh += hc * dy * (T[ci2, j] - Th[cidx])
+                if vertex:
+                    # HALF-NODES: walls ON the lines; corner segments
+                    # dx/2 + dy/2 add up to the exact perimeter
+                    for i in range(ci1 + 1, ci2):
+                        qh += hc * dx * (T[i, cj1] - Th[cidx])
+                        qh += hc * dx * (T[i, cj2] - Th[cidx])
+                    for j in range(cj1 + 1, cj2):
+                        qh += hc * dy * (T[ci1, j] - Th[cidx])
+                        qh += hc * dy * (T[ci2, j] - Th[cidx])
+                    seg = hc * 0.5 * (dx + dy)
+                    qh += seg * (T[ci1, cj1] - Th[cidx])
+                    qh += seg * (T[ci2, cj1] - Th[cidx])
+                    qh += seg * (T[ci1, cj2] - Th[cidx])
+                    qh += seg * (T[ci2, cj2] - Th[cidx])
+                else:
+                    for i in range(ci1, ci2):
+                        qh += hc * dx * (T[i, cj1 - 1] - Th[cidx])
+                        qh += hc * dx * (T[i, cj2] - Th[cidx])
+                    for j in range(cj1, cj2):
+                        qh += hc * dy * (T[ci1 - 1, j] - Th[cidx])
+                        qh += hc * dy * (T[ci2, j] - Th[cidx])
                 Th[cidx] = Th[cidx] + dt * qh / Ch
                 thsum += Th[cidx]
             Th_s[s] = thsum / n_cav
@@ -1565,12 +1792,26 @@ def solve_day_hueca_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             if it_s > inner_max:
                 inner_max = it_s
             qh = 0.0
-            for i in range(i1, i2):
-                qh += hh * dx * (T[i, j1 - 1] - Th_old)
-                qh += hh * dx * (T[i, j2] - Th_old)
-            for j in range(j1, j2):
-                qh += hh * dy * (T[i1 - 1, j] - Th_old)
-                qh += hh * dy * (T[i2, j] - Th_old)
+            if vertex:
+                # HALF-NODES: walls ON the lines; corner segments dx/2 + dy/2
+                for i in range(i1 + 1, i2):
+                    qh += hh * dx * (T[i, j1] - Th_old)
+                    qh += hh * dx * (T[i, j2] - Th_old)
+                for j in range(j1 + 1, j2):
+                    qh += hh * dy * (T[i1, j] - Th_old)
+                    qh += hh * dy * (T[i2, j] - Th_old)
+                seg = hh * 0.5 * (dx + dy)
+                qh += seg * (T[i1, j1] - Th_old)
+                qh += seg * (T[i2, j1] - Th_old)
+                qh += seg * (T[i1, j2] - Th_old)
+                qh += seg * (T[i2, j2] - Th_old)
+            else:
+                for i in range(i1, i2):
+                    qh += hh * dx * (T[i, j1 - 1] - Th_old)
+                    qh += hh * dx * (T[i, j2] - Th_old)
+                for j in range(j1, j2):
+                    qh += hh * dy * (T[i1 - 1, j] - Th_old)
+                    qh += hh * dy * (T[i2, j] - Th_old)
             Th = Th_old + dt * qh / Ch
             flux = 0.0
             for i in range(nx):
@@ -1685,12 +1926,27 @@ def solve_day_slab_ac(NT, k, rhoc, Tsa_arr, ho, hi, dt, dx, dy, La, X,
             for cidx in range(n_cav):
                 ci1 = cav_i1[cidx]; ci2 = cav_i2[cidx]; hc = hh[cidx]
                 qh = 0.0
-                for i in range(ci1, ci2):
-                    qh += hc * dx * (T[i, cj1 - 1] - Th[cidx])
-                    qh += hc * dx * (T[i, cj2] - Th[cidx])
-                for j in range(cj1, cj2):
-                    qh += hc * dy * (T[ci1 - 1, j] - Th[cidx])
-                    qh += hc * dy * (T[ci2, j] - Th[cidx])
+                if vertex:
+                    # HALF-NODES: walls ON the lines; corner segments
+                    # dx/2 + dy/2 add up to the exact perimeter
+                    for i in range(ci1 + 1, ci2):
+                        qh += hc * dx * (T[i, cj1] - Th[cidx])
+                        qh += hc * dx * (T[i, cj2] - Th[cidx])
+                    for j in range(cj1 + 1, cj2):
+                        qh += hc * dy * (T[ci1, j] - Th[cidx])
+                        qh += hc * dy * (T[ci2, j] - Th[cidx])
+                    seg = hc * 0.5 * (dx + dy)
+                    qh += seg * (T[ci1, cj1] - Th[cidx])
+                    qh += seg * (T[ci2, cj1] - Th[cidx])
+                    qh += seg * (T[ci1, cj2] - Th[cidx])
+                    qh += seg * (T[ci2, cj2] - Th[cidx])
+                else:
+                    for i in range(ci1, ci2):
+                        qh += hc * dx * (T[i, cj1 - 1] - Th[cidx])
+                        qh += hc * dx * (T[i, cj2] - Th[cidx])
+                    for j in range(cj1, cj2):
+                        qh += hc * dy * (T[ci1 - 1, j] - Th[cidx])
+                        qh += hc * dy * (T[ci2, j] - Th[cidx])
                 Th[cidx] = Th[cidx] + dt * qh / Ch
                 thsum += Th[cidx]
             Th_s[s] = thsum / n_cav

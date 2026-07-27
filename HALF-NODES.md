@@ -90,6 +90,20 @@ era de nodos-en-vértice); la implementación consiste en asignar a cada tipo su
 - Aceptación: golden intactos; hueca/slab full-day; comparación de energías
   contra fase 2 (corrimientos pequeños y documentados); Borbón (hot-box) como
   referencia física de que no nos alejamos del experimento.
+- RESULTADOS (ejecutada): despacho geométrico por índices de cavidad en
+  `_step_hueca`/`_step_slab` (el mapa NT conserva el layout viejo para los
+  golden; en la losa un gate `has_air` detecta relleno sólido). Paredes sobre
+  las líneas con volumen 1/2 y caras laterales `Δ/2`; esquinas re-entrantes
+  con 3/4, caras `Δx/2`+`Δy/2` y media membresía en cada pared (convección y
+  radiación); promedios de pared e integral de perímetro de `T_h` ponderados
+  (el perímetro suma exacto). Corrimientos vs fase 2 (Cuernavaca, mayo,
+  24×60): bloque hueco AIRE +1.4 % (34 001 → 34 492 Wh/m²·día), losa AIRE
+  +0.5 % (33 607 → 33 777), `T_h` sin cambio (±0.01 °C); cierre de energía
+  0.00 % y orden físico correcto (relleno EPS < AIRE).
+- Limitación conocida (documentar en fase 4): los campos k/ρc siguen siendo
+  asignación entera por nodo; los nodos sobre interfaces internas
+  (capa↔elemento) toman el material de un lado (primer orden local). El
+  mapeo 1D sí promedia volúmenes (fase 1).
 
 ## Fase 4 — documentación y regeneración
 
