@@ -198,7 +198,7 @@ Global singleton; changing it affects all subsequent computations.
 |---|---|---|
 | `file` | `"materials.ini"` | Materials file path |
 | `La` | `2.5` m | Indoor air depth |
-| `Nx` | `200` | 1D control volumes |
+| `Nx` | `200` | 1D nodes through the thickness (first and last on the surfaces) |
 | `ho` | `13` W/(m²·K) | Outdoor film coefficient (NOM) |
 | `hi` | `8.1` W/(m²·K) | Indoor film coefficient for walls (NOM, vertical-surface value) |
 | `hi_up` | `9.4` W/(m²·K) | Indoor coefficient for roofs, upward heat flow (NOM) |

@@ -10,30 +10,52 @@ differences with the reference paper [@barrios2016], and the validation record.
 
 ## Discretisation
 
-The domain is divided into control volumes: $N_x = 200$ through the thickness in 1D
-(`config.Nx`), and an $n_x \times n_y = 80 \times 160$ grid (width × thickness) in 2D
-(`config2d`). Integrating the heat equation over each volume with a fully implicit
+The nodes are placed on a uniform grid whose first and last lines lie exactly on
+the domain surfaces: $\Delta x = L/(N_x - 1)$ with $N_x = 200$ through the
+thickness in 1D (`config.Nx`), and $\Delta x = W/(n_x - 1)$,
+$\Delta y = L/(n_y - 1)$ with $n_x \times n_y = 80 \times 160$ (width ×
+thickness) in 2D (`config2d`). Each node owns the control volume that surrounds
+it, so the volumes at the boundaries are fractional: writing $w$ for the volume
+fraction relative to $\Delta x \Delta y$,
+
+| Node | $w$ | Special faces |
+|---|---|---|
+| interior | $1$ | — |
+| domain edge (surface, adiabatic side) | $1/2$ | film over $w\,\Delta$ |
+| domain corner | $1/4$ | two faces of $\Delta/2$ |
+| cavity wall (2D) | $1/2$ | convective + radiative face on the cavity side |
+| re-entrant cavity corner (2D) | $3/4$ | cavity faces of $\Delta x/2$ and $\Delta y/2$, half membership in each adjacent wall |
+
+Integrating the heat equation over each volume with a fully implicit
 (backward-Euler) time scheme gives, per node, an algebraic equation of the form
 
 $$
 a_P\, T_P \;=\; a_E\, T_E + a_W\, T_W + a_N\, T_N + a_S\, T_S + b,
 \qquad
-a_P = \frac{\rho c\, \Delta x \Delta y}{\Delta t} + \sum a_{nb} \;(+\,h\,\Delta s),
+a_P = \frac{\rho c\, w_x\Delta x\, w_y\Delta y}{\Delta t} + \sum a_{nb} \;(+\,h\,w\,\Delta s),
 $$ {#eq-discrete}
 
-where the neighbour coefficients $a_{nb}$ are the face conductances (only $E$/$W$ exist
-in 1D), $b$ carries the previous-time-step term and the boundary sources, and the film
-coefficients $h_o$, $h_i$ enter $a_P$ and $b$ at the boundary nodes exactly as the
-boundary conditions prescribe.
+where the neighbour coefficients $a_{nb}$ are the face conductances over the
+corresponding face widths ($w_x\Delta x$ for $N$/$S$, $w_y\Delta y$ for $E$/$W$;
+only $E$/$W$ exist in 1D), $b$ carries the previous-time-step term and the
+boundary sources, and the film coefficients $h_o$, $h_i$ enter $a_P$ and $b$ at
+the boundary nodes exactly as the boundary conditions prescribe. Because the
+boundary nodes sit on the surfaces, $T_0$ and $T_{N_x-1}$ *are* the surface
+temperatures: `Tso` and `Tsi` are reported directly from them (in 2D as the
+width average with the end nodes at half weight, consistent with their
+half-size faces).
 
-Layer-to-mesh mapping (1D): the physical layers are mapped onto the uniform mesh
-by cumulative coordinates. Each cell takes for reference the material containing its
-centre, and its volumetric heat capacity is the thickness-weighted average of $\rho c$
-over the cell, so the total thermal mass $\sum_j \rho c_j L_j$ is conserved exactly
-at any $N_x$.
+Layer-to-mesh mapping (1D): the physical layers are mapped onto the mesh by
+cumulative coordinates. Each node takes for reference the material at its
+position, and its volumetric heat capacity is the thickness-weighted average of
+$\rho c$ over its (possibly fractional) control volume, so the total thermal
+mass $\sum_j \rho c_j L_j$ is conserved exactly at any $N_x$. In 2D the
+$k$/$\rho c$ fields keep a one-material-per-node assignment: a node lying on an
+internal interface (layer ↔ element) takes the material of one side, a local
+first-order approximation.
 
 At interior faces, the conductance (per unit area) is built from the series
-resistance between the adjacent cell centres [@patankar1980]:
+resistance between the adjacent nodes [@patankar1980]:
 
 $$
 G_f \;=\; \left[\, \int_{x_P}^{x_E} \frac{dx'}{k(x')} \,\right]^{-1}
@@ -178,6 +200,11 @@ the deliberate differences (each entry verified against the code).
 The validation record combines the published validation of the method with the
 package's own regression tests:
 
+- 1D vs analytic solution: in the prescribed-surface-temperature limit
+  ($h \to \infty$, zero absorptance) the periodic conduction problem has an
+  exact transfer-matrix solution per harmonic; the solver's air-conditioning
+  energy matches it within 0.02% at $N_x = 200$, and the difference stays flat
+  under mesh refinement (record in `HALF-NODES.md`).
 - 1D vs EnergyPlus [@barrios2016]: six constructive systems (massive, insulated and
   mixed), non air-conditioned and air-conditioned, hot month. Maximum differences:
   indoor temperature 0.5 °C, decrement factor 0.03, lag time 0.4 h, cooling energy 3%,
