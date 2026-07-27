@@ -51,8 +51,12 @@ position, and its volumetric heat capacity is the thickness-weighted average of
 $\rho c$ over its (possibly fractional) control volume, so the total thermal
 mass $\sum_j \rho c_j L_j$ is conserved exactly at any $N_x$. In 2D the
 $k$/$\rho c$ fields keep a one-material-per-node assignment: a node lying on an
-internal interface (layer ↔ element) takes the material of one side, a local
-first-order approximation.
+internal interface (layer ↔ element) takes the material of one side, and the
+internal dimensions (cavity edges, rib widths, layer interfaces) snap to the
+nearest node line, so each may shift by up to $\pm\Delta/2$ — a local
+first-order approximation. For geometries with very thin layers or ribs (a few
+$\Delta$ wide), run a mesh-convergence check: increase `config2d.nx`/`ny` and
+confirm the outputs stop changing.
 
 At interior faces, the conductance (per unit area) is built from the series
 resistance between the adjacent nodes [@patankar1980]:
