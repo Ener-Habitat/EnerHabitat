@@ -390,7 +390,7 @@ F_{u \to d} = 1 - 2 F_{u \to r}.
 <h2 class="anchored" data-anchor-id="geometries">Geometries</h2>
 <section id="hollow-block-wall-hollowblock" class="level3">
 <h3 class="anchored" data-anchor-id="hollow-block-wall-hollowblock">Hollow-block wall: <code>HollowBlock</code></h3>
-<p>A shell of a single material with one cavity per cell; walls only (<code>tilt = 90</code>). The repeating cell takes half a web on each side, so the full web between two cavities is <code>2·web</code>.</p>
+<p>A shell of a single material with one cavity per cell; walls only (<code>tilt = 90</code>). The lateral cuts fall on mid-web symmetry planes, so the cell carries a <em>half</em> web on each side: <code>web</code> on the left and <code>joint_web</code> on the right (unless declared, <code>joint_web = web</code> and the wall has uniform webs). Each half doubles across its symmetry plane, so the full webs between two cavities alternate <code>2·web</code> and <code>2·joint_web</code> in the periodic wall.</p>
 <div id="fig-hollow" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-hollow-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -402,7 +402,7 @@ Figure&nbsp;2: Hollow-block wall cross-section (to scale).
 </figure>
 </div>
 <ul>
-<li>cell width <span class="math inline">\(W = 2 \cdot \texttt{web} + \texttt{block\_width}\)</span></li>
+<li>cell width <span class="math inline">\(W = \texttt{web} + \texttt{block\_width} + \texttt{joint\_web}\)</span> (<span class="math inline">\(= 2 \cdot \texttt{web} + \texttt{block\_width}\)</span> with the default)</li>
 <li>thickness <span class="math inline">\(L = \texttt{cover\_top} + \texttt{cavity} + \texttt{cover\_bottom}\)</span></li>
 </ul>
 </section>

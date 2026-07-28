@@ -328,11 +328,6 @@ window.Quarto = {
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>wall <span class="op">=</span> eh.System(location<span class="op">=</span>loc, tilt<span class="op">=</span><span class="dv">90</span>, azimuth<span class="op">=</span><span class="dv">0</span>, absortance<span class="op">=</span><span class="fl">0.8</span>, layers<span class="op">=</span>[])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Attributes:</p>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 33%">
-<col style="width: 33%">
-<col style="width: 33%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Attribute</th>
@@ -369,7 +364,7 @@ window.Quarto = {
 <tr class="even">
 <td><code>setpoint</code></td>
 <td><code>float</code></td>
-<td>AC setpoint override; <code>None</code> (default) → the neutrality temperature <span class="math inline">\(T_n\)</span> (<strong>?@eq-tn</strong> in the 1D model). Ignored by <code>solve()</code></td>
+<td>AC setpoint override; <code>None</code> (default) → the neutrality temperature <span class="math inline">\(T_n\)</span> (<a href="./model-1d.html#eq-tn">in the 1D model</a>). Ignored by <code>solve()</code></td>
 </tr>
 </tbody>
 </table>
@@ -529,27 +524,31 @@ window.Quarto = {
 <tbody>
 <tr class="odd">
 <td><code>web</code></td>
-<td>Half web (rib) thickness; the full web between cavities is <code>2·web</code></td>
+<td>Half web on the left symmetry edge; the full web between cavities is <code>2·web</code></td>
 </tr>
 <tr class="even">
+<td><code>joint_web</code></td>
+<td>Half web on the right symmetry edge; the full alternating web (the joint between blocks) is <code>2·joint_web</code>. Optional — defaults to <code>web</code> (uniform webs)</td>
+</tr>
+<tr class="odd">
 <td><code>block_width</code></td>
 <td>Cavity width</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>cover_top</code></td>
 <td>Outer shell</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>cavity</code></td>
 <td>Cavity height (through the thickness)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>cover_bottom</code></td>
 <td>Inner shell</td>
 </tr>
 </tbody>
 </table>
-<p>Cell width = <code>2·web + block_width</code>; thickness = <code>cover_top + cavity + cover_bottom</code>.</p>
+<p>Cell width = <code>web + block_width + joint_web</code> (= <code>2·web + block_width</code> with the default); thickness = <code>cover_top + cavity + cover_bottom</code>. The raw keys of the C engine (<code>a11</code>, <code>a21</code>, <code>e21</code>, <code>e22</code>, <code>e23</code>) are accepted as trivial aliases; the raw <code>a12</code> is the <em>full</em> alternating web, <code>a12 = 2·joint_web</code>.</p>
 </section>
 <section id="slab" class="level2">
 <h2 class="anchored" data-anchor-id="slab"><code>Slab</code></h2>

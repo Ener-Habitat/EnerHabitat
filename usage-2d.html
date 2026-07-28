@@ -278,7 +278,7 @@ when the .qmd changes, not its data files. Details in run_examples.py. -->
 <section id="d-geometries" class="level2">
 <h2 class="anchored" data-anchor-id="d-geometries">2D geometries</h2>
 <p>The 2D elements (<code>HollowBlock</code> for walls, <code>Slab</code> for joist-and-block roofs) are defined by a <code>geometry</code> dictionary, with measures in metres. The schemes below name every key, drawn to scale with the same values used in the examples further down (shown in mm for readability):</p>
-<div id="ea9b39ab" class="cell" data-execution_count="2">
+<div id="ab62ef37" class="cell" data-execution_count="2">
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -287,12 +287,21 @@ when the .qmd changes, not its data files. Details in run_examples.py. -->
 </div>
 </div>
 </div>
-<p>The lateral edges of the cell are symmetry planes of the repeating wall, so the widths on them are <em>halves</em>: <code>web</code> is the half web on the left edge (the real web is <code>2·web</code>), and the right edge contains half of <code>joint_web</code>, the full width of the alternating web (the joint between blocks). By symmetry <code>joint_web = 2·web</code> unless declared — declare it when the joint web differs from the central one (e.g.&nbsp;<code>web=0.012</code>, <code>joint_web=0.048</code> gives an alternating 24/48 mm pattern). The raw key <code>a12</code> is accepted as an alias of <code>joint_web</code>.</p>
-<div id="b879cd87" class="cell" data-execution_count="3">
+<p>The lateral edges of the cell are symmetry planes of the repeating wall and carry <em>half</em> webs: <code>web</code> on the left and <code>joint_web</code> on the right. If <code>joint_web</code> is not declared it defaults to <code>web</code> (uniform webs). In the built wall each half doubles across its symmetry plane, so the full webs between two cavities alternate <code>2·web</code> and <code>2·joint_web</code>, as the pattern below shows — declare <code>joint_web</code> when the web at the joint between blocks differs from the central one (e.g.&nbsp;<code>web=0.012</code>, <code>joint_web=0.024</code> gives an alternating 24/48 mm pattern). Among the raw keys, <code>a12</code> is the <em>full</em> alternating web: <code>a12 = 2·joint_web</code>.</p>
+<div id="85df3bef" class="cell" data-execution_count="3">
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><a href="usage-2d_files/figure-html/cell-4-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2"><img src="usage-2d_files/figure-html/cell-4-output-1.png" width="853" height="327" class="figure-img"></a></p>
+<p><a href="usage-2d_files/figure-html/cell-4-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2"><img src="usage-2d_files/figure-html/cell-4-output-1.png" width="816" height="300" class="figure-img"></a></p>
+</figure>
+</div>
+</div>
+</div>
+<div id="5b94cc05" class="cell" data-execution_count="4">
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><a href="usage-2d_files/figure-html/cell-5-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3"><img src="usage-2d_files/figure-html/cell-5-output-1.png" width="853" height="327" class="figure-img"></a></p>
 </figure>
 </div>
 </div>
@@ -304,7 +313,7 @@ when the .qmd changes, not its data files. Details in run_examples.py. -->
 <h2 class="anchored" data-anchor-id="examples">Examples</h2>
 <p>Free-running and air-conditioned, for a hollow-block wall and a joist-and-block roof. Setup shared by all the examples (the materials are defined in the <a href="./usage.html#materials-file">materials file</a>):</p>
 <!-- Shared setup for the Usage pages (included by usage.qmd and usage-2d.qmd). -->
-<div id="fba1cc12" class="cell" data-execution_count="4">
+<div id="b6cf81f0" class="cell" data-execution_count="5">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> enerhabitat <span class="im">as</span> eh</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt   <span class="co"># Comment or delete if not creating visualization</span></span>
@@ -314,7 +323,7 @@ when the .qmd changes, not its data files. Details in run_examples.py. -->
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>eh.config.<span class="bu">file</span> <span class="op">=</span> <span class="st">"data/materials.ini"</span></span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>epw_file <span class="op">=</span> <span class="st">"data/MEX_MOR_Cuernavaca-Matamoros.Intl.AP.767260_TMYx.2004-2018.epw"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="807a6f8c" class="cell" data-execution_count="5">
+<div id="b93b30c5" class="cell" data-execution_count="6">
 <details class="code-fold">
 <summary>Plot helper used by the examples (click to show)</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>EH_COLORS <span class="op">=</span> {<span class="st">"Ti"</span>: <span class="st">"#2a78d6"</span>, <span class="st">"Tsa"</span>: <span class="st">"#eb6834"</span>, <span class="st">"Ta"</span>: <span class="st">"#008300"</span>, <span class="st">"Tn"</span>: <span class="st">"#6b7280"</span>}</span>
@@ -365,34 +374,35 @@ when the .qmd changes, not its data files. Details in run_examples.py. -->
 <section id="d-hollow-block-wall-free-running" class="level3">
 <h3 class="anchored" data-anchor-id="d-hollow-block-wall-free-running">2D hollow-block wall, free-running</h3>
 <p>A concrete block with one air cavity per cell. The 2D element goes inside the layer stack; finishes are ordinary 1D layers around it. Building the system is instantaneous (only <code>solve()</code> is expensive):</p>
-<div id="6bb7f661" class="cell" data-execution_count="6">
+<div id="0d8fe8a3" class="cell" data-execution_count="7">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>block <span class="op">=</span> eh.HollowBlock(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    material   <span class="op">=</span> <span class="st">"Concreto"</span>,          <span class="co"># single material of the block</span></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    emissivity <span class="op">=</span> <span class="fl">0.9</span>,                 <span class="co"># cavity-wall emissivity (radiation)</span></span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    geometry   <span class="op">=</span> {                    <span class="co"># cell measures, in metres</span></span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">"web"</span>:          <span class="fl">0.02</span>,         <span class="co"># half web (rib) thickness</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="st">"block_width"</span>:  <span class="fl">0.16</span>,         <span class="co"># cavity width</span></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cover_top"</span>:    <span class="fl">0.02</span>,         <span class="co"># outer shell</span></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cavity"</span>:       <span class="fl">0.08</span>,         <span class="co"># cavity height</span></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cover_bottom"</span>: <span class="fl">0.02</span>,         <span class="co"># inner shell</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    },</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>wall2d <span class="op">=</span> eh.System2D(eh.Location(epw_file))</span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>wall2d.tilt <span class="op">=</span> <span class="dv">90</span>                      <span class="co"># walls only (required for HollowBlock)</span></span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>wall2d.azimuth <span class="op">=</span> <span class="dv">90</span></span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>wall2d.absortance <span class="op">=</span> <span class="fl">0.6</span></span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>wall2d.layers <span class="op">=</span> [(<span class="st">"Mortero"</span>, <span class="fl">0.02</span>), block, (<span class="st">"Yeso"</span>, <span class="fl">0.01</span>)]</span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a><span class="co"># 2D stacks accept at most 7 layers INCLUDING the 2D element (fixed slots</span></span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="co"># inherited from the C engine); exceeding it raises ValueError. 1D has no limit.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="co"># "joint_web":  0.024,        # right half web; defaults to web</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="st">"block_width"</span>:  <span class="fl">0.16</span>,         <span class="co"># cavity width</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cover_top"</span>:    <span class="fl">0.02</span>,         <span class="co"># outer shell</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cavity"</span>:       <span class="fl">0.08</span>,         <span class="co"># cavity height</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"cover_bottom"</span>: <span class="fl">0.02</span>,         <span class="co"># inner shell</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    },</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>wall2d <span class="op">=</span> eh.System2D(eh.Location(epw_file))</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>wall2d.tilt <span class="op">=</span> <span class="dv">90</span>                      <span class="co"># walls only (required for HollowBlock)</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>wall2d.azimuth <span class="op">=</span> <span class="dv">90</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>wall2d.absortance <span class="op">=</span> <span class="fl">0.6</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>wall2d.layers <span class="op">=</span> [(<span class="st">"Mortero"</span>, <span class="fl">0.02</span>), block, (<span class="st">"Yeso"</span>, <span class="fl">0.01</span>)]</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="co"># 2D stacks accept at most 7 layers INCLUDING the 2D element (fixed slots</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a><span class="co"># inherited from the C engine); exceeding it raises ValueError. 1D has no limit.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>The section scheme, to scale, with the outside on top. This is one of several ways to check the geometry before solving: <code>preview()</code> can also draw the node types and the <code>k</code> and <code>ρc</code> fields, <code>section_report()</code> prints a verification table, and there is an ASCII backend for terminals, all demonstrated in <a href="#inspecting-the-section">Inspecting the section</a>:</p>
-<div id="96cdc905" class="cell" data-execution_count="7">
+<div id="1c4a00ea" class="cell" data-execution_count="8">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>wall2d.preview(field<span class="op">=</span><span class="st">"materials"</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><a href="usage-2d_files/figure-html/cell-8-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3"><img src="usage-2d_files/figure-html/cell-8-output-1.png" width="412" height="415" class="figure-img"></a></p>
+<p><a href="usage-2d_files/figure-html/cell-9-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-4"><img src="usage-2d_files/figure-html/cell-9-output-1.png" width="412" height="415" class="figure-img"></a></p>
 </figure>
 </div>
 </div>
@@ -421,7 +431,7 @@ when the .qmd changes, not its data files. Details in run_examples.py. -->
 <span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>scalars <span class="op">=</span> {<span class="st">"energy_transfer"</span>: wall2d.energy_transfer, <span class="st">"days"</span>: wall2d.days}</span>
 <span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>json.dump(scalars, <span class="bu">open</span>(<span class="st">"data/results/hollow_free_scalars.json"</span>, <span class="st">"w"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Reading the stored files back follows the same workflow: same columns, same plots, no re-solving. That is exactly what this page does; its files were written by <code>docs/run_examples.py</code> with the code above, with one difference of bookkeeping: instead of one JSON per case, it gathers the scalars of the three cases (energies, convergence days, runtime, and the mesh extent in mm that the <code>Tfield</code> plots need) into a single <code>data/results/summary.json</code>, which the cells below read:</p>
-<div id="c88a99e0" class="cell" data-execution_count="8">
+<div id="3e7d4070" class="cell" data-execution_count="9">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># The 2D results were computed and saved beforehand by docs/run_examples.py;</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co"># json reads the stored summary (energies, convergence days, runtimes).</span></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
@@ -441,13 +451,13 @@ when the .qmd changes, not its data files. Details in run_examples.py. -->
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><a href="usage-2d_files/figure-html/cell-9-output-2.png" class="lightbox" data-gallery="quarto-lightbox-gallery-4"><img src="usage-2d_files/figure-html/cell-9-output-2.png" width="681" height="547" class="figure-img"></a></p>
+<p><a href="usage-2d_files/figure-html/cell-10-output-2.png" class="lightbox" data-gallery="quarto-lightbox-gallery-5"><img src="usage-2d_files/figure-html/cell-10-output-2.png" width="681" height="547" class="figure-img"></a></p>
 </figure>
 </div>
 </div>
 </div>
 <p>Besides <code>Ti</code>, the 2D solver keeps the full temperature field of the last (converged) day: <code>wall2d.Tfield</code>, an <code>(nx, ny)</code> array in °C on the section mesh, with the same orientation as <code>preview()</code> (outside on top):</p>
-<div id="7b6f3f07" class="cell" data-execution_count="9">
+<div id="305a21f7" class="cell" data-execution_count="10">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>T <span class="op">=</span> np.load(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/hollow_free_Tfield.npy"</span>)</span>
@@ -464,7 +474,7 @@ when the .qmd changes, not its data files. Details in run_examples.py. -->
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><a href="usage-2d_files/figure-html/cell-10-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-5"><img src="usage-2d_files/figure-html/cell-10-output-1.png" width="532" height="355" class="figure-img"></a></p>
+<p><a href="usage-2d_files/figure-html/cell-11-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-6"><img src="usage-2d_files/figure-html/cell-11-output-1.png" width="532" height="355" class="figure-img"></a></p>
 </figure>
 </div>
 </div>
@@ -477,7 +487,7 @@ when the .qmd changes, not its data files. Details in run_examples.py. -->
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>pd.concat([tiAC, wall2d.Tso, wall2d.Tsi, wall2d.Thueco, wall2d.Tsa()],</span>
 <span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>          axis<span class="op">=</span><span class="dv">1</span>).to_csv(<span class="st">"data/results/hollow_ac.csv"</span>)   <span class="co"># save, as before</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<div id="f944ca28" class="cell" data-execution_count="10">
+<div id="34da117e" class="cell" data-execution_count="11">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>hollowAC <span class="op">=</span> pd.read_csv(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/hollow_ac.csv"</span>, index_col<span class="op">=</span><span class="dv">0</span>, parse_dates<span class="op">=</span><span class="va">True</span>)</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> summary[<span class="st">"hollow_ac"</span>]</span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"cooling_energy = </span><span class="sc">{</span>s[<span class="st">'cooling_energy'</span>]<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
@@ -492,7 +502,7 @@ heating_energy = 283,476 J/(m²·day)  = 78.7 Wh/(m²·day)</code></pre>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><a href="usage-2d_files/figure-html/cell-11-output-2.png" class="lightbox" data-gallery="quarto-lightbox-gallery-6"><img src="usage-2d_files/figure-html/cell-11-output-2.png" width="681" height="547" class="figure-img"></a></p>
+<p><a href="usage-2d_files/figure-html/cell-12-output-2.png" class="lightbox" data-gallery="quarto-lightbox-gallery-7"><img src="usage-2d_files/figure-html/cell-12-output-2.png" width="681" height="547" class="figure-img"></a></p>
 </figure>
 </div>
 </div>
@@ -501,7 +511,7 @@ heating_energy = 283,476 J/(m²·day)  = 78.7 Wh/(m²·day)</code></pre>
 <section id="joist-and-block-roof-slab" class="level3">
 <h3 class="anchored" data-anchor-id="joist-and-block-roof-slab">Joist-and-block roof (<code>Slab</code>)</h3>
 <p>Three solids (compression topping, L-shaped rib, filler block) plus N equal cavities that can be air (<code>Fill.AIR</code>) or a solid fill (<code>Fill.SOLID</code>).</p>
-<div id="df247f41" class="cell" data-execution_count="11">
+<div id="e06a2c86" class="cell" data-execution_count="12">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>slab <span class="op">=</span> eh.Slab(</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    rib_material     <span class="op">=</span> <span class="st">"ConcretoAltaDensidad"</span>,   <span class="co"># joist/rib (L-shaped: web + foot)</span></span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    block_material   <span class="op">=</span> <span class="st">"Bovedilla"</span>,              <span class="co"># filler block around the cavities</span></span>
@@ -527,12 +537,12 @@ heating_energy = 283,476 J/(m²·day)  = 78.7 Wh/(m²·day)</code></pre>
 <span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>roof.absortance <span class="op">=</span> <span class="fl">0.3</span></span>
 <span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>roof.layers <span class="op">=</span> [(<span class="st">"Impermeabilizante"</span>, <span class="fl">0.003</span>), slab, (<span class="st">"Yeso"</span>, <span class="fl">0.015</span>)]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<div id="2b225f31" class="cell" data-execution_count="12">
+<div id="2a31b951" class="cell" data-execution_count="13">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>roof.preview(field<span class="op">=</span><span class="st">"materials"</span>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><a href="usage-2d_files/figure-html/cell-13-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-7"><img src="usage-2d_files/figure-html/cell-13-output-1.png" width="412" height="380" class="figure-img"></a></p>
+<p><a href="usage-2d_files/figure-html/cell-14-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-8"><img src="usage-2d_files/figure-html/cell-14-output-1.png" width="412" height="380" class="figure-img"></a></p>
 </figure>
 </div>
 </div>
@@ -550,7 +560,7 @@ heating_energy = 283,476 J/(m²·day)  = 78.7 Wh/(m²·day)</code></pre>
 <span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>data.to_csv(<span class="st">"data/results/slab_free.csv"</span>)</span>
 <span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>np.save(<span class="st">"data/results/slab_free_Tfield.npy"</span>, roof.Tfield)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Recovered from the stored files:</p>
-<div id="7a5fac2c" class="cell" data-execution_count="13">
+<div id="d5fb18fb" class="cell" data-execution_count="14">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>slab_df <span class="op">=</span> pd.read_csv(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/slab_free.csv"</span>, index_col<span class="op">=</span><span class="dv">0</span>, parse_dates<span class="op">=</span><span class="va">True</span>)</span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> summary[<span class="st">"slab_free"</span>]</span>
 <span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"energy_transfer = </span><span class="sc">{</span>s[<span class="st">'energy_transfer'</span>]<span class="sc">:,.0f}</span><span class="ss"> J/(m²·day)"</span></span>
@@ -563,14 +573,14 @@ heating_energy = 283,476 J/(m²·day)  = 78.7 Wh/(m²·day)</code></pre>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><a href="usage-2d_files/figure-html/cell-14-output-2.png" class="lightbox" data-gallery="quarto-lightbox-gallery-8"><img src="usage-2d_files/figure-html/cell-14-output-2.png" width="681" height="547" class="figure-img"></a></p>
+<p><a href="usage-2d_files/figure-html/cell-15-output-2.png" class="lightbox" data-gallery="quarto-lightbox-gallery-9"><img src="usage-2d_files/figure-html/cell-15-output-2.png" width="681" height="547" class="figure-img"></a></p>
 </figure>
 </div>
 </div>
 </div>
 <p>Note how the roof’s <code>Tsa</code> drops below <code>Ta</code> at night: that is the long-wave radiation factor (<span class="math inline">\(RF = 3.9\)</span> °C for horizontal surfaces) at work. The roof sees the cold sky (see <a href="./model-1d.html#outdoor-the-sunair-temperature">the 1D model</a>).</p>
 <p>The 2D results go beyond <code>Ti</code>: the read-only Series <code>Tso</code> (outdoor surface), <code>Tsi</code> (indoor surface) and <code>Thueco</code> (cavity air) live on the same time grid, plotted here alongside <code>Ti</code>:</p>
-<div id="685cdf36" class="cell" data-execution_count="14">
+<div id="a43f2e43" class="cell" data-execution_count="15">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">7.2</span>, <span class="fl">3.6</span>))</span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>ax.plot(slab_df[<span class="st">"Tso"</span>],    color<span class="op">=</span><span class="st">"#eb6834"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Tso (outdoor surface)"</span>)</span>
 <span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>ax.plot(slab_df[<span class="st">"Thueco"</span>], color<span class="op">=</span><span class="st">"#9467bd"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Thueco (cavity air)"</span>)</span>
@@ -590,13 +600,13 @@ heating_energy = 283,476 J/(m²·day)  = 78.7 Wh/(m²·day)</code></pre>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><a href="usage-2d_files/figure-html/cell-15-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-9"><img src="usage-2d_files/figure-html/cell-15-output-1.png" width="681" height="336" class="figure-img"></a></p>
+<p><a href="usage-2d_files/figure-html/cell-16-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-10"><img src="usage-2d_files/figure-html/cell-16-output-1.png" width="681" height="336" class="figure-img"></a></p>
 </figure>
 </div>
 </div>
 </div>
 <p>And its temperature field, where the joists show up as thermal bridges through the cavity band:</p>
-<div id="8b9fadad" class="cell" data-execution_count="15">
+<div id="8a5e9ba5" class="cell" data-execution_count="16">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>T <span class="op">=</span> np.load(<span class="ss">f"</span><span class="sc">{</span>RES<span class="sc">}</span><span class="ss">/slab_free_Tfield.npy"</span>)</span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> summary[<span class="st">"slab_free"</span>]</span>
 <span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="fl">8.5</span>, <span class="fl">3.8</span>))</span>
@@ -611,7 +621,7 @@ heating_energy = 283,476 J/(m²·day)  = 78.7 Wh/(m²·day)</code></pre>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><a href="usage-2d_files/figure-html/cell-16-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-10"><img src="usage-2d_files/figure-html/cell-16-output-1.png" width="757" height="354" class="figure-img"></a></p>
+<p><a href="usage-2d_files/figure-html/cell-17-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-11"><img src="usage-2d_files/figure-html/cell-17-output-1.png" width="757" height="354" class="figure-img"></a></p>
 </figure>
 </div>
 </div>
@@ -632,7 +642,7 @@ heating_energy = 283,476 J/(m²·day)  = 78.7 Wh/(m²·day)</code></pre>
 <section id="inspecting-the-section" class="level3">
 <h3 class="anchored" data-anchor-id="inspecting-the-section">Inspecting the section</h3>
 <p>Before solving you can inspect, to scale, how materials and node types are laid out on the 2D mesh. The section schemes shown with each example above were drawn by <code>preview(field="materials")</code>. <code>section_report()</code> prints the verification table:</p>
-<div id="71e80a2d" class="cell" data-execution_count="16">
+<div id="16e57332" class="cell" data-execution_count="17">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>wall2d.section_report()            <span class="co"># table: node types + materials (k, ρc, y-range)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>2D section  80×160   X=200.0 mm  Y=150.0 mm   dx=2.532  dy=0.943 mm
@@ -660,18 +670,18 @@ Assigned materials (by k, ρc):
 </div>
 </div>
 <p>The default <code>preview()</code> draws three panels: the node types (the finite-volume classification each mesh node gets: interior, cavity walls, corners, air), and the <code>k</code> and <code>ρc</code> fields actually assigned to the mesh:</p>
-<div id="0680dd18" class="cell" data-execution_count="17">
+<div id="e8602758" class="cell" data-execution_count="18">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>wall2d.preview()<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><a href="usage-2d_files/figure-html/cell-18-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-11"><img src="usage-2d_files/figure-html/cell-18-output-1.png" width="1253" height="443" class="figure-img"></a></p>
+<p><a href="usage-2d_files/figure-html/cell-19-output-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-12"><img src="usage-2d_files/figure-html/cell-19-output-1.png" width="1253" height="443" class="figure-img"></a></p>
 </figure>
 </div>
 </div>
 </div>
 <p>matplotlib is an optional extra (<code>pip install enerhabitat[viz]</code>). Without it, or with <code>backend="ascii"</code>, the inspector falls back to a to-scale ASCII drawing, handy on a remote terminal. Note that the drawing is a <em>resampling</em> of the mesh, not the mesh itself: one character is not one node. Each character shows the node nearest to its position, and the header states the resolution (chars vs.&nbsp;mesh nodes, and the size in mm each character covers):</p>
-<div id="45837d07" class="cell" data-execution_count="18">
+<div id="05dfe78a" class="cell" data-execution_count="19">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>roof.preview(field<span class="op">=</span><span class="st">"materials"</span>, backend<span class="op">=</span><span class="st">"ascii"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>  [materials]  to-scale cut  X=609mm × Y=218mm (outside on top)
