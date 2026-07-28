@@ -72,12 +72,12 @@ ax.text(X / 2, cover_top + cavity / 2, "cavity (air or fill)",
 ax.text(X / 2, -12, "OUTSIDE", ha="center", va="bottom", fontsize=9, color="#b91c1c")
 ax.text(X / 2, Y + 42, "INSIDE", ha="center", va="top", fontsize=9, color="#1d4ed8")
 for xa, off in ((0, -6), (X, 6)):
-    ax.text(xa + off, Y / 2, "adiabatic", ha="center", va="center",
+    ax.text(xa + off, Y / 2, "adiabatic (symmetry)", ha="center", va="center",
             fontsize=7.5, color=DIM, rotation=90, style="italic")
 
 hdim(ax, 0, web, Y + 14, "web")
 hdim(ax, web, web + block_width, Y + 14, "block_width")
-hdim(ax, web + block_width, X, Y + 14, "web")
+hdim(ax, web + block_width, X, Y + 14, "joint_web / 2")
 vdim(ax, 0, cover_top, X + 14, "cover_top")
 vdim(ax, cover_top, cover_top + cavity, X + 14, "cavity")
 vdim(ax, cover_top + cavity, Y, X + 14, "cover_bottom")
@@ -90,6 +90,14 @@ ax.set_title("HollowBlock — geometry parameters (one cell)", fontsize=10)
 fig.tight_layout()
 plt.show()
 ```
+
+The lateral edges of the cell are symmetry planes of the repeating wall, so the
+widths on them are *halves*: `web` is the half web on the left edge (the real
+web is `2·web`), and the right edge contains half of `joint_web`, the full
+width of the alternating web (the joint between blocks). By symmetry
+`joint_web = 2·web` unless declared — declare it when the joint web differs
+from the central one (e.g. `web=0.012`, `joint_web=0.048` gives an alternating
+24/48 mm pattern). The raw key `a12` is accepted as an alias of `joint_web`.
 
 ```{python}
 #| echo: false

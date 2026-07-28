@@ -162,6 +162,39 @@ def test_filled_requires_fill_material():
         raise AssertionError("se esperaba ValueError por RELLENA sin fill_material")
 
 
+def test_joint_web_equals_a12():
+    # la clave amigable `joint_web` y la cruda `a12` producen la misma celda
+    v = 0.048
+    friendly = eh.HollowBlock("Concreto", geometry={**GEOM, "joint_web": v})
+    raw = eh.HollowBlock("Concreto", geometry={**GEOM, "a12": v})
+    a_f, e_f = friendly._ae()
+    a_r, e_r = raw._ae()
+    assert a_f == a_r and e_f == e_r
+    assert a_f["a12"] == v
+
+
+def test_joint_web_default_bit_identical():
+    # sin declarar, joint_web = 2·web reproduce el comportamiento previo exacto
+    block = eh.HollowBlock("Concreto", geometry=GEOM)
+    a, e = block._ae()
+    assert a["a12"] == 2.0 * GEOM["web"]
+    assert a == {"a11": GEOM["web"], "a12": 2.0 * GEOM["web"], "a13": 0.0,
+                 "a14": 0.0, "a21": GEOM["block_width"], "a22": 0.0, "a23": 0.0}
+    assert e == {"e21": GEOM["cover_top"], "e22": GEOM["cavity"],
+                 "e23": GEOM["cover_bottom"]}
+    # la firma de una geometría sin la clave nueva no cambia
+    assert block.signature() == ("HollowBlock", "Concreto", eh.Fill.AIR.value,
+                                 None, 0.9, tuple(sorted(GEOM.items())))
+
+
+def test_joint_web_precedence_over_a12():
+    # amigable y cruda a la vez: gana la amigable (comportamiento de _geom_pick)
+    block = eh.HollowBlock("Concreto",
+                           geometry={**GEOM, "joint_web": 0.048, "a12": 0.030})
+    a, _ = block._ae()
+    assert a["a12"] == 0.048
+
+
 def _demo():
     w, ti = _solved()
     bar = "═" * 70
@@ -197,7 +230,9 @@ if __name__ == "__main__":
     for fn in (test_methodology_returns_series, test_periodicity, test_energy_balance,
                test_orientation_guard, test_requires_one_element,
                test_filled_reduces_to_1d, test_filled_methodology,
-               test_filled_requires_fill_material):
+               test_filled_requires_fill_material, test_joint_web_equals_a12,
+               test_joint_web_default_bit_identical,
+               test_joint_web_precedence_over_a12):
         fn()
         print(f"PASS  {fn.__name__}")
     print()

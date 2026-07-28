@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0
+
+- **`joint_web` friendly key in `HollowBlock`**: the raw geometry key `a12`
+  (full width of the alternating web; the cell contains its half on the right
+  symmetry edge) now has the friendly name `joint_web`, resolved like the other
+  friendly keys; `a12` is kept as the raw alias. The default is unchanged
+  (`joint_web = 2·web`, uniform webs), so results are identical when the key is
+  not declared.
+
 ## 0.3.0
 
 **Scientific-review release** — every P0 blocker and all P1/P2 items of the
