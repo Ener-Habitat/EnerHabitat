@@ -57,7 +57,7 @@ Attributes:
 | `azimuth` | `float` | Surface azimuth, pvlib convention (N=0, E=90, S=180, W=270) |
 | `absortance` | `float` | Solar absorptance of the outdoor surface, `[0, 1]`; validated, so values outside the range raise `ValueError` |
 | `layers` | `list[tuple[str, float]]` | `(material, thickness_m)`, outside → inside |
-| `setpoint` | `float` | AC setpoint override; `None` (default) → the neutrality temperature $T_n$ (@eq-tn in the 1D model). Ignored by `solve()` |
+| `setpoint` | `float` | AC setpoint override; `None` (default) → the neutrality temperature $T_n$ ([in the 1D model](model-1d.qmd#eq-tn)). Ignored by `solve()` |
 
 Read-only results (energy per unit surface area over the converged day, in
 J/(m²·day); divide by 3600 for Wh or 3.6e6 for kWh):
@@ -146,13 +146,17 @@ block = eh.HollowBlock(
 
 | `geometry` key | Meaning |
 |---|---|
-| `web` | Half web (rib) thickness; the full web between cavities is `2·web` |
+| `web` | Half web on the left symmetry edge; the full web between cavities is `2·web` |
+| `joint_web` | Half web on the right symmetry edge; the full alternating web (the joint between blocks) is `2·joint_web`. Optional — defaults to `web` (uniform webs) |
 | `block_width` | Cavity width |
 | `cover_top` | Outer shell |
 | `cavity` | Cavity height (through the thickness) |
 | `cover_bottom` | Inner shell |
 
-Cell width = `2·web + block_width`; thickness = `cover_top + cavity + cover_bottom`.
+Cell width = `web + block_width + joint_web` (= `2·web + block_width` with the
+default); thickness = `cover_top + cavity + cover_bottom`. The raw keys of the C
+engine (`a11`, `a21`, `e21`, `e22`, `e23`) are accepted as trivial aliases; the
+raw `a12` is the *full* alternating web, `a12 = 2·joint_web`.
 
 ## `Slab`
 

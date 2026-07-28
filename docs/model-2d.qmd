@@ -231,12 +231,16 @@ validation checks (see [Validation](numerics.qmd#validation)).
 ### Hollow-block wall: `HollowBlock`
 
 A shell of a single material with one cavity per cell; walls only (`tilt = 90`). The
-repeating cell takes half a web on each side, so the full web between two cavities is
-`2·web`.
+lateral cuts fall on mid-web symmetry planes, so the cell carries a *half* web on
+each side: `web` on the left and `joint_web` on the right (unless declared,
+`joint_web = web` and the wall has uniform webs). Each half doubles across its
+symmetry plane, so the full webs between two cavities alternate `2·web` and
+`2·joint_web` in the periodic wall.
 
 ![Hollow-block wall cross-section (to scale).](img/hollow_block.png){#fig-hollow}
 
-- cell width $W = 2 \cdot \texttt{web} + \texttt{block\_width}$
+- cell width $W = \texttt{web} + \texttt{block\_width} + \texttt{joint\_web}$
+  ($= 2 \cdot \texttt{web} + \texttt{block\_width}$ with the default)
 - thickness $L = \texttt{cover\_top} + \texttt{cavity} + \texttt{cover\_bottom}$
 
 ### Joist-and-block roof: `Slab`

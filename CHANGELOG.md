@@ -2,12 +2,13 @@
 
 ## 0.4.0
 
-- **`joint_web` friendly key in `HollowBlock`**: the raw geometry key `a12`
-  (full width of the alternating web; the cell contains its half on the right
-  symmetry edge) now has the friendly name `joint_web`, resolved like the other
-  friendly keys; `a12` is kept as the raw alias. The default is unchanged
-  (`joint_web = 2·web`, uniform webs), so results are identical when the key is
-  not declared.
+- **`joint_web` friendly key in `HollowBlock`**: the half web on the right
+  symmetry edge of the cell can now be declared as `joint_web`, mirroring `web`
+  on the left edge (the full webs between cavities in the periodic wall are
+  `2·web` and `2·joint_web`). Optional — defaults to `web` (uniform webs), so
+  results are identical when not declared. The raw key `a12` is still accepted
+  and keeps its C-engine meaning, the *full* alternating web:
+  `a12 = 2·joint_web`.
 
 ## 0.3.0
 

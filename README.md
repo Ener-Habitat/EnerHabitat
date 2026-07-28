@@ -156,7 +156,7 @@ also be defined in your `materials.ini` (see the
 block = eh.HollowBlock(
     material   = "Concreto",
     emissivity = 0.9,
-    geometry   = {"web": 0.02, "block_width": 0.16,
+    geometry   = {"web": 0.02, "block_width": 0.16,   # optional: "joint_web" (defaults to web)
                   "cover_top": 0.02, "cavity": 0.08, "cover_bottom": 0.02},
 )
 

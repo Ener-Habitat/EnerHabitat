@@ -59,8 +59,9 @@ def vdim(ax, y0, y1, x, label, side="right"):
 ```{python}
 #| echo: false
 web, block_width = 20, 160                      # mm — same as the 2D wall example
+joint_web = web                                 # default: uniform webs
 cover_top, cavity, cover_bottom = 20, 80, 20
-X = 2 * web + block_width
+X = web + block_width + joint_web
 Y = cover_top + cavity + cover_bottom
 
 fig, ax = plt.subplots(figsize=(6.4, 4.2))
@@ -77,7 +78,7 @@ for xa, off in ((0, -6), (X, 6)):
 
 hdim(ax, 0, web, Y + 14, "web")
 hdim(ax, web, web + block_width, Y + 14, "block_width")
-hdim(ax, web + block_width, X, Y + 14, "joint_web / 2")
+hdim(ax, web + block_width, X, Y + 14, "joint_web")
 vdim(ax, 0, cover_top, X + 14, "cover_top")
 vdim(ax, cover_top, cover_top + cavity, X + 14, "cavity")
 vdim(ax, cover_top + cavity, Y, X + 14, "cover_bottom")
@@ -91,13 +92,68 @@ fig.tight_layout()
 plt.show()
 ```
 
-The lateral edges of the cell are symmetry planes of the repeating wall, so the
-widths on them are *halves*: `web` is the half web on the left edge (the real
-web is `2·web`), and the right edge contains half of `joint_web`, the full
-width of the alternating web (the joint between blocks). By symmetry
-`joint_web = 2·web` unless declared — declare it when the joint web differs
-from the central one (e.g. `web=0.012`, `joint_web=0.048` gives an alternating
-24/48 mm pattern). The raw key `a12` is accepted as an alias of `joint_web`.
+The lateral edges of the cell are symmetry planes of the repeating wall and
+carry *half* webs: `web` on the left and `joint_web` on the right. If
+`joint_web` is not declared it defaults to `web` (uniform webs). In the built
+wall each half doubles across its symmetry plane, so the full webs between two
+cavities alternate `2·web` and `2·joint_web`, as the pattern below shows —
+declare `joint_web` when the web at the joint between blocks differs from the
+central one (e.g. `web=0.012`, `joint_web=0.024` gives an alternating 24/48 mm
+pattern). Among the raw keys, `a12` is the *full* alternating web:
+`a12 = 2·joint_web`.
+
+```{python}
+#| echo: false
+web, joint_web, block_width = 12, 24, 120       # mm — alternating webs (joint_web ≠ web)
+cover_top, cavity, cover_bottom = 20, 80, 20
+Y = cover_top + cavity + cover_bottom
+H = web + block_width + joint_web               # half block: web|cav|joint_web
+U = 2 * H                                       # one block: web|cav|2·joint_web|cav|web
+X = U + 2 * H                                   # the block + half a neighbour each side
+
+DARK = "#31517d"                                # highlighted original block
+RED = "#b91c1c"
+fig, ax = plt.subplots(figsize=(8.6, 3.6))
+ax.add_patch(Rectangle((0, 0), X, Y, facecolor=SOLID, edgecolor="none"))
+ax.add_patch(Rectangle((H, 0), U, Y, facecolor=DARK, edgecolor="none"))
+for cx in (joint_web, H + web, H + web + block_width + 2 * joint_web,
+           H + U + web):
+    ax.add_patch(Rectangle((cx, cover_top), block_width, cavity,
+                           facecolor=AIR, edgecolor="k", lw=0.8, ls="--"))
+for y_ in (0, Y):
+    ax.plot([0, X], [y_, y_], color="k", lw=1)
+for x_ in (-12, X + 12):                        # wall continues beyond the cuts
+    ax.text(x_, Y / 2, "⋯", ha="center", va="center", fontsize=12, color=DIM)
+
+# symmetry planes: every mid-web, in red; the centre of the original block is
+# emphasised — the model runs HALF a block
+for x_ in (0, H, H + U, X):
+    ax.plot([x_, x_], [-6, Y + 6], color=RED, lw=0.9, ls=":")
+ax.plot([X / 2, X / 2], [-8, Y + 8], color=RED, lw=1.6)
+ax.annotate("", xy=(H, -12), xytext=(X / 2, -12),
+            arrowprops=dict(arrowstyle="<->", color=RED, lw=1.1))
+ax.text((H + X / 2) / 2, -22, "modeled cell — HALF a block", ha="center",
+        va="bottom", fontsize=8.5, color=RED)
+ax.text(H + U + H / 2, -22, "symmetry planes", ha="center", va="bottom",
+        fontsize=8, color=RED)
+
+hdim(ax, H + web + block_width, H + web + block_width + 2 * joint_web,
+     Y + 14, "2·joint_web")
+hdim(ax, H + U - web, H + U + web, Y + 14, "2·web")
+ax.text(X / 2, Y + 44, "one hollow block (original cell)", ha="center",
+        va="top", fontsize=8.5, color=DIM)
+for xc in (H / 2, X - H / 2):
+    ax.text(xc, Y + 44, "neighbouring block", ha="center", va="top",
+            fontsize=8, color=DIM, style="italic")
+
+ax.set_xlim(-22, X + 22)
+ax.set_ylim(Y + 60, -40)                        # inverted: outside on top
+ax.set_aspect("equal")
+ax.axis("off")
+ax.set_title("HollowBlock — the modeled cell is half a hollow block", fontsize=10)
+fig.tight_layout()
+plt.show()
+```
 
 ```{python}
 #| echo: false
@@ -183,6 +239,7 @@ block = eh.HollowBlock(
     emissivity = 0.9,                 # cavity-wall emissivity (radiation)
     geometry   = {                    # cell measures, in metres
         "web":          0.02,         # half web (rib) thickness
+        # "joint_web":  0.024,        # right half web; defaults to web
         "block_width":  0.16,         # cavity width
         "cover_top":    0.02,         # outer shell
         "cavity":       0.08,         # cavity height

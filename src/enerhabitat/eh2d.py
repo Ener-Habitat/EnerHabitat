@@ -601,14 +601,15 @@ class HollowBlock:
         fill_material (str|None): cavity fill material; required if ``SOLID``.
         emissivity (float): emissivity of the cavity walls (radiation, ``AIR``).
         geometry (dict): cell measures; friendly keys
-            ``web``(=a11), ``joint_web``(=a12), ``block_width``(=a21),
+            ``web``(=a11), ``joint_web``(=a12/2), ``block_width``(=a21),
             ``cover_top``(=e21), ``cavity``(=e22), ``cover_bottom``(=e23); the
-            raw ``a11..e23`` are accepted too. By symmetry
-            ``joint_web = 2·web`` unless declared. Note the half/full subtlety:
-            the lateral edges of the cell are symmetry planes, so ``web`` is the
-            HALF web on the left edge (real web = 2·web), while ``joint_web`` is
-            the FULL width of the alternating web and the cell contains its half
-            (``joint_web/2``) on the right edge.
+            raw ``a11..e23`` are accepted too. The lateral edges of the cell
+            are symmetry planes and carry HALF webs: ``web`` on the left and
+            ``joint_web`` on the right; ``joint_web = web`` (uniform webs)
+            unless declared. In the periodic wall each half doubles across its
+            symmetry plane, so the full webs between cavities alternate
+            ``2·web`` and ``2·joint_web``. All raw keys are trivial aliases
+            except ``a12``, the FULL alternating web: ``a12 = 2·joint_web``.
     """
 
     required_tilt = 90
@@ -634,7 +635,13 @@ class HollowBlock:
         e21 = _geom_pick(g, "cover_top", "e21")
         e22 = _geom_pick(g, "cavity", "e22")
         e23 = _geom_pick(g, "cover_bottom", "e23")
-        a12 = _geom_pick(g, "joint_web", "a12", default=2.0 * web)
+        # joint_web is the HALF web on the right symmetry edge; the raw a12 is
+        # the FULL alternating web: a12 = 2·joint_web (friendly wins, as in
+        # _geom_pick; default joint_web = web → uniform webs).
+        if "joint_web" in g:
+            a12 = 2.0 * g["joint_web"]
+        else:
+            a12 = g.get("a12", 2.0 * web)
         a = {"a11": web, "a12": a12, "a13": 0.0, "a14": 0.0,
              "a21": a21, "a22": 0.0, "a23": 0.0}
         e = {"e21": e21, "e22": e22, "e23": e23}

@@ -163,18 +163,19 @@ def test_filled_requires_fill_material():
 
 
 def test_joint_web_equals_a12():
-    # la clave amigable `joint_web` y la cruda `a12` producen la misma celda
-    v = 0.048
+    # `joint_web` es la media alma contenida en la celda: a12 = 2·joint_web
+    v = 0.024
     friendly = eh.HollowBlock("Concreto", geometry={**GEOM, "joint_web": v})
-    raw = eh.HollowBlock("Concreto", geometry={**GEOM, "a12": v})
+    raw = eh.HollowBlock("Concreto", geometry={**GEOM, "a12": 2.0 * v})
     a_f, e_f = friendly._ae()
     a_r, e_r = raw._ae()
     assert a_f == a_r and e_f == e_r
-    assert a_f["a12"] == v
+    assert a_f["a12"] == 2.0 * v
 
 
 def test_joint_web_default_bit_identical():
-    # sin declarar, joint_web = 2·web reproduce el comportamiento previo exacto
+    # sin declarar, joint_web = web (a12 = 2·web) reproduce el comportamiento
+    # previo exacto
     block = eh.HollowBlock("Concreto", geometry=GEOM)
     a, e = block._ae()
     assert a["a12"] == 2.0 * GEOM["web"]
@@ -190,7 +191,7 @@ def test_joint_web_default_bit_identical():
 def test_joint_web_precedence_over_a12():
     # amigable y cruda a la vez: gana la amigable (comportamiento de _geom_pick)
     block = eh.HollowBlock("Concreto",
-                           geometry={**GEOM, "joint_web": 0.048, "a12": 0.030})
+                           geometry={**GEOM, "joint_web": 0.024, "a12": 0.030})
     a, _ = block._ae()
     assert a["a12"] == 0.048
 
